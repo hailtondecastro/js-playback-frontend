@@ -1,6 +1,6 @@
 import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
-import { JsHbLogLevel } from './js-hb-config';
+import { JsHbLogLevel, ConsoleLike, JsHbLogger } from './js-hb-config';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 import { JsHbContants } from './js-hb-constants';
 import { NgJsHbDecorators } from './js-hb-decorators';
@@ -8,9 +8,11 @@ import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 
 export class JsHbSetCreator<T> {
 
+    private consoleLike: ConsoleLike;
     constructor(private _session: IJsHbSession,
-        private _refererObj: any,
-        private _refererKey: string) {
+            private _refererObj: any,
+            private _refererKey: string) {
+        const thisLocal = this;
         if (!_session) {
             throw new Error('_session can not be null');
         }
@@ -20,19 +22,24 @@ export class JsHbSetCreator<T> {
         if (!_session) {
             throw new Error('_session can not be null');
         }
-        if (JsHbLogLevel.Debug >= _session.jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSetCreator.constructor()');
-            console.debug(_session as any as string); console.debug(_refererObj as any as string); console.debug(_refererKey as any as string);
-            console.groupEnd();
+        thisLocal.consoleLike = _session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.JsHbSetCreator);
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('JsHbSetCreator.constructor()');
+            thisLocal.consoleLike.debug(_session as any as string); thisLocal.consoleLike.debug(_refererObj as any as string); thisLocal.consoleLike.debug(_refererKey as any as string);
+            thisLocal.consoleLike.groupEnd();
         }
     }
 
     public createByProxy(): Set<T> {
+        const thisLocal = this;
         let getFunction: (target: Set<T>, p: PropertyKey, receiver: any) => any = (target: Set<T>, p: PropertyKey, receiver: any) => {
             if (p) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('JsHbSetCreator => getFunction. Intercepting:');
-                    console.debug(target); console.debug(p); console.debug(receiver); console.groupEnd();
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('JsHbSetCreator => getFunction. Intercepting:');
+                    thisLocal.consoleLike.debug(target);
+                    thisLocal.consoleLike.debug(p);
+                    //thisLocal.consoleLike.debug(receiver);
+                    thisLocal.consoleLike.groupEnd();
                 }
                 if (p === 'add') {
                     let proxyGet = (value: T): Set<T> => {

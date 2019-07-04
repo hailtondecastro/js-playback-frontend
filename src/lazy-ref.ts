@@ -4,7 +4,7 @@ import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { Type } from '@angular/core';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { IJsHbSession, OriginalLiteralValueEntry } from './js-hb-session';
-import { JsHbLogLevel, FieldInfo } from './js-hb-config';
+import { JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap, map, finalize } from 'rxjs/operators';
 import { JsHbContants } from './js-hb-constants';
@@ -136,6 +136,10 @@ export class LazyRef<L extends object, I> extends Subject<L> {
     bMdRefererObj: JsHbBackendMetadatas;
     bMdLazyLoadedObj: JsHbBackendMetadatas;
     bMdHibernateIdMetadata: JsHbBackendMetadatas;
+
+    consoleLike: ConsoleLike;
+	consoleLikeSubs: ConsoleLike;
+    consoleLikeProcResp: ConsoleLike;
     /**
      * Unlike the common subscribe, which must be executed every time the data
      * changed, it is only executed once and triggers a next to
@@ -284,8 +288,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     private _refererKey: string;
     private _session: IJsHbSession;
 
-    constructor() {
+    constructor(session: IJsHbSession) {
         super();
+        const thisLocal = this;
+        this._session = session;
+        thisLocal.consoleLike = this.session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.LazyRef);
+        thisLocal.consoleLikeProcResp = this.session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.LazyRefBaseProcessResponse);
+        thisLocal.consoleLikeSubs = this.session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.LazyRefSubscribe);
         this._lazyLoadedObj = null;
     }
 
@@ -497,13 +506,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 throw new Error('Invalid operation. It is not recording. Is this Error correct?! Me:\n' + this);
             }
             if (this.lazyLoadedObj !== lazyLoadedObj) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('LazyRefDefault.setLazyObj()' +
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('LazyRefDefault.setLazyObj()' +
                         '(this.lazyLoadedObj === lazyLoadedObj)\n' +
                         'NOT recording action: ' + JsHbPlaybackActionType.SetField + '. actual and new value: ');
-                    console.debug(this.lazyLoadedObj);
-                    console.debug(lazyLoadedObj);
-                    console.groupEnd();
+                    thisLocal.consoleLike.debug(this.lazyLoadedObj);
+                    thisLocal.consoleLike.debug(lazyLoadedObj);
+                    thisLocal.consoleLike.groupEnd();
                 }
 
                 let mdRefererObj = this.bMdRefererObj;
@@ -551,12 +560,12 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     }
                 }
             } else {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('LazyRefDefault.setLazyObj()' +
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('LazyRefDefault.setLazyObj()' +
                         '(this.lazyLoadedObj !== lazyLoadedObj)\n'+
                         'Recording action: ' + JsHbPlaybackActionType.SetField + '. value: ');
-                    console.debug(lazyLoadedObj);
-                    console.groupEnd();
+                    thisLocal.consoleLike.debug(lazyLoadedObj);
+                    thisLocal.consoleLike.groupEnd();
                 }
             }
         }
@@ -629,21 +638,21 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         const thisLocalNextOnAsync = {value: false};
 
         if (thisLocal.lazyLoadedObj == null) {
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.debug(
+            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeSubs.debug(
                     '(thisLocal.lazyLoadedObj == null)\n'
                     +'It may mean that we have not subscribed yet in the Observable of Response');
             }
             if (this.respObs == null) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug(
+                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeSubs.debug(
                         '(this.respObs == null)\n'
                         +'Means that we already subscribed to an earlier moment in the Observable of Reponse.\n'
                         +'We will simply call the super.subscribe');
                 }
             } else if (this.session.getCachedBySignature(this.signatureStr)) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug(
+                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeSubs.debug(
                         '(this.lazyLoadedObj == null && this.respObs != null && this.session.getCachedBySignature(this.signatureStr)\n'
                         +'Means that we already loaded this object by signature with another lazyRef.\n'
                         +'We will get from session signature cache call next()');
@@ -656,18 +665,18 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                         next: () => {
                             if (!observerNew.closed) {
                                 observerNew.closed = true;
-                                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                    console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                    console.debug('calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                    console.groupEnd();
+                                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
+                                    thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                    thisLocal.consoleLikeSubs.groupEnd();
                                 }
                                 //aqui o metodo original sera chamado
                                 thisLocal.next(thisLocal.lazyLoadedObj);
                             } else {
-                                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                    console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                    console.debug('NOT calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                    console.groupEnd();
+                                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
+                                    thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                    thisLocal.consoleLikeSubs.groupEnd();
                                 }
                             }
                         },
@@ -680,8 +689,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     // }
                     );
             } else {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug(
+                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeSubs.debug(
                         '(thisLocal.respObs != null)\n'
                         +'Means that we are not subscribed yet in the Observable of Reponse.\n'
                         +'this.respObs will be null after subscription, so we mark that '
@@ -699,10 +708,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
                 thisLocalNextOnAsync.value = true;
                 observerNew.next = (value: L) => {
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next()');
-                        console.debug(thisLocal.lazyLoadedObj);
-                        console.groupEnd();
+                    if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next()');
+                        thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                        thisLocal.consoleLikeSubs.groupEnd();
                     }
 
                     setLazyObjOnLazyLoading$ = thisLocal.setLazyObjOnLazyLoadingNoNext(value);
@@ -712,19 +721,19 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                         {
                             next: () => {
                                 if (!observerNew.closed) {
-                                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                        console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                        console.debug('calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                        console.groupEnd();
+                                    if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
+                                        thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                        thisLocal.consoleLikeSubs.groupEnd();
                                     }
                                     observerNew.closed = true;
                                     //here the original method will be called
                                     thisLocal.next(thisLocal.lazyLoadedObj);
                                 } else {
-                                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                        console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                        console.debug('NOT calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                        console.groupEnd();
+                                    if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
+                                        thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                        thisLocal.consoleLikeSubs.groupEnd();
                                     }
                                 }
                             },
@@ -762,18 +771,18 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                 {
                                     next: () => {
                                         if (!observerNew.closed) {
-                                            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                                console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                                console.debug('calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                                console.groupEnd();
+                                            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                                thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
+                                                thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                                thisLocal.consoleLikeSubs.groupEnd();
                                             }
                                             observerNew.closed = true;
                                             thisLocal.next(thisLocal.lazyLoadedObj);
                                         } else {
-                                            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                                                console.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                                console.debug('NOT calling this.next()'); console.debug(thisLocal.lazyLoadedObj);
-                                                console.groupEnd();
+                                            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                                                thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
+                                                thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                                thisLocal.consoleLikeSubs.groupEnd();
                                             }
                                         }
                                     },
@@ -789,8 +798,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 );
             }
 
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.debug(
+            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeSubs.debug(
                     '(thisLocal.lazyLoadedObj != null)\n'
                     +'It may mean that we already have subscribed yet in the Observable of Response\n '
                     +'or this was created with lazyLoadedObj already loaded.');
@@ -806,8 +815,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     private subscriptionToChange: Subscription;
 
     private subscriptionToChangeUnsubscribe() {
-        if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('LazyRefBase: unsubscribe after this.subscribeToChange. Me\n' + this);
+        const thisLocal = this;
+        if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLikeSubs.debug('LazyRefBase: unsubscribe after this.subscribeToChange. Me\n' + this);
         }
         this.subscriptionToChange.unsubscribe();
         this.session.notifyAllLazyrefsAboutEntityModification(this.lazyLoadedObj, this);
@@ -830,8 +840,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         let isResponseBodyStream = (responselike.body as Stream).pipe && (responselike.body as Stream);
         if (this.lazyLoadedObj == null) {
             literalJsHbResult = responselike.body;
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('LazyRefBase.processResponse: LazyRef.lazyLoadedObj is not setted yet: Me:\n' + this);
+            if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef.lazyLoadedObj is not setted yet: Me:\n' + this);
             }
             if (this.genericNode.gType !== LazyRef && this.genericNode.gType !== LazyRefPrpMarker) {
                 throw new Error('Wrong type: ' + this.genericNode.gType.name + '. Me:\n' + this);
@@ -841,8 +851,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 if (!(this.genericNode instanceof GenericNode) || (<GenericNode>this.genericNode.gParams[0]).gParams.length <=0) {
                     throw new Error('LazyRef not defined: \'' + this.refererKey + '\' of ' + this.refererObj.constructor.name + '. Me:\n' + this);
                 }
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('LazyRefBase.processResponse: LazyRef is collection: ' + fieldEtc.lazyLoadedObjType.name);
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is collection: ' + fieldEtc.lazyLoadedObjType.name);
                 }
                 let collTypeParam: Type<any> =  null;
                 if ((<GenericNode>this.genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
@@ -850,8 +860,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 } else {
                     collTypeParam = <Type<any>>(<GenericNode>this.genericNode.gParams[0]).gParams[0];
                 }
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('LazyRefBase.processResponse: LazyRef is collection of: ' + collTypeParam.name);
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is collection of: ' + collTypeParam.name);
                 }
 
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
@@ -876,8 +886,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     lodashSet(this.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 }
             } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && isResponseBodyStream) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead". Me:\n' + this);
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead". Me:\n' + this);
                 }
                 if (!isResponseBodyStream) {
                     throw new Error('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" but "responselike.body" is not a Stream. Me:\n' +
@@ -885,8 +895,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                         (responselike && responselike.body && responselike.body.constructor.name? responselike.body.constructor.name: 'null'));
                 }
                 if (fieldEtc.fieldProcessorCaller.callFromDirectRaw) {
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" and has "IFieldProcessor.fromDirectRaw".');
+                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" and has "IFieldProcessor.fromDirectRaw".');
                     }
                     thisLocal.attachRefId = this.session.jsHbManager.jsHbConfig.cacheStoragePrefix + this.session.nextMultiPurposeInstanceId().toString();
                     let putOnCache$ = this.session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(thisLocal.attachRefId, responselike.body as Stream);
@@ -928,8 +938,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                             thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(
                                                 fromStreamValue,
                                                 (fromStreamValueB) => {
-                                                    if (JsHbLogLevel.Trace >= thisLocal.session.jsHbManager.jsHbConfig.logLevel) {
-                                                        console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromDirectRaw" result. Me:\n' + this);
+                                                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                                                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromDirectRaw" result. Me:\n' + this);
                                                     }
                                                     thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
                                                         mdRefererObj,
@@ -952,8 +962,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                             ' but this generic definition is LazyRepPrp<'+(fieldEtc.lazyRefGenericParam? fieldEtc.lazyRefGenericParam.name: '')+'>. Me:\n' +
                             this);
                     }
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: LazyRef is "lazyDirectRawRead" and has NO "IFieldProcessor.fromDirectRaw". Using "responselike.body"');
+                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is "lazyDirectRawRead" and has NO "IFieldProcessor.fromDirectRaw". Using "responselike.body"');
                     }
                     lazyLoadedObj$ = 
                         this.setLazyObjOnLazyLoadingNoNext(responselike.body as L)
@@ -966,21 +976,21 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
             } else if (
                     (fieldEtc.prpGenType.gType === LazyRefPrpMarker && !fieldEtc.propertyOptions.lazyDirectRawRead)
                     || (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && !isResponseBodyStream)) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('LazyRefBase.processResponse: (LazyRefPrp is NOT "lazyDirectRawRead") or '+
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: (LazyRefPrp is NOT "lazyDirectRawRead") or '+
                         '(LazyRefPrp is "lazyDirectRawRead" and "responseLike.body" is not a Stream). Is it rigth?! Me:\n' + this);
                 }
                 if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has "IFieldProcessor.fromLiteralValue".');
+                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has "IFieldProcessor.fromLiteralValue".');
                     }
                     
                     const fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(responselike.body, fieldEtc.fieldInfo);
                     lazyLoadedObj$ =
                         fromLiteralValue$.pipe(
                             flatMapJustOnceRxOpr((fromLiteralValue) => {
-                                if (JsHbLogLevel.Trace >= thisLocal.session.jsHbManager.jsHbConfig.logLevel) {
-                                    console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
+                                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
                                 }
                                 thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
                                     mdRefererObj,
@@ -995,8 +1005,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                             })
                         );
                 } else {
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has NO "IFieldProcessor.fromLiteralValue". Using "responselike.body"');
+                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has NO "IFieldProcessor.fromLiteralValue". Using "responselike.body"');
                     }
                     lazyLoadedObj$ = 
                         this.setLazyObjOnLazyLoadingNoNext(responselike.body)
@@ -1005,8 +1015,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                             }));
                 }
             } else {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
                 let processedEntity = this.session.processJsHbResultEntityInternal(fieldEtc.lazyLoadedObjType, literalJsHbResult.result)
                 lazyLoadedObj$ = 
@@ -1031,11 +1041,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     }
                 }
                 if (!mdRefererObj.$signature$) {
-                    if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: (!mdRefererObj.$signature$): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
+                    if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: (!mdRefererObj.$signature$): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
                     }
                 }
-                let thisLocal = this;
                 this.session.storeOriginalLiteralEntry(
                     {
                         method: 'lazyRef',
@@ -1050,10 +1059,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 );
             }
             if (fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('LazyRefBase.processResponse: Not LazyRefPrp, keeping reference by signature ' + this.signatureStr);
-                    console.debug(this.lazyLoadedObj);
-                    console.groupEnd();
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.group('LazyRefBase.processResponse: Not LazyRefPrp, keeping reference by signature ' + this.signatureStr);
+                    thisLocal.consoleLikeProcResp.debug(this.lazyLoadedObj);
+                    thisLocal.consoleLikeProcResp.groupEnd();
                 }
                 this.session.tryCacheInstanceBySignature(
                     {
@@ -1063,8 +1072,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     }
                 );
             } else {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.trace('LazyRefBase.processResponse: IS LazyRefPrp, NOT keeping reference by signature. Me:\n' + this);
+                if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: IS LazyRefPrp, NOT keeping reference by signature. Me:\n' + this);
                 }
             }
         }
@@ -1083,11 +1092,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                     lazyLoadedObjValue,
                                     (lazyLoadedObjValueB: L) => {
                                         if (thisLocal.respObs && thisLocal.session.isOnRestoreEntireStateFromLiteral()) {
-                                            if (JsHbLogLevel.Trace >= thisLocal.session.jsHbManager.jsHbConfig.logLevel) {
-                                                console.group('LazyRefBase.processResponse: changing "this.respObs"'+
+                                            if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
+                                                thisLocal.consoleLikeProcResp.group('LazyRefBase.processResponse: changing "this.respObs"'+
                                                     ' to null because "this.session.isOnRestoreEntireStateFromLiteral()"\n' + this);
-                                                console.debug(thisLocal.lazyLoadedObj);
-                                                console.groupEnd();
+                                                thisLocal.consoleLikeProcResp.debug(thisLocal.lazyLoadedObj);
+                                                thisLocal.consoleLikeProcResp.groupEnd();
                                             }
                                             
                                             thisLocal.respObs = null;
@@ -1120,12 +1129,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: JsHbBackendMetadatas, fieldEtc: FieldEtc<L, any>, literalJsHbResult: any): void {
         const thisLocal = this;
-        let result$: Observable<void>;
         if (!this.session.isOnRestoreEntireStateFromLiteral()) {
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('LazyRefBase.processResponse: Storing LazyRefPrp. Me:\n' + this);
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('LazyRefBase.processResponse: Storing LazyRefPrp. Me:\n' + this);
             }
-            let thisLocal = this;
             if (this.attachRefId) {
                 this.session.storeOriginalLiteralEntry(
                     {
@@ -1154,10 +1161,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 );
             }
         }
-        if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-            console.group('LazyRefBase.processResponse: Storing LazyRefPrp, keeping reference by signature ' + this.signatureStr);
-            console.debug(this.lazyLoadedObj);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('LazyRefBase.processResponse: Storing LazyRefPrp, keeping reference by signature ' + this.signatureStr);
+            thisLocal.consoleLike.debug(this.lazyLoadedObj);
+            thisLocal.consoleLike.groupEnd();
         }
         if (fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
             this.session.tryCacheInstanceBySignature(
@@ -1196,10 +1203,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
         if (!this.isLazyLoaded()) {
             observerNew.next = (value: L) => {
-                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('(Asynchronous) LazyRef.subscribeToChange() => modifiedNext, (thisLocal.respObs != null)');
-                    console.debug('calling nextOriginal()'); console.debug('this.subscriptionToChange.unsubscribe()'); console.debug('this.next()\n' + this); console.debug(thisLocal.lazyLoadedObj);
-                    console.groupEnd();
+                if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeSubs.group('(Asynchronous) LazyRef.subscribeToChange() => modifiedNext, (thisLocal.respObs != null)');
+                    thisLocal.consoleLikeSubs.debug('calling nextOriginal()'); thisLocal.consoleLikeSubs.debug('this.subscriptionToChange.unsubscribe()'); thisLocal.consoleLikeSubs.debug('this.next()\n' + this); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                    thisLocal.consoleLikeSubs.groupEnd();
                 }
                 let setLazyObjOnLazyLoadingNoNext$ = thisLocal.setLazyObjOnLazyLoadingNoNext(value);
                 setLazyObjOnLazyLoadingNoNext$.subscribe(
@@ -1226,8 +1233,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     });
             };
 
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('Keeping Subscription from this.subscribe(observerOrNextNovo) on this.subscriptionToChange to make an unsubscribe() at the end of modifiedNext callback\n' + this);
+            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeSubs.debug('Keeping Subscription from this.subscribe(observerOrNextNovo) on this.subscriptionToChange to make an unsubscribe() at the end of modifiedNext callback\n' + this);
             }
             this.subscriptionToChange = this.subscribe(observerNew);
             this.subscriptionToChangeUnsubscribe();
@@ -1236,10 +1243,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
             // //AAAAASYNCHRONOUS!!!
         } else {
             //SSSSSYNCHRONOUS!!!
-            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                console.group('(Synchronous) LazyRef.subscribeToChange()');
-                console.debug('calling nextOriginal()'); console.debug('this.next()\n' + this);
-                console.groupEnd();
+            if (thisLocal.consoleLikeSubs.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeSubs.group('(Synchronous) LazyRef.subscribeToChange()');
+                thisLocal.consoleLikeSubs.debug('calling nextOriginal()'); thisLocal.consoleLikeSubs.debug('this.next()\n' + this);
+                thisLocal.consoleLikeSubs.groupEnd();
             }
             try {
                 //that will change the data Synchronously

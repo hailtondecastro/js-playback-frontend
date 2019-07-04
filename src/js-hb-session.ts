@@ -10,7 +10,7 @@ import { JsHbPlayback } from './js-hb-playback';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { JsHbSetCreator } from './js-hb-set-creator';
 import { JSONHelper } from './json-helper';
-import { JsHbLogLevel, FieldInfo } from './js-hb-config';
+import { JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 import { NgJsHbDecorators } from './js-hb-decorators';
 import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
@@ -290,6 +290,11 @@ export class JsHbSessionDefault implements IJsHbSession {
     private _lazyrefsByEntityMap: Map<object, Set<LazyRef<any, any>>> = null;
     private _fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>> = null;
 
+    private consoleLike: ConsoleLike;
+	private consoleLikeLogRxOpr: ConsoleLike;
+    private consoleLikeMerge: ConsoleLike;
+    private consoleLikeRestoreState: ConsoleLike;
+
 	get fielEtcCacheMap(): Map<Object, Map<String, FieldEtc<any, any>>>  {
 		return this._fielEtcCacheMap;
 	}
@@ -308,23 +313,23 @@ export class JsHbSessionDefault implements IJsHbSession {
     logRxOpr<T>(id: string): OperatorFunction<T, T> {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+            if (thisLocal.consoleLikeLogRxOpr.enabledFor(JsHbLogLevel.Trace)) {
                 (source as any).logAllSourceStackRxOprId = 'source observable ' + this.nextMultiPurposeInstanceId();
                 try {
                     throw new Error('logRxOpr(). "Issuer" Stack for id "'+id+'"\n');
                 } catch (error) {
-                    console.debug((error.stack as string).replace(/^Error: /, ''));
+                    thisLocal.consoleLikeLogRxOpr.debug((error.stack as string).replace(/^Error: /, ''));
                 }
             }
             const result$ = source
                 .pipe(
                     map((value) => {
-                        if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+                        if (thisLocal.consoleLikeLogRxOpr.enabledFor(JsHbLogLevel.Trace)) {
                             (source as any).logAllSourceStackRxOprId = 'source observable ' + this.nextMultiPurposeInstanceId();
                             try {
                                 throw new Error('logRxOpr(). "Project" Stack for id "'+id+'"\n');
                             } catch (error) {
-                                console.debug((error.stack as string).replace(/^Error: /, ''));
+                                thisLocal.consoleLikeLogRxOpr.debug((error.stack as string).replace(/^Error: /, ''));
                             }
                         }
                         return value;
@@ -362,8 +367,8 @@ export class JsHbSessionDefault implements IJsHbSession {
             result$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
                 .pipe(
                     map((value)=>{
-                        if (JsHbLogLevel.Debug >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                            console.debug('generateAsyncTasksWaiting -> map: ' + value);
+                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+                            thisLocal.consoleLike.debug('generateAsyncTasksWaiting -> map: ' + value);
                         }
                     })
                 );
@@ -389,13 +394,20 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     constructor(private _jsHbManager: IJsHbManager) {
+        const thisLocal = this;
 		if (!_jsHbManager) {
 			throw new Error('_jsHbManager can not be null');
         }
-        if (JsHbLogLevel.Debug >= _jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSessionDefault.constructor');
-			console.debug(_jsHbManager as any as string);
-            console.groupEnd();
+
+        thisLocal.consoleLike = _jsHbManager.jsHbConfig.getConsole(JsHbLogger.JsHbSessionDefault);
+		thisLocal.consoleLikeMerge = _jsHbManager.jsHbConfig.getConsole(JsHbLogger.JsHbSessionDefaultMergeWithCustomizerPropertyReplection);
+        thisLocal.consoleLikeLogRxOpr = _jsHbManager.jsHbConfig.getConsole(JsHbLogger.JsHbSessionDefaultLogRxOpr);
+        thisLocal.consoleLikeRestoreState = _jsHbManager.jsHbConfig.getConsole(JsHbLogger.JsHbSessionDefaultRestoreState);
+        
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.group('JsHbSessionDefault.constructor');
+			thisLocal.consoleLike.debug(_jsHbManager as any as string);
+            thisLocal.consoleLike.groupEnd();
 		}
         this._objectsBySignature = new Map();
         this._objectsByCreationId = new Map();
@@ -493,8 +505,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                 } else if (originalLiteralValueEntry.method === 'lazyRef') {
                     originalLiteralValueEntry.ownerSignatureStr
                     if (originalLiteralValueEntry.ownerSignatureStr) {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a hibernate component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                        if (thisLocal.consoleLikeRestoreState.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLikeRestoreState.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a hibernate component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                         }
                         let ownerEnt = this._objectsBySignature.get(originalLiteralValueEntry.ownerSignatureStr);
                         if (!ownerEnt) {
@@ -511,8 +523,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                             lazyRef.processResponse({ body: originalLiteralValueEntry.literalJsHbResult })
                         );
                     } else {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
+                        if (thisLocal.consoleLikeRestoreState.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLikeRestoreState.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
                                 'No owner entity for original literal value entry, the owner must be a\n'+
                                 'hibernate component. Doing nothing, in any next literal value entry\n'+
                                 'there will exist an action with type \'processJsHbResultEntity\' that will\n'+
@@ -1025,15 +1037,17 @@ export class JsHbSessionDefault implements IJsHbSession {
      * @param {IJsHbManager} value
      */
     public set jsHbManager(value: IJsHbManager) {
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSessionDefault.jsHbManager set');
-			console.debug(value as any as string);
-            console.groupEnd();
+        const thisLocal = this;
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.group('JsHbSessionDefault.jsHbManager set');
+			thisLocal.consoleLike.debug(value as any as string);
+            thisLocal.consoleLike.groupEnd();
 		}
         this._jsHbManager = value;
     }
 
     public processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<L> {
+        const thisLocal = this;
         let result$: Observable<L>;
 
         if (!literalJsHbResult.result) {
@@ -1057,19 +1071,19 @@ export class JsHbSessionDefault implements IJsHbSession {
                     });
             }
         }
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSessionDefault.processJsHbResultEntity<L>()');
-            console.debug(entityType); console.debug(literalJsHbResult);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntity<L>()');
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalJsHbResult);
+            thisLocal.consoleLike.groupEnd();
         }
         let refMap: Map<Number, any> = new Map<Number, any>();
         result$ = this.processJsHbResultEntityPriv(entityType, literalJsHbResult.result, refMap);
         result$.pipe(
             map((resultL) => {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('JsHbSessionDefault.processJsHbResultEntity<L>() => result$.pipe(). resultL:');
-                    console.debug(resultL);
-                    console.groupEnd();
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntity<L>() => result$.pipe(). resultL:');
+                    thisLocal.consoleLike.debug(resultL);
+                    thisLocal.consoleLike.groupEnd();
                 }
                 return resultL;
             })
@@ -1089,6 +1103,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<Array<L>> {
+        const thisLocal = this;
         if (!literalJsHbResult.result) {
             throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
         }
@@ -1107,19 +1122,19 @@ export class JsHbSessionDefault implements IJsHbSession {
 
         let resultObsArr: Observable<L>[] = [];
         let refMap: Map<Number, any> = new Map<Number, any>();
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSessionDefault.processJsHbResultEntityArray<L>()');
-            console.debug(entityType); console.debug(literalJsHbResult);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntityArray<L>()');
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalJsHbResult);
+            thisLocal.consoleLike.groupEnd();
         }
         for (let index = 0; index < literalJsHbResult.result.length; index++) {
             const resultElement = literalJsHbResult.result[index];
             resultObsArr.push(this.processJsHbResultEntityPriv(entityType, resultElement, refMap));
         }
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('JsHbSessionDefault.processJsHbResultEntityArray<L>(). result:');
-            console.debug(resultObsArr);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntityArray<L>(). result:');
+            thisLocal.consoleLike.debug(resultObsArr);
+            thisLocal.consoleLike.groupEnd();
         }
         let result$ = combineLatest(resultObsArr);
 
@@ -1137,7 +1152,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     private newEntityInstanceWithCreationId<T extends object>(entityType: Type<T>, creationId: number): Observable<T> {
-        let resultT$: Observable<T>;
+        const thisLocal = this;
         if (!this.isOnRestoreEntireStateFromLiteral() && !this.isRecording()){
             throw new Error('Invalid operation. It is not recording. is this Error correct?!');
         }
@@ -1145,19 +1160,19 @@ export class JsHbSessionDefault implements IJsHbSession {
         let entityObj = new entityType();
         lodashSet(entityObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(entityObj));
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('entityType: ' + entityType.name);
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.debug('entityType: ' + entityType.name);
         }
         for (let index = 0; index < realKeys.length; index++) {
             const keyItem = realKeys[index];
             let prpGenType: GenericNode = GenericTokenizer.resolveNode(entityObj, keyItem);
             if (!prpGenType) {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('GenericNode not found for property key \'' + keyItem + '\' of ' + entityType.name);
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('GenericNode not found for property key \'' + keyItem + '\' of ' + entityType.name);
                 }
             } else if (prpGenType.gType !== LazyRef) {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.debug('GenericNode found but it is not a LazyRef. Property key \'' + keyItem + '\' of ' + entityType.name);
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('GenericNode found but it is not a LazyRef. Property key \'' + keyItem + '\' of ' + entityType.name);
                 }
             } else {
                 let lazyRefGenericParam: Type<any> = null;
@@ -1168,16 +1183,16 @@ export class JsHbSessionDefault implements IJsHbSession {
                         lazyRefGenericParam = (prpGenType.gParams[0] as Type<any>);
                     }
 
-                    if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('GenericNode found and it is a LazyRef, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
+                    if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLike.debug('GenericNode found and it is a LazyRef, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                     }
 
                     let allMD = this.resolveMetadatas({refererObject: entityObj, key: keyItem});
                     if (this.isCollection(lazyRefGenericParam)) {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.debug('GenericNode found, it is a LazyRef, and it is a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
+                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
-                        let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>();
+                        let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
                         let setLazyObjOnLazyLoading$ = lazyRefSet.setLazyObjOnLazyLoading(this.createCollection(lazyRefGenericParam, entityObj, keyItem));
                         setLazyObjOnLazyLoading$.subscribe(
                             {
@@ -1195,10 +1210,10 @@ export class JsHbSessionDefault implements IJsHbSession {
                         lazyRefSet.bMdHibernateIdMetadata = allMD.hibernateIdMd;
                         lodashSet(entityObj, keyItem, lazyRefSet);
                     } else {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.debug('GenericNode found, it is a LazyRef, and it is not a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
+                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is not a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
-                        let lazyRef: LazyRefDefault<any, any> = new LazyRefDefault<any, any>();
+                        let lazyRef: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
                         lazyRef.instanceId = this.nextMultiPurposeInstanceId();
                         lazyRef.refererObj = entityObj;
                         lazyRef.refererKey = keyItem;
@@ -1214,8 +1229,8 @@ export class JsHbSessionDefault implements IJsHbSession {
             }
         }
 
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('isRecording, ');
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.debug('isRecording, ');
         }
 
         this._objectsByCreationId.set(creationId, entityObj);
@@ -1274,6 +1289,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public newEntityInstance<T extends object>(entityType: Type<T>): Observable<T> {
+        const thisLocal = this;
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording.');
         }
@@ -1301,20 +1317,22 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public startRecording(): void {
+        const thisLocal = this;
         if (this.isRecording()) {
             throw new Error('I am already recording!');
         }
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('reseting this._currentJsHbPlayback, this._objectsCreationId and this._nextCreationId');
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.debug('reseting this._currentJsHbPlayback, this._objectsCreationId and this._nextCreationId');
         }
         this._currentJsHbPlayback = new JsHbPlayback();
         this._nextCreationId = 1;
     }
 
     public stopRecording(): void {
+        const thisLocal = this;
         if (this.isRecording()) {
-            if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('updating this.lastJsHbPlayback and resetting this.currentJsHbPlayback');
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+                thisLocal.consoleLike.debug('updating this.lastJsHbPlayback and resetting this.currentJsHbPlayback');
             }
             this._latestJsHbPlayback.push(this._currentJsHbPlayback);
             this._currentJsHbPlayback = null;
@@ -1324,6 +1342,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
     
     public recordSave(entity: any): void {
+        const thisLocal = this;
         if (!entity){
             throw new Error('entity can not be null');
         }
@@ -1349,15 +1368,16 @@ export class JsHbSessionDefault implements IJsHbSession {
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('action: ');
-            console.debug(action);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.group('action: ');
+            thisLocal.consoleLike.debug(action);
+            thisLocal.consoleLike.groupEnd();
         }
         this.addPlaybackAction(action);
     }
 
     public recordDelete(entity: any): void {
+        const thisLocal = this;
         if (!entity){
             throw new Error('Entity nao pode ser nula');
         }
@@ -1382,8 +1402,8 @@ export class JsHbSessionDefault implements IJsHbSession {
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('action: ' + action);
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.debug('action: ' + action);
         }
         this.addPlaybackAction(action);
     }
@@ -1399,8 +1419,9 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public clear(): void {
-        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.debug('clearing: this.objectsBySignature, this.objectsCreationId, this.nextCreationId, this.currentJsHbPlayback, this.lastJsHbPlayback and this.objectsBySignature');
+        const thisLocal = this;
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            thisLocal.consoleLike.debug('clearing: this.objectsBySignature, this.objectsCreationId, this.nextCreationId, this.currentJsHbPlayback, this.lastJsHbPlayback and this.objectsBySignature');
         }
         this._nextCreationId = null;
         this._currentJsHbPlayback = null;
@@ -1554,13 +1575,14 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public addPlaybackAction(action: JsHbPlaybackAction): void {
+        const thisLocal = this;
         if (!this.isRecording()) {
             throw new Error('The recording is not started!');
         }
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('addPlaybackAction');
-            console.debug(action as any as string);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.group('addPlaybackAction');
+            thisLocal.consoleLike.debug(action as any as string);
+            thisLocal.consoleLike.groupEnd();
         }
 
         this._currentJsHbPlayback.actions.push(action);
@@ -1576,10 +1598,10 @@ export class JsHbSessionDefault implements IJsHbSession {
             .pipe(
                 map((playback) => {
                     let resultLit =  thisLocal.getPlaybackAsLiteral(playback);
-                    if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('getLastRecordedPlaybackAsLiteral');
-                        console.debug(resultLit as any as string);
-                        console.groupEnd();
+                    if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+                        thisLocal.consoleLike.group('getLastRecordedPlaybackAsLiteral');
+                        thisLocal.consoleLike.debug(resultLit as any as string);
+                        thisLocal.consoleLike.groupEnd();
                     }
                     return resultLit;
                 })
@@ -1603,16 +1625,18 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     private getPlaybackAsLiteral(playback: JsHbPlayback): any {
+        const thisLocal = this;
         const literalReturn: any = JSONHelper.convertToLiteralObject(playback, true)
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('getPlaybackAsLiteral');
-            console.debug(literalReturn as any as string);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.group('getPlaybackAsLiteral');
+            thisLocal.consoleLike.debug(literalReturn as any as string);
+            thisLocal.consoleLike.groupEnd();
         }
         return literalReturn;
     }
 
     private getPlaybackFromLiteral(playbackLiteral: any): JsHbPlayback {
+        const thisLocal = this;
         const playBackReturn: JsHbPlayback = new JsHbPlayback();
         playBackReturn.actions = [];
         for (const actionLiteral of playbackLiteral.actions) {
@@ -1626,10 +1650,10 @@ export class JsHbSessionDefault implements IJsHbSession {
             );
             playBackReturn.actions.push(action);
         }
-        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
-            console.group('getPlaybackFromLiteral');
-            console.debug(playBackReturn as any as string);
-            console.groupEnd();
+        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            thisLocal.consoleLike.group('getPlaybackFromLiteral');
+            thisLocal.consoleLike.debug(playBackReturn as any as string);
+            thisLocal.consoleLike.groupEnd();
         }
         return playBackReturn;
     }
@@ -1708,6 +1732,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     private processJsHbResultEntityPriv<L>(entityType: Type<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
+        const thisLocal = this;
         if (!literalResultField) {
             throw new Error('literalResultField can not be null');
         }
@@ -1722,8 +1747,8 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
         
         if (!entityValue) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
             }
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
@@ -1746,8 +1771,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                 lodashMergeWith(entityValue as any, literalResultField, this.mergeWithCustomizerPropertyReplection(refMap));
             });
         } else {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('entity already processed on this session. Found by signature: ' + bMd.$signature$);
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('entity already processed on this session. Found by signature: ' + bMd.$signature$);
             }
         }
 
@@ -1787,14 +1812,14 @@ export class JsHbSessionDefault implements IJsHbSession {
         const isValueByFieldProcessor: {value: boolean} = { value: false };
 
         if (lr.lazyLoadedObj) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.group('LazyRef.lazyLoadedObj is already setted: ');
-                console.debug(lr.lazyLoadedObj);
-                console.groupEnd();
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
+                thisLocal.consoleLike.debug(lr.lazyLoadedObj);
+                thisLocal.consoleLike.groupEnd();
             }
         } else {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('LazyRef.lazyLoadedObj is not setted yet');
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('LazyRef.lazyLoadedObj is not setted yet');
             }
             let lazyLoadedObjType: Type<any> = null;
             if (genericNode.gParams[0] instanceof GenericNode) {
@@ -1942,6 +1967,7 @@ export class JsHbSessionDefault implements IJsHbSession {
             refMap: Map<Number, any>,
             refererObj: any,
             refererKey: string): Observable<LazyRef<L, I>> {
+        const thisLocal = this;
         let propertyOptions: NgJsHbDecorators.PropertyOptions<L> = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
             throw new Error('@NgJsHbDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
@@ -1951,10 +1977,10 @@ export class JsHbSessionDefault implements IJsHbSession {
         let tryGetFromObjectsBySignature$ = this.tryGetFromObjectsBySignature(lr, literalLazyObj);
 
         if (lr.lazyLoadedObj) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.group('LazyRef.lazyLoadedObj is already setted: ');
-                console.debug(lr.lazyLoadedObj);
-                console.groupEnd();
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
+                thisLocal.consoleLike.debug(lr.lazyLoadedObj);
+                thisLocal.consoleLike.groupEnd();
             }
         } else {
             const lazyInfo: LazyInfo<L> = {
@@ -2060,9 +2086,9 @@ export class JsHbSessionDefault implements IJsHbSession {
         let jsHbHibernateIdLiteral: any = bMd.$hibernateId$;
         let lazyRef: LazyRefDefault<L, any> = null;
         if (jsHbHibernateIdLiteral) {
-            lazyRef = new LazyRefDefault<L, I>();
+            lazyRef = new LazyRefDefault<L, I>(this);
         } else {
-            lazyRef = new LazyRefDefault<L, undefined>();
+            lazyRef = new LazyRefDefault<L, undefined>(this);
         }
         lazyRef.instanceId = this.nextMultiPurposeInstanceId();
         lazyRef.refererObj = refererObj;
@@ -2101,6 +2127,7 @@ export class JsHbSessionDefault implements IJsHbSession {
             genericNode: GenericNode,
             literalLazyObj: any,
             refMap: Map<Number, any>): Observable<void> {
+        const thisLocal = this;
         let result$: Observable<void> = of(null);
         if (!literalLazyObj){
             throw new Error('literalLazyObj nao pode ser nula');
@@ -2117,10 +2144,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                 hbIdType = <Type<any>>genericNode.gParams[1];
             }
             if (hbIdType) {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('There is a hbIdType on LazyRef. Is it many-to-one LazyRef?!. hbIdType: ' + hbIdType.name + ', genericNode:');
-                    console.debug(genericNode);
-                    console.groupEnd();
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('There is a hbIdType on LazyRef. Is it many-to-one LazyRef?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
                 }
                 this.validatingMetaFieldsExistence(hbIdType);
                 result$ = this.processJsHbResultEntityPriv(hbIdType, jsHbHibernateIdLiteral, refMap)
@@ -2130,24 +2155,18 @@ export class JsHbSessionDefault implements IJsHbSession {
                         })
                     );
             } else {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('Thre is no hbIdType on LazyRef. Is it a collection?!. hbIdType: ' + hbIdType.name + ', genericNode:');
-                    console.debug(genericNode);
-                    console.groupEnd();
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('Thre is no hbIdType on LazyRef. Is it a collection?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
                 }
             }
         } else if (jsHbHibernateIdLiteral) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.group('The hibernate id is a simple type value: ' + jsHbHibernateIdLiteral + '. genericNode:');
-                console.debug(genericNode);
-                console.groupEnd();
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('The hibernate id is a simple type value: ' + jsHbHibernateIdLiteral + '. genericNode:'+ genericNode);
             }
             lr.hbId = jsHbHibernateIdLiteral;
         } else {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.group('The hibernate id is null! Is it a collection?!: ' + jsHbHibernateIdLiteral + '. genericNode:');
-                console.debug(genericNode);
-                console.groupEnd();
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('The hibernate id is null! Is it a collection?!: ' + jsHbHibernateIdLiteral + '. genericNode:'+ genericNode);
             }
         }
 
@@ -2183,8 +2202,8 @@ export class JsHbSessionDefault implements IJsHbSession {
     private doSubriscribeObservableRxOpr<T>(observableFrom: 'internal' | 'provided', observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable jsHbTraceId: ' + (source as any).jsHbTraceId);
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable jsHbTraceId: ' + (source as any).jsHbTraceId);
             }
 
             let observerOriginal: PartialObserver<T>;
@@ -2279,10 +2298,15 @@ export class JsHbSessionDefault implements IJsHbSession {
         let thisLocal = this;
         return function (value: any, srcValue: any, key?: string, object?: Object, source?: Object) {
             const keepAllFlagsTemplateCallback = thisLocal.createKeepAllFlagsTemplateCallback(object);
-            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                console.group('mergeWithCustomizerPropertyReplection => function');
-                console.debug(refMap); console.debug(value); console.debug(srcValue); console.debug(key); console.debug(object); console.debug(source);
-                console.groupEnd();
+            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function');
+                thisLocal.consoleLikeMerge.debug(refMap);
+                thisLocal.consoleLikeMerge.debug(value);
+                thisLocal.consoleLikeMerge.debug(srcValue);
+                thisLocal.consoleLikeMerge.debug(key);
+                thisLocal.consoleLikeMerge.debug(object);
+                thisLocal.consoleLikeMerge.debug(source);
+                thisLocal.consoleLikeMerge.groupEnd();
             }
 
             let allMD = thisLocal.resolveMetadatas({literalObject: srcValue, refererLiteralObject: source, key: key, refMap: refMap});
@@ -2292,10 +2316,10 @@ export class JsHbSessionDefault implements IJsHbSession {
             let mdSrcValueFound = allMD.objectMdFound;
             let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.jsHbManager.jsHbConfig);
             if (mdHibernateId.$isComponent$) {
-                if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('mergeWithCustomizerPropertyReplection => function: bMdHibernateId.isComponent. bMdSrcValue.$hibernateId$:');
-                    console.debug(mdSrcValue.$hibernateId$);
-                    console.groupEnd();
+                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: bMdHibernateId.isComponent. bMdSrcValue.$hibernateId$:');
+                    thisLocal.consoleLikeMerge.debug(mdSrcValue.$hibernateId$);
+                    thisLocal.consoleLikeMerge.groupEnd();
                 }
                 fieldEtc.prpType = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_ID_TYPE, object);
                 if (!fieldEtc.prpType) {
@@ -2311,16 +2335,16 @@ export class JsHbSessionDefault implements IJsHbSession {
             const correctSrcValueRef = { value: srcValue };
             if (key === thisLocal.jsHbManager.jsHbConfig.jsHbMetadatasName) {
                 correctSrcValueRef.value = mdSource;
-                if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.jsHbManager.jsHbConfig.jsHbMetadatasName). srcValue and mdSource:');
-                    console.debug(srcValue);
-                    console.debug(mdSource);
-                    console.groupEnd();
+                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.jsHbManager.jsHbConfig.jsHbMetadatasName). srcValue and mdSource:');
+                    thisLocal.consoleLikeMerge.debug(srcValue);
+                    thisLocal.consoleLikeMerge.debug(mdSource);
+                    thisLocal.consoleLikeMerge.groupEnd();
                 }
                 let correctSrcValueAsMetadata: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                 Object.assign(correctSrcValueAsMetadata, mdSource);
                 if (mdHibernateId.$isComponent$) {
-                    correctSrcValueRef.value = new UndefinedForMerge();
+                    correctSrcValueRef.value = new UndefinedForMergeAsync();
                     let processJsHbResultEntityPrivHbId$ = thisLocal.processJsHbResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$hibernateId$, refMap)
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (hbIdValue) => {
@@ -2335,7 +2359,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                     });
                 } 
             } else if (mdSrcValue.$idRef$) {
-                correctSrcValueRef.value = new UndefinedForMerge();
+                correctSrcValueRef.value = new UndefinedForMergeAsync();
                 let createSerialAsyncTasksWaiting$ = thisLocal.createSerialAsyncTasksWaiting()
                     .pipe(
                         thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, () => {
@@ -2343,12 +2367,12 @@ export class JsHbSessionDefault implements IJsHbSession {
                             if (!correctSrcValueRef.value) {
                                 throw new Error('This should not happen 2');
                             }
-                            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                console.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
+                            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                thisLocal.consoleLikeMerge.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
                                     ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
                                     ' Object resolved by mdSrcValue.$idRef$ field');
-                                console.debug(correctSrcValueRef.value);
-                                console.groupEnd();
+                                thisLocal.consoleLikeMerge.debug(correctSrcValueRef.value);
+                                thisLocal.consoleLikeMerge.groupEnd();
                             }
                             lodashSet(object, key, correctSrcValueRef.value);
                         })
@@ -2360,13 +2384,13 @@ export class JsHbSessionDefault implements IJsHbSession {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
                     if (thisLocal.isCollection(fieldEtc.prpGenType.gType)) {
-                        if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                            console.group('mergeWithCustomizerPropertyReplection => function.'+
+                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                 ' thisLocal.isCollection(prpGenType.gType) ');
-                            console.debug(fieldEtc.prpGenType); console.debug(fieldEtc.prpGenType.gType);
-                            console.groupEnd();
+                            thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType); thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType.gType);
+                            thisLocal.consoleLikeMerge.groupEnd();
                         }
-                        correctSrcValueRef.value = new UndefinedForMerge();
+                        correctSrcValueRef.value = new UndefinedForMergeAsync();
                         let correctSrcValueColl = thisLocal.createCollection(fieldEtc.prpGenType.gType, object, key);
                         
                         let processJsHbResultEntityPrivObsArr: Observable<any>[] = [];
@@ -2398,16 +2422,16 @@ export class JsHbSessionDefault implements IJsHbSession {
                             throw new Error('Receiving object that is non associative an no lazy property but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
-                            correctSrcValueRef.value = new UndefinedForMerge();
+                            correctSrcValueRef.value = new UndefinedForMergeAsync();
                             let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
                                 .pipe(
                                     thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
-                                        if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                            console.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
+                                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                            thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                                 ' function => createNotLoadedLazyRef$.subscribe().'+
                                                 ' createNotLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, lazyRef)');
-                                            console.debug(object);
-                                            console.groupEnd();
+                                            thisLocal.consoleLikeMerge.debug(object);
+                                            thisLocal.consoleLikeMerge.groupEnd();
                                         }
                                         correctSrcValueRef.value = lazyRef;
                                         lodashSet(object, key, correctSrcValueRef.value);
@@ -2417,25 +2441,25 @@ export class JsHbSessionDefault implements IJsHbSession {
                             createNotLoadedLazyRef$.subscribe((lazyRef) => {
                                 //nothing
                             });
-                            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                console.group('mergeWithCustomizerPropertyReplection => function.'+
+                            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                     ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
                                     ' property \''+key+'\'.');
-                                console.debug(object);
-                                console.groupEnd();
+                                thisLocal.consoleLikeMerge.debug(object);
+                                thisLocal.consoleLikeMerge.groupEnd();
                             }
                         } else {
-                            correctSrcValueRef.value = new UndefinedForMerge();
+                            correctSrcValueRef.value = new UndefinedForMergeAsync();
                             let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
                                 .pipe(
                                     thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
-                                        if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                            console.group('(Asynchronous of Asynchronous of...)'+
+                                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                            thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...)'+
                                                 ' mergeWithCustomizerPropertyReplection => function =>'+
                                                 ' createLoadedLazyRef$.subscribe(). createLoadedLazyRef,'+
                                                 ' for property \''+key+'\'. lodashSet(object, key, lazyRef)');
-                                            console.debug(object);
-                                            console.groupEnd();
+                                            thisLocal.consoleLikeMerge.debug(object);
+                                            thisLocal.consoleLikeMerge.groupEnd();
                                         }
                                         correctSrcValueRef.value = lazyRef;
                                         keepAllFlagsTemplateCallback(() => {
@@ -2452,16 +2476,16 @@ export class JsHbSessionDefault implements IJsHbSession {
                 } else if (srcValue instanceof Object
                         && !(srcValue instanceof Date)
                         && !fieldEtc.propertyOptions.lazyDirectRawRead) {
-                    correctSrcValueRef.value = new UndefinedForMerge();
+                    correctSrcValueRef.value = new UndefinedForMergeAsync();
                     let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(fieldEtc.prpType, srcValue, refMap)
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValueSubs) => {
-                                if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                    console.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
+                                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                     ' function => processJsHbResultEntityPriv$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
                                     ' createLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, correctSrcValue)');
-                                    console.debug(object);
-                                    console.groupEnd();
+                                    thisLocal.consoleLikeMerge.debug(object);
+                                    thisLocal.consoleLikeMerge.groupEnd();
                                 }
                                 correctSrcValueRef.value = correctSrcValueSubs;
                                 keepAllFlagsTemplateCallback(() => {
@@ -2474,25 +2498,25 @@ export class JsHbSessionDefault implements IJsHbSession {
                         //nothing
                     });
                 } else if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                    if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('mergeWithCustomizerPropertyReplection => function.'+
+                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                             ' Transformation by "IFieldProcessor.fromLiteralValue" for property \''+key+'\'.');
-                        console.debug(object);
-                        console.groupEnd();
+                        thisLocal.consoleLikeMerge.debug(object);
+                        thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    correctSrcValueRef.value = new UndefinedForMerge();
+                    correctSrcValueRef.value = new UndefinedForMergeAsync();
                     isFromLiteralValue.value = true;
                     let fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
                     fromLiteralValue$ = fromLiteralValue$
                         .pipe(thisLocal.addSubscribedObsRxOpr())
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (fromLiteralValue) => {
-                                if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                                    console.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
+                                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                         ' function => fromLiteralValue$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
                                         ' fromLiteralValue, for property \''+key+'\'. lodashSet(object, key, correctSrcValue)');
-                                    console.debug(object);
-                                    console.groupEnd();
+                                    thisLocal.consoleLikeMerge.debug(object);
+                                    thisLocal.consoleLikeMerge.groupEnd();
                                 }
                                 correctSrcValueRef.value = fromLiteralValue;
                                 keepAllFlagsTemplateCallback(() => {
@@ -2503,36 +2527,36 @@ export class JsHbSessionDefault implements IJsHbSession {
                     fromLiteralValue$.subscribe((correctSrcValueFlv) => {
                         //nothing
                     });
-                    if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.subscribe(). property \''+key+'\'.');
-                        console.debug(object);
-                        console.groupEnd();
+                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.subscribe(). property \''+key+'\'.');
+                        thisLocal.consoleLikeMerge.debug(object);
+                        thisLocal.consoleLikeMerge.groupEnd();
                     }
                 } else {
-                    if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('mergeWithCustomizerPropertyReplection => function. Transformation is not necessary for property \''+key+'\'.');
-                        console.debug(object);
-                        console.groupEnd();
+                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Transformation is not necessary for property \''+key+'\'.');
+                        thisLocal.consoleLikeMerge.debug(object);
+                        thisLocal.consoleLikeMerge.groupEnd();
                     }
                 }
             } else if (lodashHas(object, key)) {
                 throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
             } else if (!lodashHas(object, key) && !thisLocal.isLiteralObjMetadataKey(key)) {
-                if (JsHbLogLevel.Warn >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                    console.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
+                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
                 }
                 correctSrcValueRef.value = undefined;
             } else {
-                if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
-                    console.debug(correctSrcValueRef.value);
-                    console.groupEnd();
+                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
+                    thisLocal.consoleLikeMerge.debug(correctSrcValueRef.value);
+                    thisLocal.consoleLikeMerge.groupEnd();
                 }
             }
-            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
-                console.group('mergeWithCustomizerPropertyReplection => function. return');
-                console.debug(correctSrcValueRef.value);
-                console.groupEnd();
+            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. return');
+                thisLocal.consoleLikeMerge.debug(correctSrcValueRef.value);
+                thisLocal.consoleLikeMerge.groupEnd();
             }
 
             return correctSrcValueRef.value;
@@ -2566,18 +2590,19 @@ export class JsHbSessionDefault implements IJsHbSession {
         this._lazyrefsByEntityMap.get(entity).delete(lazyRef);
     }
     public notifyAllLazyrefsAboutEntityModification(entity: object, lazyRefSource: LazyRef<any, any>): void {
+        const thisLocal = this;
         if (this._switchedOffNotificationEntitiesSet.has(entity)) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: this._switchOffEntitiesSet.has(entity): entity modified but modifying notification is switched off!. entity:');
-                console.debug(entity);
-                console.groupEnd();
+            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: this._switchOffEntitiesSet.has(entity): entity modified but modifying notification is switched off!. entity:');
+                thisLocal.consoleLike.debug(entity);
+                thisLocal.consoleLike.groupEnd();
             }
         } else {
             if (!lazyRefSource) {
-                if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                    console.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: !lazyRefSource: Am I been notified from a property set?!. entity:');
-                    console.debug(entity);
-                    console.groupEnd();
+                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: !lazyRefSource: Am I been notified from a property set?!. entity:');
+                    thisLocal.consoleLike.debug(entity);
+                    thisLocal.consoleLike.groupEnd();
                 }
             }
             if (lazyRefSource && !lazyRefSource.isLazyLoaded()) {
@@ -2590,10 +2615,10 @@ export class JsHbSessionDefault implements IJsHbSession {
                 let lazyrefsArr: Array<LazyRef<any,any>> = Array.from(this._lazyrefsByEntityMap.get(entity));
                 for (const lazyrefItem of lazyrefsArr) {
                     if (lazyRefSource === lazyrefItem) {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Not notifing: lazyRefSource === lazyrefItem. entity:');
-                            console.debug(entity);
-                            console.groupEnd();
+                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Not notifing: lazyRefSource === lazyrefItem. entity:');
+                            thisLocal.consoleLike.debug(entity);
+                            thisLocal.consoleLike.groupEnd();
                         }
                     } else {
                         if (!lazyrefItem.isLazyLoaded()) {
@@ -2602,10 +2627,10 @@ export class JsHbSessionDefault implements IJsHbSession {
                         if (lazyrefItem.lazyLoadedObj !== entity) {
                             throw new Error('Can not notify: lazyrefItem.lazyLoadedObj !== entity. \n' + this.toString());
                         }
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Notifing: lazyRefSource !== lazyrefItem.\n lazyRefSource and lazyrefItem:\n'+lazyRefSource+'\n'+lazyrefItem+'\n an . entity:');
-                            console.debug(entity);
-                            console.groupEnd();
+                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                            thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Notifing: lazyRefSource !== lazyrefItem.\n lazyRefSource and lazyrefItem:\n'+lazyRefSource+'\n'+lazyrefItem+'\n an . entity:');
+                            thisLocal.consoleLike.debug(entity);
+                            thisLocal.consoleLike.groupEnd();
                         }
                         lazyrefItem.notifyModification(entity);
                     }
@@ -2628,7 +2653,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 }
 
-class UndefinedForMerge {
+class UndefinedForMergeAsync {
     public toString(): string {
         return 'I am an instance of "UndefinedForMerge", just a temporary value before real value from async execution!';
     }

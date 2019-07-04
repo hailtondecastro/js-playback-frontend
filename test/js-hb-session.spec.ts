@@ -3,7 +3,7 @@ import {HttpResponse, HttpHeaders} from '@angular/common/http';
 import * as chai from 'chai';
 import { IJsHbSession } from '../src/js-hb-session';
 import { JsHbManagerDefault, IJsHbManager } from '../src/js-hb-manager';
-import { JsHbConfigDefault, IJsHbConfig, JsHbLogLevel } from '../src/js-hb-config';
+import { JsHbConfigDefault, IJsHbConfig, JsHbLogLevel, JsHbLogger } from '../src/js-hb-config';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
 import resultMasterLiteral from './master-a-test.json';
 import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
@@ -321,7 +321,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                // .configLogLevel(JsHbLogLevel.Trace)
+                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
                 
@@ -477,7 +477,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                // .configLogLevel(JsHbLogLevel.Trace)
+                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
                 
@@ -635,7 +635,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                // .configLogLevel(JsHbLogLevel.Trace)
+                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
                 
@@ -806,7 +806,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                //.configLogLevel(JsHbLogLevel.Trace)
+                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
 
