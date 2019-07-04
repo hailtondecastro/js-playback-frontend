@@ -13,6 +13,7 @@
     "build:embed-source-contents": "node ./build-utils/embed-source-contents -baseDistFolder ./dist -verbose true",
     "build:prepare-dist-folder": "node ./build-utils/prepare-dist-folder -baseDistFolder ./dist -verbose true",
     "test": "npm run clear-all && npm run build-test && mocha dist_dev/**/**.spec.js",
+    "test2": "npm run clear-all && npm run build-test && mocha --grep /master-lazy-prp-over-sized-test/ dist_dev/**/**.spec.js",
     "browserify": "npm run clear-all && npm run build-test && browserify dist_dev/index.js --outfile browser.js"
   },
   "devDependencies": {

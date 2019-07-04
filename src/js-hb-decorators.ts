@@ -175,17 +175,17 @@ export namespace NgJsHbDecorators {
                                         action.attachRefId = session.jsHbManager.jsHbConfig.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
                                         if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
                                             let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
-                                            toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObservable());
+                                            toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObsRxOpr());
                                             //toDirectRaw$ = session.addSubscribedObservableForWaiting(toDirectRaw$);
                                             toDirectRaw$.subscribe((stream) => {
                                                 if (stream) {
                                                     let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream)
-                                                    putOnCache$ = putOnCache$.pipe(session.addSubscribedObservable());
+                                                    putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                                     putOnCache$.subscribe(() => {
                                                         session.addPlaybackAction(action);
                                                     });
                                                     let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
-                                                    getFromCache$ = getFromCache$.pipe(session.addSubscribedObservable());
+                                                    getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
                                                     getFromCache$.subscribe((stream) => {
                                                         oldSet.call(this, stream);
                                                     });
@@ -204,13 +204,13 @@ export namespace NgJsHbDecorators {
                                             } else {
                                                 let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
                                                 //putOnCache$ = session.addSubscribedObservableForWaiting(putOnCache$);
-                                                putOnCache$ = putOnCache$.pipe(session.addSubscribedObservable());
+                                                putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                                 putOnCache$.subscribe(() => {
                                                     session.addPlaybackAction(action);
                                                 });
                                                 let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
                                                 //getFromCache$ = session.addSubscribedObservableForWaiting(getFromCache$);
-                                                getFromCache$ = getFromCache$.pipe(session.addSubscribedObservable());
+                                                getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
                                                 getFromCache$.subscribe((stream) => {
                                                     oldSet.call(this, stream);
                                                 });
@@ -222,7 +222,7 @@ export namespace NgJsHbDecorators {
                                             action.simpleSettedValue, 
                                             fieldEtc.fieldInfo);
                                         // toLiteralValue$ = session.addSubscribedObservableForWaiting(toLiteralValue$);
-                                        toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObservable());
+                                        toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
                                         toLiteralValue$.subscribe(
                                             {
                                                 next: (processedValue) => {
