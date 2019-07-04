@@ -68,7 +68,7 @@ export class GenericTokenizer {
         if ((this.lastToken == null)
             || (this.lastToken == GenericTokenEnum.Comma)
             || (this.lastToken == GenericTokenEnum.Lt)) {
-            //nada, OK
+            //nothing, OK
         } else {
             throw new Error('Invalid token, type(): ' + type);
         }
@@ -120,7 +120,7 @@ export class GenericTokenizer {
         return this;
     }
     public comma(): GenericTokenizer {
-        //nada
+        //nothing
         this.lastToken = GenericTokenEnum.Comma;
         return this;
     }

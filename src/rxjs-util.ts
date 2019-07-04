@@ -64,22 +64,4 @@ export function flatMapJustOnceRxOpr<T, R>(project: (value: T, index?: number) =
             );
     }
     return rxOpr;
-
-    // let foo = {
-    //     isPipedCallbackDone: { value: false, result: null as ObservableInput<R>},
-    //     rxOpr: ((source) => {
-    //         let projectExtentend = (value: T, index: number) => {
-    //             if (!this.isPipedCallbackDone.value) {
-    //                 this.isPipedCallbackDone.value = true;
-    //                 this.isPipedCallbackDone.result = project(value, index);
-    //             }
-    //             return this.isPipedCallbackDone.result;
-    //         }
-    //         return source
-    //             .pipe(
-    //                 flatMap(this.projectExtentend)
-    //             );
-    //     }) as OperatorFunction<T, R>
-    // }
-    // return foo.rxOpr;
 }

@@ -7,10 +7,6 @@ import { has as lodashHas, mergeWith as lodashMergeWith } from 'lodash';
  * TODO:
  */
 export class JSONHelper {
-    //currParent: any;
-
-    //private parseResolveRefMap: Map<any, any> = new Map<any, any>();
-
     /**
      * TODO:
      * @param k 
@@ -138,13 +134,4 @@ export class JSONHelper {
         let customizerObj = new JSONHelper.MergeWithCustomizerClass();
         return JSONHelper.convertToLiteralObjectPriv(sourceObject, removeDashFields, customizerObj);
     }
-
-    // /**
-    //  * TODO:
-    //  * @param rootParent 
-    //  */
-    // setRootParent(rootParent:any):JSONHelper {
-    //     this.currParent = rootParent;
-    //     return this;
-    // }
 }

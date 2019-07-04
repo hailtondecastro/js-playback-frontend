@@ -22,7 +22,6 @@ export namespace NgJsHbDecorators {
      */
     export interface PropertyOptions<L> {
         persistent: boolean,
-        //isLazyProperty?: boolean,
         lazyDirectRawRead?: boolean,
         lazyDirectRawWrite?: boolean,
         fieldProcessorResolver?: () => IFieldProcessor<L>,
@@ -71,27 +70,9 @@ export namespace NgJsHbDecorators {
             Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                // let processedValue: Z = value;
                 let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
-                // let prpGenType: GenericNode = GenericTokenizer.resolveNode(target, propertyKey as string);
                 let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.jsHbConfig);
                 if (fieldEtc.propertyOptions.persistent) {
-                    // let prpType: Type<Z> = Reflect.getMetadata('design:type', target, propertyKey);
-                    // let info: FieldInfo = {
-                    //     fieldName: propertyKey as string,
-                    //     fieldType: prpType,
-                    //     ownerType: target.constructor as Type<any>,
-                    //     ownerValue: target
-                    // }
-                    // let fieldProcessor: IFieldProcessor<Z>;
-                    // if (optionsConst.fieldProcessorResolver) {
-                    //     fieldProcessor = optionsConst.fieldProcessorResolver() as any as IFieldProcessor<Z>;
-                    // } else {
-                    //     fieldProcessor = session.jsHbManager.jsHbConfig.getTypeProcessor(prpType);
-                    // }
-
-                    // const isValueByFieldProcessorStream: {value: boolean} = { value: false };
-
                     if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
                         console.group('NgJsHbDecorators.set' +
                             'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
@@ -101,7 +82,7 @@ export namespace NgJsHbDecorators {
                     }
                     let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
-                        //nada
+                        //nothing
                     } else {
                         if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
@@ -121,47 +102,31 @@ export namespace NgJsHbDecorators {
                                         console.debug(value);
                                         console.groupEnd();
                                     }
-                                    //fazer aqui o registro de JsHbPlaybackAction
+                                    //do the JsHbPlaybackAction log here
                                     const action: JsHbPlaybackAction = new JsHbPlaybackAction();
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = JsHbPlaybackActionType.SetField;
                                     let allMD = session.resolveMetadatas({object: this});
                                     let bMd = allMD.objectMd;
-                                    // let backendMetadatas: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                                    // if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                                    //     backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                                    // }
 
-                                    //if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
                                     if (bMd.$signature$) {
-                                        //action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
                                         action.ownerSignatureStr = bMd.$signature$;
                                     } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                         action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
-                                        // tslint:disable-next-line:max-line-length
                                         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + target.constructor + '\' has a not managed owner');
                                     }
             
                                     if (value != null && value != undefined) {
                                         let allMD = session.resolveMetadatas({object: value});
                                         let bMdValue = allMD.objectMd;
-                                        // let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                                        // if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                                        //     backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                                        // }
 
-                                        //if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
                                         if (bMdValue.$signature$) {
-                                            // tslint:disable-next-line:max-line-length
-                                            //action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
                                             action.settedSignatureStr = bMdValue.$signature$;
                                         } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                                            // tslint:disable-next-line:max-line-length
                                             action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                         } else {
                                             if (value instanceof Object && !(value instanceof Date)) {
-                                                // tslint:disable-next-line:max-line-length
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
                                             }
                                             action.simpleSettedValue = value;
@@ -171,12 +136,10 @@ export namespace NgJsHbDecorators {
                                     }
 
                                     if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                                        // isValueByFieldProcessorStream.value = true;
                                         action.attachRefId = session.jsHbManager.jsHbConfig.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
                                         if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
                                             let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
                                             toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObsRxOpr());
-                                            //toDirectRaw$ = session.addSubscribedObservableForWaiting(toDirectRaw$);
                                             toDirectRaw$.subscribe((stream) => {
                                                 if (stream) {
                                                     let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream)
@@ -203,13 +166,11 @@ export namespace NgJsHbDecorators {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
                                             } else {
                                                 let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
-                                                //putOnCache$ = session.addSubscribedObservableForWaiting(putOnCache$);
                                                 putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                                 putOnCache$.subscribe(() => {
                                                     session.addPlaybackAction(action);
                                                 });
                                                 let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
-                                                //getFromCache$ = session.addSubscribedObservableForWaiting(getFromCache$);
                                                 getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
                                                 getFromCache$.subscribe((stream) => {
                                                     oldSet.call(this, stream);
@@ -217,11 +178,9 @@ export namespace NgJsHbDecorators {
                                             }
                                         }
                                     } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
-                                        // isValueByFieldProcessorStream.value = true;
                                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
                                             action.simpleSettedValue, 
                                             fieldEtc.fieldInfo);
-                                        // toLiteralValue$ = session.addSubscribedObservableForWaiting(toLiteralValue$);
                                         toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
                                         toLiteralValue$.subscribe(
                                             {
@@ -247,12 +206,10 @@ export namespace NgJsHbDecorators {
                         }
                     }
 
-                    // if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
                     oldSet.call(this, value);
                     if (session && !isOnlazyLoad) {
                         session.notifyAllLazyrefsAboutEntityModification(this, null);
                     }
-                    // }
                 } else {
                     oldSet.call(this, value);
                     if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
@@ -350,8 +307,6 @@ export namespace NgJsHbDecorators {
                 let base64AB = Buffer.from(value, 'base64');
                 let ws = new memStreams.WritableStream();
                 ws.write(base64AB);
-                //let rs = new memStreams.ReadableStream(base64AB.to);
-                //let myReadableStreamBuffer = new Stream.Readable(); 
                 let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                 myReadableStreamBuffer.push(base64AB);
                 return of(myReadableStreamBuffer);
@@ -377,8 +332,6 @@ export namespace NgJsHbDecorators {
                     let base64AB = Buffer.from(value, 'base64');
                     let ws = new memStreams.WritableStream();
                     ws.write(base64AB);
-                    //let rs = new memStreams.ReadableStream(base64AB.to);
-                    //let myReadableStreamBuffer = new Stream.Readable(); 
                     let myReadableStreamBuffer = new memStreams.ReadableStream(value); 
                     myReadableStreamBuffer.setEncoding('utf-8');
                     return of(myReadableStreamBuffer);
