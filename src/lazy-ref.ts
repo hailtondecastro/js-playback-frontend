@@ -10,17 +10,26 @@ import { get as lodashGet, has as lodashHas } from 'lodash';
 import { flatMap } from 'rxjs/operators';
 import { HttpResponse } from '@angular/common/http';
 
+/**
+ * Many-to-one
+ *
+ * @export
+ * @class LazyRefMTO
+ * @extends {Subject<L>}
+ * @template L
+ * @template I
+ */
 export class LazyRefMTO<L extends object, I> extends Subject<L> {
     iAmLazyRef: boolean = true;
     hbId: I;
     //lazyLoadedObj: L;
     signatureStr: string;
     /**
-     * Diferente do subscribe comum, que deve ser executado toda vez que os dados
-     * forem alterados, esse somente eh executado uma vez e dispara um next para
-     * que todos as outras subscricoes (pipe async's por exemplo) sejam chamadas.
-     * por isso nao retorna Subscription, afinal ele nao se inscreve permanentemente
-     * na lista de observer's.
+     * Unlike the common subscribe, which must be executed every time the data
+     * changed, it is only executed once and triggers a next to
+     * that all other subscriptions (pipe async's for example) are called.
+     * so it does not return Subscription, after all it does not subscribe permanently
+     * on the observer's list.
      * @param observerOrNext
      * @param error
      * @param complete
@@ -29,18 +38,50 @@ export class LazyRefMTO<L extends object, I> extends Subject<L> {
     subscribeToChange(next?: (value: L) => void, error?: (error: any) => void, complete?: () => void): void;
     subscribeToChange(): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); }
     /**
-     * 
+     * TODO:
      * @param lazyLoadedObj 
      */
     setLazyObj(lazyLoadedObj: L): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
     isLazyLoaded(): boolean { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
-    /**
-     * Framework internal use.
-     * @param responseLike 
-     */
+    /** Framework internal use. */
     processResponse(responselike: { body: any }): L { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    /** Framework internal use. */
+    get genericNode(): GenericNode {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+    set genericNode(value: GenericNode) {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public get refererObj(): any {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public set refererObj(value: any) {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public get refererKey(): string {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public set refererKey(value: string) {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public get session(): IJsHbSession {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
+    /** Framework internal use. */
+	public set session(value: IJsHbSession) {
+		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+    }
 }
 
+/**
+ * One-to-one.
+ */
 export declare type LazyRefOTM<L extends object> = LazyRefMTO<L, undefined>;
 
 export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
