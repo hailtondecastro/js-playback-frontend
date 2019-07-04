@@ -31,12 +31,308 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
 {
     describe('JsHbManagerDefault', () => {
-        it('master-a-test', (done) => {
+        it('poc-observable-just-once-pipe-test', (done) => {
+            // let subTest1 = new Subject<number>();
+            // let subTest2 = new Subject<number>();
+            // let subTest1$ = subTest1.asObservable()
+            //     .pipe(delay(10));
+            // let subTest2$ = subTest2.asObservable()
+            //     .pipe(delay(10));
+
+            // subTest1$ = subTest1$.pipe(
+            //     map((value) => {
+            //         console.log('subTest1$.pipe: ' + value);
+            //         return value;
+            //     })
+            // );
+            // subTest2$ = subTest2$.pipe(
+            //     flatMap((value) => {
+            //         console.log('subTest2$.pipe: ' + value);
+            //         return of(value);
+            //     })
+            // );
+            // // let subTestFork$ = forkJoin(subTest1$, subTest2$,
+            // //     (v1: any, v2: any) => {
+            // //         console.log('subTestFork$ => (v1: any, v2: any): ' + [v1, v2]);
+            // //         return [v1, v2];
+            // //     })
+            // let subTestFork$ = concat([subTest1$, subTest2$])
+            //     .pipe (
+            //         map((value) => {
+            //             console.log('subTestFork$.pipe => map: ' + value);
+            //             return value;
+            //         })
+            //     )
+            //     .pipe(
+            //         catchError((err, caugth) => {
+            //             console.log('subTestFork$.pipe => err: ' + err);
+            //             return err;
+            //         })
+            //     );
+
+            // subTest1$.subscribe(
+            //     {next: (value) => {
+            //         console.log('subTest1$.subscribe: ' + value);
+            //     }}
+            // );
+            // subTest2$.subscribe(
+            //     {next: (value) => {
+            //         console.log('subTest2$.subscribe: ' + value);
+            //     }}
+            // );
+            // subTestFork$.subscribe(
+            //     {
+            //         next: (value) => {
+            //             console.log('subTestFork.subscribe: ' + value);
+            //         },
+            //         error: (err) => {
+            //             console.error('subTestFork.subscribe => error: ' + err);
+            //         },
+            //         complete: () => {
+            //             console.error('subTestFork.subscribe => complete: ');
+            //         }
+            //     });
+
+            // subTest1.next(1);
+            // subTest2.next(2);
+
+            // const example = forkJoin(
+            //     //emit 'Hello' immediately
+            //     of('Hello'),
+            //     //emit 'World' after 1 second
+            //     of('World').pipe(delay(1000)),
+            //     //new BehaviorSubject('BSub').asObservable().pipe(delay(1000))
+            //     //new BehaviorSubject('BSub').pipe(delay(1000))
+            //     new BehaviorSubject('BSub')
+            //     // ,
+            //     // // throw error
+            //     // throwError('This will error')
+            // ).pipe(catchError(error => of(error)));
+            // //output: 'This will Error'
+            // const subscribe = example.subscribe(val => console.log(val));
+
+            let asyncCount = 0;
+            let streamReadCount = 6;
+            let allStreamReadedSub = new Subject<void>();
+            let allStreamReaded$ = allStreamReadedSub.asObservable();
+
+            let obs1$: Observable<void> = of(undefined).pipe(delay(10));
+            let obs2$: Observable<void> = of(undefined).pipe(delay(10));
+
+            obs1$ = obs1$
+                .pipe(
+                    mapJustOnceRxOpr((value) => {
+                    //map((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            obs1$ = obs1$
+                .pipe(
+                    flatMapJustOnceRxOpr((value) => {
+                    //flatMap((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => flatMap(): ' + value);
+                        return of(value);
+                    })
+                )
+                .pipe(
+                    flatMapJustOnceRxOpr((value) => {
+                    //flatMap((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => flatMap() 2a vez: ' + value);
+                        return of(value);
+                    })
+                )
+                ;
+
+            obs2$ = obs2$
+                .pipe(
+                    mapJustOnceRxOpr((value) => {
+                    //map((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs2$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            let obs3$ = combineLatest(obs1$, obs2$);
+
+            obs3$.subscribe((values) => {
+                asyncCount++;
+                if (--streamReadCount === 0) {
+                    setTimeout(() => {
+                        allStreamReadedSub.next(null);
+                    });
+                } else if (streamReadCount < 0) {
+                    throw new Error('Invalid streamReadCount' + streamReadCount);
+                }
+                console.log("obs3$.subscribe 1o: " + values);
+            });
+
+            obs3$.subscribe((values) => {
+                asyncCount++;
+                if (--streamReadCount === 0) {
+                    setTimeout(() => {
+                        allStreamReadedSub.next(null);
+                    });
+                } else if (streamReadCount < 0) {
+                    throw new Error('Invalid streamReadCount' + streamReadCount);
+                }
+                console.log("obs3$.subscribe 2o: " + values);
+            });
+            
+            allStreamReaded$
+                    .subscribe(() => {
+                        chai.expect(asyncCount).to.eq(6, 'asyncCount');
+                        done();
+                });
+
+        });
+
+        it('poc-observable-each-pipe-test', (done) => {
+            let asyncCount = 0;
+
+            let streamReadCount = 10;
+            let allStreamReadedSub = new Subject<void>();
+            let allStreamReaded$ = allStreamReadedSub.asObservable();
+
+            let obs1$: Observable<void> = of(undefined).pipe(delay(10));
+            let obs2$: Observable<void> = of(undefined).pipe(delay(10));
+
+            obs1$ = obs1$
+                .pipe(
+                    map((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            obs1$ = obs1$
+                .pipe(
+                    flatMap((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => flatMap(): ' + value);
+                        return of(value);
+                    })
+                )
+                .pipe(
+                    flatMap((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs1$.pipe() => flatMap() 2a vez: ' + value);
+                        return of(value);
+                    })
+                )
+                ;
+
+            obs2$ = obs2$
+                .pipe(
+                    map((value) => {
+                        asyncCount++;
+                        if (--streamReadCount === 0) {
+                            setTimeout(() => {
+                                allStreamReadedSub.next(null);
+                            });
+                        } else if (streamReadCount < 0) {
+                            throw new Error('Invalid streamReadCount' + streamReadCount);
+                        }
+                        console.log('obs2$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            let obs3$ = combineLatest(obs1$, obs2$);
+
+            obs3$.subscribe((values) => {
+                asyncCount++;
+                if (--streamReadCount === 0) {
+                    setTimeout(() => {
+                        allStreamReadedSub.next(null);
+                    });
+                } else if (streamReadCount < 0) {
+                    throw new Error('Invalid streamReadCount' + streamReadCount);
+                }
+                console.log("obs3$.subscribe 1o: " + values);
+            });
+
+            obs3$.subscribe((values) => {
+                asyncCount++;
+                if (--streamReadCount === 0) {
+                    setTimeout(() => {
+                        allStreamReadedSub.next(null);
+                    });
+                } else if (streamReadCount < 0) {
+                    throw new Error('Invalid streamReadCount' + streamReadCount);
+                }
+                console.log("obs3$.subscribe 2o: " + values);
+            })
+            
+            allStreamReaded$
+                    .subscribe(() => {
+                        chai.expect(asyncCount).to.eq(10, 'asyncCount');
+                        done();
+                });
+
+        });
+
+        it('master-a-async-test', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogLevel.Trace)
+                // .configLogLevel(JsHbLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
                 
@@ -99,7 +395,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                         return source;
                     }
                 );
-            };
+            }
 
             propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -114,7 +410,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                         return source;
                     }
                 );
-            };
+            }
 
             let streamReadCount = 1;
             let allStreamReadedSub = new Subject<void>();
@@ -187,12 +483,12 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 });
         });
 
-        it('master-a-test-sync', (done) => {
+        it('master-a-sync-test', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogLevel.Trace)
+                // .configLogLevel(JsHbLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
                 
@@ -345,128 +641,12 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 });
         });
 
-        it('master-lazy-prp-over-sized-test', (done) => {
-            // let subTest1 = new Subject<number>();
-            // let subTest2 = new Subject<number>();
-            // let subTest1$ = subTest1.asObservable()
-            //     .pipe(delay(10));
-            // let subTest2$ = subTest2.asObservable()
-            //     .pipe(delay(10));
-
-            // subTest1$ = subTest1$.pipe(
-            //     map((value) => {
-            //         console.log('subTest1$.pipe: ' + value);
-            //         return value;
-            //     })
-            // );
-            // subTest2$ = subTest2$.pipe(
-            //     flatMap((value) => {
-            //         console.log('subTest2$.pipe: ' + value);
-            //         return of(value);
-            //     })
-            // );
-            // // let subTestFork$ = forkJoin(subTest1$, subTest2$,
-            // //     (v1: any, v2: any) => {
-            // //         console.log('subTestFork$ => (v1: any, v2: any): ' + [v1, v2]);
-            // //         return [v1, v2];
-            // //     })
-            // let subTestFork$ = concat([subTest1$, subTest2$])
-            //     .pipe (
-            //         map((value) => {
-            //             console.log('subTestFork$.pipe => map: ' + value);
-            //             return value;
-            //         })
-            //     )
-            //     .pipe(
-            //         catchError((err, caugth) => {
-            //             console.log('subTestFork$.pipe => err: ' + err);
-            //             return err;
-            //         })
-            //     );
-
-            // subTest1$.subscribe(
-            //     {next: (value) => {
-            //         console.log('subTest1$.subscribe: ' + value);
-            //     }}
-            // );
-            // subTest2$.subscribe(
-            //     {next: (value) => {
-            //         console.log('subTest2$.subscribe: ' + value);
-            //     }}
-            // );
-            // subTestFork$.subscribe(
-            //     {
-            //         next: (value) => {
-            //             console.log('subTestFork.subscribe: ' + value);
-            //         },
-            //         error: (err) => {
-            //             console.error('subTestFork.subscribe => error: ' + err);
-            //         },
-            //         complete: () => {
-            //             console.error('subTestFork.subscribe => complete: ');
-            //         }
-            //     });
-
-            // subTest1.next(1);
-            // subTest2.next(2);
-
-            // const example = forkJoin(
-            //     //emit 'Hello' immediately
-            //     of('Hello'),
-            //     //emit 'World' after 1 second
-            //     of('World').pipe(delay(1000)),
-            //     //new BehaviorSubject('BSub').asObservable().pipe(delay(1000))
-            //     //new BehaviorSubject('BSub').pipe(delay(1000))
-            //     new BehaviorSubject('BSub')
-            //     // ,
-            //     // // throw error
-            //     // throwError('This will error')
-            // ).pipe(catchError(error => of(error)));
-            // //output: 'This will Error'
-            // const subscribe = example.subscribe(val => console.log(val));
-
-            let obs1$ = of('obs1$').pipe(delay(10));
-            let obs2$ = of('obs1$').pipe(delay(10));
-
-            obs1$ = obs1$
-                .pipe(
-                    mapJustOnceRxOpr((value) => {
-                        console.log('obs1$.pipe() => map(): ' + value);
-                        return value;
-                    })
-                );
-
-            obs1$ = obs1$
-                .pipe(
-                    flatMapJustOnceRxOpr((value) => {
-                        console.log('obs1$.pipe() => flatMap(): ' + value);
-                        return of(value);
-                    })
-                );
-
-            obs2$ = obs2$
-                .pipe(
-                    mapJustOnceRxOpr((value) => {
-                        console.log('obs2$.pipe() => map(): ' + value);
-                        return value;
-                    })
-                );
-
-            let obs3$ = combineLatest(obs1$, obs2$);
-
-            obs3$.subscribe((values) => {
-                console.log("obs3$.subscribe 1o: " + values);
-            });
-
-            obs3$.subscribe((values) => {
-                console.log("obs3$.subscribe 2o: " + values);
-            })
-
+        it('master-lazy-prp-over-sized-async-test', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogLevel.Trace)
+                //.configLogLevel(JsHbLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
 
@@ -501,7 +681,14 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                             responseResult.body = fs.createReadStream('./test/master-lazy-prp-over-sized-blob-lazy-clob-lazy-b-test.txt');
                             responseResult.headers = new HttpHeaders().append('Content-Type', 'text/plain; charset=utf-8');
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult)
+                            .pipe(delay(10))
+                            .pipe(
+                                map((value) => {
+                                    asyncCount++;
+                                    return value;
+                                })
+                            );
                     }
                 });
 
@@ -521,6 +708,21 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                             .to.satisfy(
                                 (fieldName: string) => {
                                     return fieldName === 'vcharA' || fieldName === 'vcharB';
+                                }
+                            );
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            };
+
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
                                 }
                             );
                         asyncCount++;
@@ -560,7 +762,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let streamReadCount = 3;
+            let streamReadCount = 1;
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
@@ -661,9 +863,10 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 jsHbSession.createAsyncTasksWaiting(),
                 allStreamReaded$)
                     .subscribe(() => {
-                        chai.expect(asyncCount).to.eq(12, 'asyncCount');
+                        chai.expect(asyncCount).to.eq(8, 'asyncCount');
                         done();
                 });
+
         });
     });
 }
