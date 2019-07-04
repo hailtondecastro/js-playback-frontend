@@ -1,5 +1,5 @@
 
-import { of, from, Observable, forkJoin } from "rxjs";
+import { of, from, Observable } from "rxjs";
 import { CacheHandler } from "./js-hb-config";
 import { map, flatMap } from "rxjs/operators";
 const toStream = require('blob-to-stream');

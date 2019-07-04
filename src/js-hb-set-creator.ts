@@ -92,14 +92,17 @@ export class JsHbSetCreator<T> {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }
-                let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                    backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                }
-                let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                if (value && lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                    backendMetadatasValue = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                }
+                let allMD = this.session.resolveMetadatas({object: value, refererObject: this.refererObj, key: this.refererKey});
+                let backendMetadatasRefererObj = allMD.refererObjMD;
+                let backendMetadatasValue = allMD.objectMD;
+                // let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                // if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                //     backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                // }
+                // let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                // if (value && lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                //     backendMetadatasValue = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                // }
                 
                 //gravando o playback
                 let action: JsHbPlaybackAction = new JsHbPlaybackAction();
@@ -141,14 +144,18 @@ export class JsHbSetCreator<T> {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }
-                let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                    backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                }
-                let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                if (value && lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                    backendMetadatasValue = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                }
+                let allMD = this.session.resolveMetadatas({object: value, refererObject: this.refererObj, key: this.refererKey});
+                let backendMetadatasRefererObj = allMD.refererObjMD;
+                let backendMetadatasValue = allMD.objectMD;
+
+                // let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                // if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                //     backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                // }
+                // let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                // if (value && lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                //     backendMetadatasValue = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                // }
 
                 //gravando o playback
                 let action: JsHbPlaybackAction = new JsHbPlaybackAction();
