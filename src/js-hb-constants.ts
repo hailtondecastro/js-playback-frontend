@@ -7,4 +7,5 @@ export namespace JsHbContants {
     export let JSHB_REFLECT_METADATA_JAVA_CLASS: string = 'design:jsHbJavaClass';
     export let JSHB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX: string = 'design:jsHbJscontructorByJavaClassPrefix:';
     export let JSHB_REFLECT_METADATA_HIBERNATE_ID_TYPE: string = 'design:jsHbHibernateIdType';
+    export let JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS: string = 'design:jsHbPropertyOptions';
 }

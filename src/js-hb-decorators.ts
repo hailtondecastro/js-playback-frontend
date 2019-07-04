@@ -4,72 +4,137 @@ import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { get as lodashGet, has } from 'lodash';
 import { Type } from '@angular/core';
+import { JsHbLogLevel } from './js-hb-config';
 
 export namespace NgJsHbDecorators {
+    export interface PropertyOptions {
+        persistent: boolean;
+    }
     /**
-     * Decorator for get property.
+     * Decorator for get property.  
+     * \@NgJsHbDecorators.property() is equivalent to \@NgJsHbDecorators.property({persistent: true})
      * 
      * Examplo:
      * ```ts
-     * ...
-     * private _myField: string;
-     * @NgJsHbDecorators.property()
-     * public get myField(): string {
-     *   return this._myField;
-     * }
-     * public set myField(value: string) {
-     *   this._myField = value;
-     * }
-     * ...
+       ...
+       private _myField: string;
+       @NgJsHbDecorators.property()
+       public get myField(): string {
+         return this._myField;
+       }
+       public set myField(value: string) {
+         this._myField = value;
+       }
+       ...
      * ```
      */
+    export function property<T>(options: PropertyOptions): MethodDecorator;
+    export function property<T>(): MethodDecorator;
     export function property<T>(): MethodDecorator {
-        return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
+        let options: {notPersistent: boolean};
+        if (arguments.length > 0) {
+            options = arguments[0];
+        }
+        const optionsConst: PropertyOptions =
+            {
+                persistent: true
+            }
+        if (options) {
+            Object.assign(optionsConst, options);
+        }
+
+        let returnFunc: MethodDecorator = function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
+            Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             let oldSet = descriptor.set;
             descriptor.set = function(value) {
-                if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
-                    //nada
-                } else {
-                    if (target instanceof Object && !(target instanceof Date)) {
-                        let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
-                        if (!session) {
-                            throw new Error('A propriedade \'' + propertyKey.toString() + '\' de \'' + target.constructor + '\' possui um owner nao gerenciado. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
-                        }
-                        let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
-                        if (!isOnlazyLoad && session.isRecording() && !session.isOnRestoreEntireStateFromLiteral()) {
-                            //fazer aqui o registro de JsHbPlaybackAction
-                            let action: JsHbPlaybackAction = new JsHbPlaybackAction();
-                            action.fieldName = propertyKey.toString();
-                            action.actionType = JsHbPlaybackActionType.SetField;
-                            if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                            } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                                action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
-                            } else if (!this._isOnInternalSetLazyObjForCollection) {
-                                throw new Error('The property \'' + propertyKey.toString() + ' de \'' + target.constructor + '\' has a not managed owner');
+                let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
+                if (optionsConst.persistent) {
+                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
+                        console.group('NgJsHbDecorators.set' +
+                            'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
+                        console.debug(target);
+                        console.debug(value);
+                        console.groupEnd();
+                    }
+                    let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
+                        //nada
+                    } else {
+                        if (target instanceof Object && !(target instanceof Date)) {
+                            if (!session) {
+                                throw new Error('The property \'' + propertyKey.toString() + '\' de \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
-    
-                            if (value != null) {
-                                if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                    action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                                } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                                    action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
-                                } else {
-                                    if (value instanceof Object && !(value instanceof Date)) {
-                                        throw new Error('The property \'' + propertyKey.toString() + ' de \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
+                            let actualValue = lodashGet(this, propertyKey);
+                            if (actualValue !== value) {
+                                if (!isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()) {
+                                    if (!session.isRecording()){
+                                        throw new Error('Invalid operation. It is not recording. is this Error correct?!');
                                     }
-                                    action.simpleSettedValue = value;
+                                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
+                                        console.group('NgJsHbDecorators.set' +
+                                            '(actualValue !== value) && !isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()\n' +
+                                            'Recording action: ' + JsHbPlaybackActionType.SetField + '. actual and new value: ');
+                                        console.debug(actualValue);
+                                        console.debug(value);
+                                        console.groupEnd();
+                                    }
+                                    //fazer aqui o registro de JsHbPlaybackAction
+                                    let action: JsHbPlaybackAction = new JsHbPlaybackAction();
+                                    action.fieldName = propertyKey.toString();
+                                    action.actionType = JsHbPlaybackActionType.SetField;
+                                    if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                                        action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                    } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                                        action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                                    } else if (!this._isOnInternalSetLazyObjForCollection) {
+                                        throw new Error('The property \'' + propertyKey.toString() + ' de \'' + target.constructor + '\' has a not managed owner');
+                                    }
+            
+                                    if (value != null) {
+                                        if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                                            action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                        } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                                            action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                                        } else {
+                                            if (value instanceof Object && !(value instanceof Date)) {
+                                                throw new Error('The property \'' + propertyKey.toString() + ' de \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
+                                            }
+                                            action.simpleSettedValue = value;
+                                        }
+                                    } else {
+                                        action.simpleSettedValue = null;
+                                    }
+                                    session.addPlaybackAction(action);
                                 }
                             } else {
-                                action.simpleSettedValue = null;
+                                if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
+                                    console.group('NgJsHbDecorators.set' +
+                                        '(actualValue === value)\n' +
+                                        'NOT recording action: ' + JsHbPlaybackActionType.SetField + '. value: ');
+                                    console.debug(value);
+                                    console.groupEnd();
+                                }
                             }
-                            session.addPlaybackAction(action);
                         }
                     }
+                    oldSet.call(this, value);
+                    if (session && !isOnlazyLoad) {
+                        session.notifyAllLazyrefsAboutEntityModification(this, null);
+                    }
+                } else {
+                    oldSet.call(this, value);
+                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
+                        console.group('NgJsHbDecorators.set' +
+                            '!propertyOptions.persistent. Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
+                        console.debug(target);
+                        console.debug(value);
+                        console.groupEnd();
+                    }
                 }
-                oldSet.call(this, value);
             };
         }
+
+        return returnFunc;
     }
 
     export function hibernateId<T>(): MethodDecorator {
@@ -88,7 +153,7 @@ export namespace NgJsHbDecorators {
          */
         javaClass: string;
         /**
-         * Use it if you have to typescript classes mapping the same java entity class.
+         * Use it if you have more than one typescript classes mapping the same java entity class.
          */
         disambiguationId?: string;
     }

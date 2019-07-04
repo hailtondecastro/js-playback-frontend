@@ -5,6 +5,20 @@ export class GenericNode {
     gType: Type<any>;
     gParams: Array<Type<any> | GenericNode>;
     gParent: GenericNode;
+    public toString(): string {
+        let returnStr = this.gType.name + '<';
+        let commaStr = '';
+        for (const gParamItem of this.gParams) {
+            if (gParamItem instanceof GenericNode) {
+                returnStr += commaStr + gParamItem.toString();
+            } else {
+                returnStr += commaStr + gParamItem.name;
+            }
+            commaStr = ', ';
+        }
+        returnStr += '>';
+        return returnStr;
+    }
 }
 
 enum GenericTokenEnum {
@@ -24,18 +38,10 @@ export interface GenericNodeDelegate {
 export class GenericNodeNotNow {
     constructor(private _genericNodeCallback: GenericNodeDelegate) {
     }
-    /**
-     * Getter genericNodeCallback
-     * @return {GenericNodeDelegate}
-     */
 	public get genericNodeCallback(): GenericNodeDelegate {
 		return this._genericNodeCallback;
 	}
 
-    /**
-     * Setter genericNodeCallback
-     * @param {GenericNodeDelegate} value
-     */
 	public set genericNodeCallback(value: GenericNodeDelegate) {
 		this._genericNodeCallback = value;
 	}
@@ -47,13 +53,9 @@ export class GenericTokenizer {
     private lastToken: GenericTokenEnum = null;
     private ltGtCount: number = 0;
 
-    /**
-     * Setter tree
-     * @param {GenericNode } value
-     */
 	public get tree(): GenericNode {
         if (this.ltGtCount > 0) {
-            throw new Error('lt() nao acompanha um gt()');
+            throw new Error('gt() not found to close lt()');
         }
 		return this._tree;
 	}
@@ -68,7 +70,7 @@ export class GenericTokenizer {
             || (this.lastToken == GenericTokenEnum.Lt)) {
             //nada, OK
         } else {
-            throw new Error('Token invalido, type(): ' + type);
+            throw new Error('Invalid token, type(): ' + type);
         }
         if (this._tree == null) {
             this._tree = new GenericNode();
@@ -83,7 +85,7 @@ export class GenericTokenizer {
     }
     public lt(): GenericTokenizer {
         if (this.lastToken != GenericTokenEnum.Type) {
-            throw new Error('lt() somente pode vir apos de type()');
+            throw new Error('lt() can only come after type()');
         }
         let gParamNew: GenericNode = null;
         if (this.currNode.gParams.length > 0) {
@@ -97,7 +99,7 @@ export class GenericTokenizer {
                 this.currNode = gParamNew;
             }
         } else {
-            //nao faz nada, esse eh o caso do tipo raiz!
+            //does nothing, that's the root type!
         }
 
         this.ltGtCount ++;
@@ -106,10 +108,10 @@ export class GenericTokenizer {
     }
     public gt(): GenericTokenizer {
         if (this.ltGtCount == 0) {
-            throw new Error('gt() inserido sem um lt() precedente');
+            throw new Error('gt() inserted without a preceding lt()');
         }
         if (this.lastToken == GenericTokenEnum.Lt) {
-            throw new Error('Tipo generico "' + this.currNode.gType +'" nao define nenhum tipo parametro');
+            throw new Error('Generic type "' + this.currNode.gType +'" does not define any parameter type');
         }
         this.currNode = this.currNode.gParent;
 
@@ -130,7 +132,6 @@ export class GenericTokenizer {
         } else if (prpGenTypeOrNotNow instanceof GenericNodeNotNow) {
             return (prpGenTypeOrNotNow as GenericNodeNotNow).genericNodeCallback();
         } else {
-            //throw new Error('design:generics of ' + entityObj + '.' + keyItem + ' is not an GenericNode nor GenericNodeNotNow');
             return null;
         }
     }
