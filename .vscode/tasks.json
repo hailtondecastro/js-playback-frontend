@@ -16,12 +16,29 @@
             "taskName": "build",
             "args": [
                 //"build.out.txt"
-                "npm run build-fast"
+                "npm run build-test"
             ],
             "isBuildCommand": true,
             "problemMatcher": [
                 "$tsc",
                 "$tsc-watch",
+                {
+                    "owner": "build",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4,
+                        }
+                    ]
+                },
                 {
                     "owner": "build",
                     "fileLocation": [

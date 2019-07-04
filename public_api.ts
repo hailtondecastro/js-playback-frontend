@@ -7,6 +7,5 @@ export * from './src/js-hb-manager';
 export * from './src/js-hb-playback';
 export * from './src/js-hb-playback-action';
 export * from './src/js-hb-session';
-export * from './src/js-hb-set-creator';
 export * from './src/lazy-ref';
-export * from './src/lodash-utils';
+export * from './src/field-processor';
