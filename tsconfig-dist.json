@@ -6,7 +6,7 @@
     "emitDecoratorMetadata": true,
     "module": "commonjs",
     "moduleResolution": "node",
-    "outDir": "../../local_modules_dist/ng-js-hb-supersync",
+    "outDir": "./dist",
     "rootDir": ".",
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
