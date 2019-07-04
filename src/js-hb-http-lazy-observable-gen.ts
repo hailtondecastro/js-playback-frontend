@@ -1,7 +1,6 @@
-import { Response } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
-//import { Observable } from 'rxjs/Observable';
+import { HttpResponse } from '@angular/common/http';
 
 export interface IJsHbHttpLazyObservableGen {
-	generateHttpObservable(signatureStr: String): Observable<Response>;
+	generateHttpObservable(signatureStr: string): Observable<HttpResponse<Object>>;
 }

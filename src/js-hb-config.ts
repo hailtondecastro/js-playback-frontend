@@ -1,17 +1,17 @@
 export interface IJsHbConfig {
-    jsHbIdName: String;
-    jsHbIdRefName: String;
-    jsHbSignatureName: String;
-    jsHbIsLazyUninitializedName: String;
-    jsHbHibernateIdName: String;
-    jsHbCreationIdName: String;
+    jsHbIdName: string;
+    jsHbIdRefName: string;
+    jsHbSignatureName: string;
+    jsHbIsLazyUninitializedName: string;
+    jsHbHibernateIdName: string;
+    jsHbCreationIdName: string;
     logLevel: JsHbLogLevel;
-    configJsHbIdName(jsHbIdName: String): IJsHbConfig;
-    configJsHbIdRefName(jsHbIdRefName: String): IJsHbConfig;
-    configJsHbSignatureName(jsHbSignatureName: String): IJsHbConfig;
-    configJsHbIsLazyUninitializedName(jsHbIsLazyUninitializedName: String): IJsHbConfig;
-    configJsHbHibernateIdName(jsHbHibernateIdName: String): IJsHbConfig;
-    configJsHbCreationIdName(jsHbCreationIdName: String): IJsHbConfig;    
+    configJsHbIdName(jsHbIdName: string): IJsHbConfig;
+    configJsHbIdRefName(jsHbIdRefName: string): IJsHbConfig;
+    configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig;
+    configJsHbIsLazyUninitializedName(jsHbIsLazyUninitializedName: string): IJsHbConfig;
+    configJsHbHibernateIdName(jsHbHibernateIdName: string): IJsHbConfig;
+    configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig;    
     configLogLevel(logLevel: JsHbLogLevel): IJsHbConfig;
 }
 
@@ -25,116 +25,116 @@ export enum JsHbLogLevel {
 }
 
 export class JsHbConfigDefault implements IJsHbConfig {
-    private _jsHbIdName: String                        = 'jsHbId';
-    private _jsHbIdRefName: String                     = 'jsHbIdRef'; 
-    private _jsHbSignatureName: String                 = 'jsHbSignature';     
-    private _jsHbIsLazyUninitializedName: String       = 'jsHbIsLazyUninitialized';               
-    private _jsHbHibernateIdName: String               = 'jsHbHibernateId';          
-    private _jsHbCreationIdName: String                = 'jsHbCreationId';
+    private _jsHbIdName: string                        = 'jsHbId';
+    private _jsHbIdRefName: string                     = 'jsHbIdRef'; 
+    private _jsHbSignatureName: string                 = 'jsHbSignature';     
+    private _jsHbIsLazyUninitializedName: string       = 'jsHbIsLazyUninitialized';               
+    private _jsHbHibernateIdName: string               = 'jsHbHibernateId';          
+    private _jsHbCreationIdName: string                = 'jsHbCreationId';
     private _logLevel: JsHbLogLevel = JsHbLogLevel.Trace;
 
-    public configJsHbIdName(jsHbIdName: String): IJsHbConfig { this.jsHbIdName = jsHbIdName; return this; }
-    public configJsHbIdRefName(jsHbIdRefName: String): IJsHbConfig { this.jsHbIdRefName = jsHbIdRefName; return this; }
-    public configJsHbSignatureName(jsHbSignatureName: String): IJsHbConfig { this.jsHbSignatureName = jsHbSignatureName; return this; }
-    public configJsHbIsLazyUninitializedName(jsHbIsLazyUninitializedName: String): IJsHbConfig { this.jsHbIsLazyUninitializedName = jsHbIsLazyUninitializedName; return this; }
-    public configJsHbHibernateIdName(jsHbHibernateIdName: String): IJsHbConfig { this.jsHbHibernateIdName = jsHbHibernateIdName; return this; }
-    public configJsHbCreationIdName(jsHbCreationIdName: String): IJsHbConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
+    public configJsHbIdName(jsHbIdName: string): IJsHbConfig { this.jsHbIdName = jsHbIdName; return this; }
+    public configJsHbIdRefName(jsHbIdRefName: string): IJsHbConfig { this.jsHbIdRefName = jsHbIdRefName; return this; }
+    public configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig { this.jsHbSignatureName = jsHbSignatureName; return this; }
+    public configJsHbIsLazyUninitializedName(jsHbIsLazyUninitializedName: string): IJsHbConfig { this.jsHbIsLazyUninitializedName = jsHbIsLazyUninitializedName; return this; }
+    public configJsHbHibernateIdName(jsHbHibernateIdName: string): IJsHbConfig { this.jsHbHibernateIdName = jsHbHibernateIdName; return this; }
+    public configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
     public configLogLevel(logLevel: JsHbLogLevel): IJsHbConfig { this.logLevel = logLevel; return this; }
 
     /**
      * Getter jsHbIdName
-     * @return {String}
+     * @return {string}
      */
-    public get jsHbIdName(): String {
+    public get jsHbIdName(): string {
         return this._jsHbIdName;
     }
 
     /**
      * Getter jsHbIdRefName
-     * @return {String}
+     * @return {string}
      */
-    public get jsHbIdRefName(): String {
+    public get jsHbIdRefName(): string {
         return this._jsHbIdRefName;
     }
 
     /**
      * Getter jsHbSignatureName
-     * @return {String}
+     * @return {string}
      */
-    public get jsHbSignatureName(): String {
+    public get jsHbSignatureName(): string {
         return this._jsHbSignatureName;
     }
 
     /**
      * Getter jsHbIsLazyUninitializedName
-     * @return {String}
+     * @return {string}
      */
-    public get jsHbIsLazyUninitializedName(): String {
+    public get jsHbIsLazyUninitializedName(): string {
         return this._jsHbIsLazyUninitializedName;
     }
 
     /**
      * Getter jsHbHibernateIdName
-     * @return {String}
+     * @return {string}
      */
-    public get jsHbHibernateIdName(): String {
+    public get jsHbHibernateIdName(): string {
         return this._jsHbHibernateIdName;
     }
 
     /**
      * Setter jsHbIdName
-     * @param {String} value
+     * @param {string} value
      */
-    public set jsHbIdName(value: String) {
+    public set jsHbIdName(value: string) {
         this._jsHbIdName = value;
     }
 
     /**
      * Setter jsHbIdRefName
-     * @param {String} value
+     * @param {string} value
      */
-    public set jsHbIdRefName(value: String) {
+    public set jsHbIdRefName(value: string) {
         this._jsHbIdRefName = value;
     }
 
     /**
      * Setter jsHbSignatureName
-     * @param {String} value
+     * @param {string} value
      */
-    public set jsHbSignatureName(value: String) {
+    public set jsHbSignatureName(value: string) {
         this._jsHbSignatureName = value;
     }
 
     /**
      * Setter jsHbIsLazyUninitializedName
-     * @param {String} value
+     * @param {string} value
      */
-    public set jsHbIsLazyUninitializedName(value: String) {
+    public set jsHbIsLazyUninitializedName(value: string) {
         this._jsHbIsLazyUninitializedName = value;
     }
 
     /**
      * Setter jsHbHibernateIdName
-     * @param {String} value
+     * @param {string} value
      */
-    public set jsHbHibernateIdName(value: String) {
+    public set jsHbHibernateIdName(value: string) {
         this._jsHbHibernateIdName = value;
     }
 
 
     /**
      * Getter jsHbCreationIdName
-     * @return {String                }
+     * @return {string                }
      */
-	public get jsHbCreationIdName(): String                 {
+	public get jsHbCreationIdName(): string                 {
 		return this._jsHbCreationIdName;
 	}
 
     /**
      * Setter jsHbCreationIdName
-     * @param {String                } value
+     * @param {string                } value
      */
-	public set jsHbCreationIdName(value: String                ) {
+	public set jsHbCreationIdName(value: string                ) {
 		this._jsHbCreationIdName = value;
 	}
 

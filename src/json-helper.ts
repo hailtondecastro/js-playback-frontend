@@ -1,5 +1,7 @@
 import { Type } from '@angular/core';
 import { MergeWithCustomizer } from 'lodash';
+import { has as lodashHas, mergeWith as lodashMergeWith } from 'lodash';
+
 
 /**
  * TODO:
@@ -35,7 +37,7 @@ export class JSONHelper {
                 } else {
                     //nada
                 }
-            } else if (_.has(fieldValue, 'rJsId')) {
+            } else if (lodashHas(fieldValue, 'rJsId')) {
                 let refJsId: any = fieldValue['rJsId'];
                 currParent[fieldName] = (resolveRefMap as any)[refJsId];
             } else {
@@ -49,22 +51,22 @@ export class JSONHelper {
             this.visitedMap = new Map();
         }
         private visitedMap: Map<any, any>;
-        customizer: MergeWithCustomizer = (value: any, srcValue: any, key?: string, object?: Object, source?: Object) => {
+        customizer: MergeWithCustomizer = (value: any, srcValue: any) => {
             if (this.visitedMap.get(srcValue) != null) {
                 return this.visitedMap.get(srcValue);
             } else if (srcValue != null && JSONHelper.isCollection(srcValue.constructor)) {
                 let valueColl: any = JSONHelper.createCollection(srcValue.constructor);
                 for (const item of srcValue) {
                     if (item instanceof Object && !(item instanceof Date)) {
-                        JSONHelper.addOnCollection(valueColl.prototype, valueColl, _.mergeWith(<any>{}, item, this.customizer));
+                        JSONHelper.addOnCollection(valueColl, lodashMergeWith(<any>{}, item, this.customizer));
                     } else {
-                        JSONHelper.addOnCollection(valueColl.prototype, valueColl, item);
+                        JSONHelper.addOnCollection(valueColl, item);
                     }
                 }
                 this.visitedMap.set(srcValue, valueColl);
                 return valueColl;
             } else if (srcValue instanceof Object && !(srcValue instanceof Date)) {
-                this.visitedMap.set(srcValue, _.mergeWith(<any>{}, srcValue, this.customizer));
+                this.visitedMap.set(srcValue, lodashMergeWith(<any>{}, srcValue, this.customizer));
                 return this.visitedMap.get(srcValue);
             } else {
                 return srcValue;
@@ -96,7 +98,7 @@ export class JSONHelper {
                 || (typeTested === Set);
     }
 
-    private static addOnCollection(collType: Type<any>, collection: any, element: any) {
+    public static addOnCollection(collection: any, element: any) {
         if (collection instanceof Array) {
             (<Array<any>>collection).push(element);
         } else if (collection instanceof Set){
@@ -108,21 +110,20 @@ export class JSONHelper {
 
     private static convertToLiteralObjectPriv(sourceObject: any, removeDashFields: boolean, customizerObj: any ): any {
 
-        let visitedMap: Set<any> = new Set();
         let result: any = null;
 
         if (sourceObject != null && JSONHelper.isCollection(sourceObject.constructor)) {
             let valueColl: any = JSONHelper.createCollection(sourceObject.constructor);
             for (const item of sourceObject) {
                 if (item instanceof Object && !(item instanceof Date)) {
-                    JSONHelper.addOnCollection(valueColl.prototype, valueColl, JSONHelper.convertToLiteralObjectPriv(item, removeDashFields, customizerObj));
+                    JSONHelper.addOnCollection(valueColl, JSONHelper.convertToLiteralObjectPriv(item, removeDashFields, customizerObj));
                 } else {
-                    JSONHelper.addOnCollection(valueColl.prototype, valueColl, item);
+                    JSONHelper.addOnCollection(valueColl, item);
                 }
             }
             result = valueColl;
         } else if (sourceObject instanceof Object && !(sourceObject instanceof Date)) {
-            result = _.mergeWith({}, sourceObject, customizerObj.customizer);
+            result = lodashMergeWith({}, sourceObject, customizerObj.customizer);
             if (removeDashFields) {
                 JSONHelper.deepRemoveDashFields(result, new Set());
             }

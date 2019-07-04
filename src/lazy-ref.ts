@@ -1,18 +1,20 @@
 //import { Observable } from 'rxjs/Observable';
-import { Response } from '@angular/http';
-import { Observable, Subscription, Subject, Subscriber } from 'rxjs';
+import { Observable, Subscription, Subject, Subscriber, of as observableOf } from 'rxjs';
 import { PartialObserver } from 'rxjs/Observer';
 import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { Type } from '@angular/core';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
-import { JsHbContants } from './js-hb-constants';
 import { IJsHbSession } from './js-hb-session';
 import { JsHbLogLevel } from './js-hb-config';
+import { get as lodashGet, has as lodashHas } from 'lodash';
+import { flatMap } from 'rxjs/operators';
+import { HttpResponse } from '@angular/common/http';
 
-export class LazyRefMTO<L, I> extends Subject<L> {
+export class LazyRefMTO<L extends object, I> extends Subject<L> {
+    iAmLazyRef: boolean = true;
     hbId: I;
     //lazyLoadedObj: L;
-    signatureStr: String;
+    signatureStr: string;
     /**
      * Diferente do subscribe comum, que deve ser executado toda vez que os dados
      * forem alterados, esse somente eh executado uma vez e dispara um next para
@@ -25,24 +27,29 @@ export class LazyRefMTO<L, I> extends Subject<L> {
      */
     subscribeToChange(observer?: PartialObserver<L>): void;
     subscribeToChange(next?: (value: L) => void, error?: (error: any) => void, complete?: () => void): void;
-    subscribeToChange(observerOrNext?: PartialObserver<L> | ((value: L) => void),
-        error?: (error: any) => void,
-        complete?: () => void): void{}
+    subscribeToChange(): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); }
     /**
      * 
      * @param lazyLoadedObj 
      */
-    setLazyObj(lazyLoadedObj: L): void{};
+    setLazyObj(lazyLoadedObj: L): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    isLazyLoaded(): boolean { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    /**
+     * Framework internal use.
+     * @param responseLike 
+     */
+    processResponse(responselike: { body: any }): L { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
 }
 
-export declare type LazyRefOTM<L> = LazyRefMTO<L, undefined>;
+export declare type LazyRefOTM<L extends object> = LazyRefMTO<L, undefined>;
 
-export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
+export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
     private _hbId: I;
     private _lazyLoadedObj: L;
-    private _signatureStr: String;
-    private _respObs: Observable<Response>;
-    private _flatMapCallback: (response: Response) => Observable<L>;
+    private _genericNode: GenericNode;
+    private _signatureStr: string;
+    private _respObs: Observable<HttpResponse<Object>>;
+    private _flatMapCallback: (response: HttpResponse<L>) => Observable<L>;
     private _refererObj: any;
     private _refererKey: string;
     private _session: IJsHbSession;
@@ -62,6 +69,14 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
             this._isOnInternalSetLazyObjForCollection = false;
         }
     }
+
+    public isLazyLoaded(): boolean { 
+        return this.respObs == null && this.lazyLoadedObj != null;
+    };
+        
+    // public getFlatMapOfResponseCallback(): (responseLike: {body: L}) => Observable<L> {
+    //     return this._flatMapCallback;
+    // }
 
     public setLazyObj(lazyLoadedObj: L): void {
         //anulando os response.
@@ -89,31 +104,31 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
             throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' can not be \'' + lazyRefGenericParam.name + '\'');
         }
 
-        if (this.session.isRecording()){
+        if (this.session.isRecording() && !this.session.isOnRestoreEntireStateFromLiteral()){
             //gravando o playback
             let action: JsHbPlaybackAction = new JsHbPlaybackAction();
             action.fieldName = this.refererKey;
             action.actionType = JsHbPlaybackActionType.SetField;
-            if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                action.ownerSignatureStr = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-            } else if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                action.ownerCreationRefId = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+            if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+            } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
             } else if (!this._isOnInternalSetLazyObjForCollection) {
                 throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner');
             }
 
             if (lazyLoadedObj != null) {
-                if (_.has(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    action.settedSignatureStr = _.get(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                } else if (_.has(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                    action.settedCreationRefId = _.get(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                    action.settedSignatureStr = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                } else if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                    action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                 } else if (!this._isOnInternalSetLazyObjForCollection) {
                     throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\'.  lazyLoadedObj is not managed: \'' + lazyLoadedObj.constructor.name + '\'');
                 }
             }
 
             this.session.addPlaybackAction(action);
-        }        
+        }
 
         this.lazyLoadedObj = lazyLoadedObj;
         this.next(lazyLoadedObj);
@@ -164,7 +179,11 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
                         +'there is already an inscription in the Response Observable, and we '+
                         'will not make two trips to the server');
                 }
-                let localObs: Observable<L> = thisLocal.respObs.flatMap(thisLocal.flatMapCallback);
+                let localObs: Observable<L> = 
+                    thisLocal.respObs
+                        .pipe(
+                            flatMap(thisLocal.flatMapCallback)
+                        );
                 //assim marcaremos que ja ouve inscricao no Observable de response, e nao faremos duas idas ao servidor.
                 thisLocal.respObs = null;
 
@@ -223,20 +242,15 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
                     +'It may mean that we already have subscribed yet in the Observable of Response\n '
                     +'or this was created with lazyLoadedObj already loaded.');
             }
-            let observerOrNextNovo: PartialObserver<L> | ((value: L) => void) = null;
             if (observerOrNext instanceof Subscriber) {
                 nextOriginal = (<Subscriber<L>>observerOrNext).next;
-                (<Subscriber<L>>observerOrNext).next = (value: L) => {
+                (<Subscriber<L>>observerOrNext).next = () => {
                     nextOriginal(thisLocal.lazyLoadedObj);
                 };
-                observerOrNextNovo = observerOrNext;
 
                 thisLocal.next(thisLocal.lazyLoadedObj);
             } else {
                 nextOriginal = <(value: L) => void>observerOrNext;
-                observerOrNextNovo = (value: L) => {
-                    nextOriginal(thisLocal.lazyLoadedObj);
-                };
 
                 thisLocal.next(thisLocal.lazyLoadedObj);
             }
@@ -247,6 +261,117 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
 
     private subscriptionToChange: Subscription;
 
+    public processResponse(responselike: { body: any }): L {
+        let literalJsHbResult: {result: any};
+        if (this.lazyLoadedObj == null) {
+            literalJsHbResult = responselike.body;
+            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                console.group('LazyRefBase.processResponse: LazyRef.lazyLoadedObj is not setted yet: ');
+                console.debug(this.lazyLoadedObj);
+                console.groupEnd();
+            }
+            //literal.result
+            if (this.genericNode.gType !== LazyRefMTO) {
+                throw new Error('Wrong type: ' + this.genericNode.gType.name);
+            }
+            let lazyLoadedObjType: Type<any> = null;
+            if (this.genericNode.gParams[0] instanceof GenericNode) {
+                lazyLoadedObjType = (<GenericNode>this.genericNode.gParams[0]).gType;
+            } else {
+                lazyLoadedObjType = <Type<any>>this.genericNode.gParams[0];
+            }
+            if (this.session.isCollection(lazyLoadedObjType)) {
+                if (!(this.genericNode instanceof GenericNode) || (<GenericNode>this.genericNode.gParams[0]).gParams.length <=0) {
+                    throw new Error('LazyRef not defined: \'' + this.refererKey + '\' em ' + this.refererObj.constructor.name);
+                }
+                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                    console.debug('LazyRefBase.processResponse: LazyRef is collection: ' + lazyLoadedObjType.name);
+                }
+                let collTypeParam: Type<any> =  null;
+                if ((<GenericNode>this.genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
+                    collTypeParam = (<GenericNode>(<GenericNode>this.genericNode.gParams[0]).gParams[0]).gType;
+                } else {
+                    collTypeParam = <Type<any>>(<GenericNode>this.genericNode.gParams[0]).gParams[0];
+                }
+                if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                    console.debug('LazyRefBase.processResponse: LazyRef is collection of: ' + collTypeParam.name);
+                }
+
+                this.lazyLoadedObj = this.session.createCollection(lazyLoadedObjType, this.refererObj, this.refererKey);
+                for (const literalItem of literalJsHbResult.result) {
+                    // let realItem = new collTypeParam();
+                    // lodashSet(realItem, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this.session);
+                    // this.session.removeNonUsedKeysFromLiteral(realItem, literalItem);
+                    // lodashSet(realItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                    // try {
+                    //     lodashMergeWith(realItem, literalItem, this.session.mergeWithCustomizerPropertyReplection(refMap));
+                    // } finally {
+                    //     lodashSet(this.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                    // }                                
+                    let realItem = this.session.processJsHbResultEntityInternal(collTypeParam, literalItem);
+
+                    this.session.addOnCollection(this.lazyLoadedObj, realItem);
+                }
+            } else {
+                // this.lazyLoadedObj = new lazyLoadedObjType();
+                // if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                //     console.debug('createNotLoadedLazyRef => this.processResponse: LazyRef is not collection: ' + lazyLoadedObjType.name);
+                // }
+                // lodashSet(this.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this.session);
+                // this.session.removeNonUsedKeysFromLiteral(this.lazyLoadedObj, literalLazyObj.result);
+                // lodashSet(this.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                // try {
+                //     lodashMergeWith(this.lazyLoadedObj, literalLazyObj.result, this.session.mergeWithCustomizerPropertyReplection(refMapFlatMapCallback));            
+                // } finally {
+                //     lodashSet(this.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                // }
+                this.lazyLoadedObj = this.session.processJsHbResultEntityInternal(lazyLoadedObjType, literalJsHbResult.result);
+                //foi a unica forma que encontrei de desacoplar o Observable<L> do Observable<Response>
+                // O efeito colateral disso eh que qualquer *Map() chamado antes dessa troca fica
+                // desatachado do novo Observable.
+            }
+        }
+        if (this.signatureStr) {
+            if (!this.session.isOnRestoreEntireStateFromLiteral()) {
+                if (!lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                    throw new Error('The referer object has no '+ this.session.jsHbManager.jsHbConfig.jsHbSignatureName + ' key. This should not happen.');
+                }
+                let ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName);
+                this.session.storeOriginalLiteralEntry(
+                    {
+                        method: 'lazyRef',
+                        ownerSignatureStr: ownerSignatureStr,
+                        ownerFieldName: this.refererKey,
+                        literalJsHbResult: literalJsHbResult
+                    }
+                );
+            }
+            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                console.group('LazyRefBase.processResponse: keeping reference by signature ' + this.signatureStr);
+                console.debug(this.lazyLoadedObj);
+                console.groupEnd();
+            }
+            this.session.tryCacheInstanceBySignature(
+                {
+                    realInstance: this.lazyLoadedObj,
+                    literalJsHbResult: literalJsHbResult,
+                    lazySignature: this.signatureStr
+                }
+            );
+            // this._objectsBySignature.set(this.signatureStr, this.lazyLoadedObj);
+        }
+        if (this.respObs && this.session.isOnRestoreEntireStateFromLiteral()) {
+            if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
+                console.group('LazyRefBase.processResponse: changing "this.respObs"'+
+                    ' to null because "this.session.isOnRestoreEntireStateFromLiteral()"');
+                console.debug(this.lazyLoadedObj);
+                console.groupEnd();
+            }
+            this.respObs = null;
+        }
+        return this.lazyLoadedObj;
+    }
+
     subscribeToChange(observerOrNext?: PartialObserver<L> | ((value: L) => void),
         error?: (error: any) => void,
         complete?: () => void) {
@@ -255,8 +380,8 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
         let nextOriginal: (value: L) => void = null;
 
         let observerOrNextNovo: PartialObserver<L> | ((value: L) => void) = null;
-        if (thisLocal.respObs != null || this.lazyLoadedObj == null) { //isso sim significa que ainda nao foi carregado.
-            //AAAAASINCRONO!!!
+        if (!this.isLazyLoaded()) { //isso sim significa que ainda nao foi carregado.
+            //AAAAASYNCHRONOUS!!!
             if (observerOrNext instanceof Subscriber) {
                 observerOrNextNovo = observerOrNext;
                 nextOriginal = (<Subscriber<L>>observerOrNext).next;
@@ -292,7 +417,7 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
                 this.subscriptionToChange = this.subscribe(<(value: L) => void>observerOrNextNovo, error, complete);
             }
         } else {
-            //SSSSSINCRONO!!!
+            //SSSSSYNCHRONOUS!!!
             if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
                 console.group('(Synchronous) LazyRef.subscribeToChange()');
                 console.debug('calling nextOriginal()'); console.debug('this.next()');;
@@ -352,17 +477,17 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
 
     /**
      * Getter signatureStr
-     * @return {String}
+     * @return {string}
      */
-    public get signatureStr(): String {
+    public get signatureStr(): string {
         return this._signatureStr;
     }
 
     /**
      * Getter respObs
-     * @return {Observable<Response>}
+     * @return {Observable<HttpResponse<Object>>}
      */
-    public get respObs(): Observable<Response> {
+    public get respObs(): Observable<HttpResponse<Object>> {
         return this._respObs;
     }
 
@@ -384,9 +509,9 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
 
     /**
      * Setter signatureStr
-     * @param {String} value
+     * @param {string} value
      */
-    public set signatureStr(value: String) {
+    public set signatureStr(value: string) {
         this._signatureStr = value;
     }
 
@@ -394,66 +519,46 @@ export class LazyRefBase<L, I> extends LazyRefMTO<L, I> {
      * Setter respObs
      * @param {Observable<Response>} value
      */
-    public set respObs(value: Observable<Response>) {
+    public set respObs(value: Observable<HttpResponse<Object>>) {
         this._respObs = value;
     }
 
-    public set flatMapCallback(value: (response: Response) => Observable<L>) {
+    private set flatMapCallback(value: (response: HttpResponse<L>) => Observable<L>) {
         this._flatMapCallback = value;
     }
 
-    public get flatMapCallback(): (response: Response) => Observable<L> {
+    private get flatMapCallback(): (response: HttpResponse<L>) => Observable<L> {
+        if (!this._flatMapCallback) {
+            this._flatMapCallback = (response) => {
+                let lReturn = this.processResponse(response);
+                return observableOf(lReturn);
+            };
+        }
         return this._flatMapCallback;
     }
-
-
-    /**
-     * Getter refererObj
-     * @return {any}
-     */
+    
 	public get refererObj(): any {
 		return this._refererObj;
 	}
-
-    /**
-     * Setter refererObj
-     * @param {any} value
-     */
 	public set refererObj(value: any) {
 		this._refererObj = value;
 	}
-
-    /**
-     * Getter refererKey
-     * @return {string}
-     */
 	public get refererKey(): string {
 		return this._refererKey;
 	}
-
-    /**
-     * Setter refererKey
-     * @param {string} value
-     */
 	public set refererKey(value: string) {
 		this._refererKey = value;
     }
-    
-
-    /**
-     * Getter session
-     * @return {IJsHbSession}
-     */
 	public get session(): IJsHbSession {
 		return this._session;
 	}
-
-    /**
-     * Setter session
-     * @param {IJsHbSession} value
-     */
 	public set session(value: IJsHbSession) {
 		this._session = value;
+    }
+    public get genericNode(): GenericNode {
+		return this._genericNode;
 	}
-
+	public set genericNode(value: GenericNode) {
+		this._genericNode = value;
+	}    
 }

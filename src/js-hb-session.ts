@@ -2,46 +2,131 @@ import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { LazyRefMTO, LazyRefBase } from './lazy-ref';
 import { IJsHbManager } from './js-hb-manager';
 import { Type } from '@angular/core';
-import { Observable } from 'rxjs/Observable';
-import { Response } from '@angular/http';
+import { catchError } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
-import { Subject, Subscription } from 'rxjs';
-import { PartialObserver } from 'rxjs/Observer';
+import { throwError } from 'rxjs';
 import { JsHbContants } from './js-hb-constants';
 import { JsHbPlayback } from './js-hb-playback';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { JsHbSetCreator } from './js-hb-set-creator';
 import { JSONHelper } from './json-helper';
 import { JsHbLogLevel } from './js-hb-config';
+import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
+import { NgJsHbDecorators } from './js-hb-decorators';
+
+export interface JsHbEntityRef {
+    iAmAJsHbEntityRef: boolean;
+    signatureStr?: string;
+    creationId?: number;
+}
+
+/**
+ * Framework internal use.<br>
+ */
+export interface OriginalLiteralValueEntry {
+    method: 'processJsHbResultEntity' | 'processJsHbResultEntityArray' | 'newEntityInstance' | 'lazyRef';
+    reflectFunctionMetadataTypeKey?: string;
+    ownerSignatureStr?: string;
+    ownerFieldName?: string;
+    literalJsHbResult?: {result: any};
+    ref?: JsHbEntityRef;
+}
+
+interface JsHbSessionState {
+    nextCreationId: number;
+    originalLiteralValueEntries: Array<OriginalLiteralValueEntry>
+    latestPlaybackArrAsLiteral: Array<any>;
+    currentJsHbPlaybackAsLiteral?: any;
+}
 
 export interface IJsHbSession {
     //loadLazyRef<L, I>(literalJsObject: any, genericNode: GenericNode): LazyRef<L, I>;
     jsHbManager: IJsHbManager;
     //cacheLazyRef<L, I>(signatureStr: String, lazyRef: LazyRef<L, I>): void;
-    processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResultEntity: any): L;
-    processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResultEntity: any): Array<L>;
-    newEntityInstance<T>(entityType: Type<T>): T;
+    /**
+     * 
+     * @param entityType 
+     * @param literalJsHbResult a literal object with format { result: any }
+     */
+    processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): L;
+    processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Array<L>;
+    newEntityInstance<T extends object>(entityType: Type<T>): T;
     startRecord(): void;
     stopRecord(): void;
+    getEntireStateAsLiteral(): any;
+    restoreEntireStateFromLiteral(literalState: any): void;
+    isOnRestoreEntireStateFromLiteral(): boolean;
+    getEntityAsLiteralRef<T>(realEntity: T): any;
+    getEntityInstanceFromLiteralRef<T>(literalRef: any): T;
     getLastRecordedPlayback(): JsHbPlayback;
-    getCachedBySignature<T>(signatureStr: String): T;
+    getCachedBySignature<T extends object>(signatureStr: string): T;
     /**
-     * Uso interno.
+     * Framework internal use.
      */
     addPlaybackAction(action: JsHbPlaybackAction): void;
     isRecording(): boolean;
     recordSave(entity: any): void;
     recordDelete(entity: any): void;
     getLastRecordedPlaybackAsLiteral(): any;
+    /**
+     * Framework internal use.
+     */
+    storeOriginalLiteralEntry(originalValueEntry: OriginalLiteralValueEntry): void;
+    /**
+     * Framework internal use.
+     */
+    tryCacheInstanceBySignature(
+        tryOptions:
+            {
+                realInstance: any,
+                literalJsHbResult: {result: any},
+                lazySignature?: string
+            }): void;
+    /**
+     * Framework internal use.
+     */
+    processJsHbResultEntityInternal<L>(entityType: Type<L>, literalResultField: any): L;
+
     clear(): void;
+    /**
+     * Framework internal use.
+     */
+    createApropriatedLazyRefBase<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string): LazyRefBase<L, I>;
+
+    /**
+     * Collection utility
+     * @param collType 
+     * @param refererObj 
+     * @param refererKey 
+     */
+    createCollection(collType: Type<any>, refererObj: any, refererKey: string): any;
+    /**
+     * Collection utility
+     * @param typeTested 
+     */
+    isCollection(typeTested: Type<any>): any;
+    /**
+     * Collection utility
+     * @param collection 
+     * @param element 
+     */
+    addOnCollection(collection: any, element: any): void;
+    /**
+     * Collection utility
+     * @param collection 
+     * @param element 
+     */
+    removeFromCollection(collection: any, element: any): void;
 }
 
 export class JsHbSessionDefault implements IJsHbSession {
-    private _objectsBySignature: Map<String, any> = null;
-    private _objectsCreationId: Map<any, Number> = null;
+    private _objectsBySignature: Map<string, any> = null;
+    private _objectsByCreationId: Map<number, any> = null;
+    private _originalLiteralValueEntries: Array<OriginalLiteralValueEntry> = null;
     private _nextCreationId: number = null;
     private _currentJsHbPlayback: JsHbPlayback = null;
-    private _lastJsHbPlayback: JsHbPlayback = null;
+    private _latestJsHbPlayback: Array<JsHbPlayback> = null;
+    private _isOnRestoreEntireStateFromLiteral = false;
 
     constructor(private _jsHbManager: IJsHbManager) {
 		if (!_jsHbManager) {
@@ -52,7 +137,252 @@ export class JsHbSessionDefault implements IJsHbSession {
 			console.debug(_jsHbManager as any as string);
             console.groupEnd();
 		}
-        this._objectsBySignature = new Map<String, any>();
+        this._objectsBySignature = new Map();
+        this._objectsByCreationId = new Map();
+        this._originalLiteralValueEntries = [];
+        this._latestJsHbPlayback = [];
+    }
+
+    public getEntireStateAsLiteral(): any {
+        let thisLocal: JsHbSessionDefault = this;
+        let jsHbSessionState: JsHbSessionState = {
+            nextCreationId: thisLocal._nextCreationId,
+            latestPlaybackArrAsLiteral: [],
+            originalLiteralValueEntries: thisLocal._originalLiteralValueEntries
+        };
+
+        for (const playbackItem of this._latestJsHbPlayback) {
+            jsHbSessionState.latestPlaybackArrAsLiteral.push(this.getPlaybackAsLiteral(playbackItem));
+        }
+        if (this._currentJsHbPlayback) {
+            jsHbSessionState.currentJsHbPlaybackAsLiteral = this.getPlaybackAsLiteral(this._currentJsHbPlayback);
+        }
+
+        return jsHbSessionState;
+    }
+
+    public restoreEntireStateFromLiteral(literalState: any): void {
+        this._isOnRestoreEntireStateFromLiteral = true;
+        try {
+            let literalStateLocal: JsHbSessionState = literalState;
+            this._nextCreationId = literalStateLocal.nextCreationId;
+            this._originalLiteralValueEntries = literalStateLocal.originalLiteralValueEntries;
+            if (literalStateLocal.currentJsHbPlaybackAsLiteral) {
+                this._currentJsHbPlayback = this.getPlaybackFromLiteral(literalStateLocal.currentJsHbPlaybackAsLiteral);
+            } else {
+                this._currentJsHbPlayback = null;
+            }
+            this._latestJsHbPlayback = [];
+            for (const playbackLiteral of literalStateLocal.latestPlaybackArrAsLiteral) {
+                this._latestJsHbPlayback.push(this.getPlaybackFromLiteral(playbackLiteral));
+            }
+            let originalLiteralValueEntriesLengthInitial: number = this._originalLiteralValueEntries.length;
+            for (const originalLiteralValueEntry of this._originalLiteralValueEntries) {
+                if (originalLiteralValueEntriesLengthInitial !== this._originalLiteralValueEntries.length) {
+                    throw new Error('There is some error on "this.storeOriginalLiteralEntry()"'+
+                        ' manipulation. Initial length ' +originalLiteralValueEntriesLengthInitial+
+                        ' is differrent of actual ' + this._originalLiteralValueEntries.length);
+                }
+                if (originalLiteralValueEntry.method === 'processJsHbResultEntity'
+                        || originalLiteralValueEntry.method === 'processJsHbResultEntityArray'
+                        || originalLiteralValueEntry.method === 'newEntityInstance') {
+                    let jsType: Type<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
+                    if (!jsType) {
+                        throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'NgJsHbDecorators.clazz\'');
+                    }
+                    if (originalLiteralValueEntry.method === 'processJsHbResultEntity') {
+                        this.processJsHbResultEntity(jsType, originalLiteralValueEntry.literalJsHbResult);
+                    } else if (originalLiteralValueEntry.method === 'processJsHbResultEntityArray') {
+                        this.processJsHbResultEntityArray(jsType, originalLiteralValueEntry.literalJsHbResult);
+                    } else if (originalLiteralValueEntry.method === 'newEntityInstance') {
+                        this.newEntityInstanceWithCreationId(jsType, originalLiteralValueEntry.ref.creationId);
+                    } else {
+                        throw new Error('Isso nao deveria acontecer');
+                    }
+                } else if (originalLiteralValueEntry.method === 'lazyRef') {
+                    let ownerEnt = this._objectsBySignature.get(originalLiteralValueEntry.ownerSignatureStr);
+                    if (!ownerEnt) {
+                        throw new Error('ownerEnt not found for signature: ' + originalLiteralValueEntry.ownerSignatureStr);                 
+                    }
+                    let lazyRef: LazyRefMTO<any, any> = lodashGet(ownerEnt, originalLiteralValueEntry.ownerFieldName);
+                    if (!lazyRef) {
+                        throw new Error('ownerEnt has no field: ' + originalLiteralValueEntry.ownerFieldName);
+                    }
+                    if (!lazyRef.iAmLazyRef) {
+                        throw new Error(originalLiteralValueEntry.ownerFieldName + ' is not a LazyRef for ' + ownerEnt);    
+                    }
+                    lazyRef.processResponse({ body: originalLiteralValueEntry.literalJsHbResult });
+                } else {
+                    throw new Error('Isso nao deveria acontecer');
+                }
+            }
+
+            this.rerunByPlaybacksIgnoreCreateInstance();
+        } finally {
+            this._isOnRestoreEntireStateFromLiteral = false;
+        }
+    }
+
+    public isOnRestoreEntireStateFromLiteral(): boolean {
+        return this._isOnRestoreEntireStateFromLiteral;
+    }
+
+    /**
+     * Based on '[JsHbPlaybackAction.java].resolveOwnerValue(IJsHbManager, HashMap<Long, Object>)'
+     * @param action 
+     */
+    private actionResolveOwnerValue(action: JsHbPlaybackAction): any {
+        if (action.ownerSignatureStr) {
+            return this._objectsBySignature.get(action.ownerSignatureStr);
+        } else if (action.ownerCreationId) {
+            throw new Error('This should not happen. Action: ' + action.actionType);
+        } else if (action.ownerCreationRefId) {
+            return this._objectsByCreationId.get(action.ownerCreationRefId);
+        } else {
+            throw new Error('This should not happen. Action: ' + JSON.stringify(action));
+        }
+    }
+
+    /**
+     * Based on '[JsHbPlaybackAction.java].resolveJavaPropertyName(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * @param action 
+     */
+    private actionResolveFieldName(action: JsHbPlaybackAction): any {
+        return action.fieldName;
+    }
+
+    /**
+     * Based on '[JsHbPlaybackAction.java].resolveColletion(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * @param action 
+     */
+    private actionResolveColletion(action: JsHbPlaybackAction): any {
+		if (action.actionType == JsHbPlaybackActionType.CollectionAdd || action.actionType == JsHbPlaybackActionType.CollectionRemove) {
+			try {
+				return this.actionResolveOwnerValue(action)[this.actionResolveFieldName(action)];
+			} catch (e) {
+                let newErr: any = new Error('This should not happen. action. Action ' + JSON.stringify(action));
+                newErr.reason = e;
+                throw newErr;
+			}
+		} else {
+            return null;
+        }
+    }
+
+    /**
+     * Based on '[JsHbPlaybackAction.java].resolveSettedValue(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * @param action 
+     */
+    private actionResolveSettedValue(action: JsHbPlaybackAction): any {
+        let resolvedSettedValue: any;
+        if (action.settedCreationRefId) {
+            resolvedSettedValue = this._objectsByCreationId.get(action.settedCreationRefId);					
+        } else if (action.settedSignatureStr) {
+            resolvedSettedValue = this._objectsBySignature.get(action.settedSignatureStr);
+        } else if (action.fieldName) {
+            resolvedSettedValue = action.simpleSettedValue;
+        }
+        return resolvedSettedValue;
+    }
+
+    /**
+     * Based on '[JsHbReplayable.java].replay()'
+     */
+    private rerunByPlaybacksIgnoreCreateInstance(): void {
+        let allPlaybacks: JsHbPlayback[] = [
+            ...this._latestJsHbPlayback.slice(),
+            ...(this._currentJsHbPlayback? [this._currentJsHbPlayback]: [])
+        ];
+        for (const playback of allPlaybacks) {
+            for (const action of playback.actions) {
+                if (action.actionType != JsHbPlaybackActionType.Create) {
+                    let resolvedOwnerValue: any = this.actionResolveOwnerValue(action);
+                    let resolvedFieldName: string = this.actionResolveFieldName(action);
+                    let resolvedCollection: any = this.actionResolveColletion(action);
+                    let resolvedSettedValue: any = this.actionResolveSettedValue(action);
+
+                    const wasCollectionAsyncronousModified = { value: true };
+                    switch (action.actionType) {
+                        case JsHbPlaybackActionType.CollectionAdd:
+                            if (resolvedCollection && (resolvedCollection as LazyRefMTO<any, any>).iAmLazyRef) {
+                                //em tese isso deve ser sincrono por ja estar
+                                (resolvedOwnerValue[resolvedFieldName] as LazyRefMTO<any, any>)
+                                    .subscribeToChange(coll => {
+                                        this.addOnCollection(coll, resolvedSettedValue);
+                                        wasCollectionAsyncronousModified.value = false;
+                                    });
+                            } else {
+                                this.addOnCollection(resolvedCollection, resolvedSettedValue);
+                                wasCollectionAsyncronousModified.value = false;
+                            }
+                            if (wasCollectionAsyncronousModified.value) {
+                                throw new Error('Invalid action. Collection was not loaded on current state: ' + JSON.stringify(action));
+                            }
+                            break;
+                        case JsHbPlaybackActionType.CollectionRemove:
+                            if (resolvedCollection && (resolvedCollection as LazyRefMTO<any, any>).iAmLazyRef) {
+                                //em tese isso deve ser sincrono por ja estar
+                                (resolvedOwnerValue[resolvedFieldName] as LazyRefMTO<any, any>)
+                                    .subscribeToChange(coll => {
+                                        this.removeFromCollection(coll, resolvedSettedValue);
+                                        wasCollectionAsyncronousModified.value = false;
+                                    });
+                            } else {
+                                this.removeFromCollection(resolvedCollection, resolvedSettedValue);
+                                wasCollectionAsyncronousModified.value = false;
+                            }
+                            if (wasCollectionAsyncronousModified.value) {
+                                throw new Error('Invalid action. Collection was not loaded on current state: ' + JSON.stringify(action));
+                            }
+                            break;
+                        case JsHbPlaybackActionType.SetField:
+                            if (resolvedOwnerValue[resolvedFieldName] && (resolvedOwnerValue[resolvedFieldName] as LazyRefMTO<any, any>).iAmLazyRef) {
+                                (resolvedOwnerValue[resolvedFieldName] as LazyRefMTO<any, any>).setLazyObj(resolvedSettedValue);
+                            } else {
+                                resolvedOwnerValue[resolvedFieldName] = resolvedSettedValue;
+                            }
+                            break;
+                        case JsHbPlaybackActionType.Delete:
+                            //nada
+                            break;
+                        case JsHbPlaybackActionType.Save:
+                            //nada
+                            break;
+                        default:
+                            throw new Error('Isso nao deveria acontecer');
+                    }
+                }
+            }
+        }
+    }
+
+    public getEntityAsLiteralRef<T>(realEntity: T): any {
+        let jsHbEntityRefReturn: JsHbEntityRef;
+        if (lodashHas(realEntity, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+            jsHbEntityRefReturn = {
+                signatureStr: lodashGet(realEntity, this.jsHbManager.jsHbConfig.jsHbSignatureName),
+                iAmAJsHbEntityRef: true
+            }
+        } else if (lodashHas(realEntity, this.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+            jsHbEntityRefReturn = {
+                creationId: lodashGet(realEntity, this.jsHbManager.jsHbConfig.jsHbCreationIdName),
+                iAmAJsHbEntityRef: true
+            }
+        } else {
+            throw new Error('Invalid operation. Not managed entity. Entity: \'' + realEntity.constructor + '\'');
+        }
+        return jsHbEntityRefReturn;
+    }
+
+    public getEntityInstanceFromLiteralRef<T>(literalRef: any): T {
+        let jsHbEntityRef: JsHbEntityRef = literalRef;
+        if (jsHbEntityRef.iAmAJsHbEntityRef && jsHbEntityRef.signatureStr) {
+            return this._objectsBySignature.get(jsHbEntityRef.signatureStr);
+        } else if (jsHbEntityRef.iAmAJsHbEntityRef && jsHbEntityRef.creationId) {
+            return this._objectsByCreationId.get(jsHbEntityRef.creationId);
+        } else {
+            throw new Error('Invalid operation. Not managed entity. literalRef: \'' + literalRef + '\'');
+        }
     }
 
     /**
@@ -76,17 +406,29 @@ export class JsHbSessionDefault implements IJsHbSession {
         this._jsHbManager = value;
     }
 
-    public processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResultEntity: any): L {
-        if (!literalJsHbResultEntity.result) {
-            throw new Error('literalJsHbResultEntity.result existe' + JSON.stringify(literalJsHbResultEntity));
+    public processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): L {
+        if (!literalJsHbResult.result) {
+            throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
+        }
+        let clazzOptions: NgJsHbDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        if (!clazzOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'NgJsHbDecorators.clazz\'');
+        }
+        if (!this.isOnRestoreEntireStateFromLiteral()) {
+            this.storeOriginalLiteralEntry(
+                {
+                    method: 'processJsHbResultEntity',
+                    reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    literalJsHbResult: literalJsHbResult
+                });
         }
         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
             console.group('JsHbSessionDefault.processJsHbResultEntity<L>()');
-            console.debug(entityType); console.debug(literalJsHbResultEntity);
+            console.debug(entityType); console.debug(literalJsHbResult);
             console.groupEnd();
-		}
+        }
         let refMap: Map<Number, any> = new Map<Number, any>();
-        let result = this.processJsHbResultEntityPriv(entityType, literalJsHbResultEntity.result, refMap);
+        let result = this.processJsHbResultEntityPriv(entityType, literalJsHbResult.result, refMap);
         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
             console.group('JsHbSessionDefault.processJsHbResultEntity<L>().  result:');
             console.debug(result);
@@ -99,19 +441,32 @@ export class JsHbSessionDefault implements IJsHbSession {
         return result;
     }
 
-    public processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResultEntity: any): Array<L> {
-        if (!literalJsHbResultEntity.result) {
-            throw new Error('literalJsHbResultEntity.result existe' + JSON.stringify(literalJsHbResultEntity));
+    public processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Array<L> {
+        if (!literalJsHbResult.result) {
+            throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
         }
+        let clazzOptions: NgJsHbDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        if (!clazzOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'NgJsHbDecorators.clazz\'');
+        }
+        if (!this.isOnRestoreEntireStateFromLiteral()) {
+            this.storeOriginalLiteralEntry(
+                {
+                    method: 'processJsHbResultEntityArray',
+                    reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    literalJsHbResult: literalJsHbResult
+                });
+        }
+
         let resultArr: Array<L> = [];
         let refMap: Map<Number, any> = new Map<Number, any>();
         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
             console.group('JsHbSessionDefault.processJsHbResultEntityArray<L>()');
-            console.debug(entityType); console.debug(literalJsHbResultEntity);
+            console.debug(entityType); console.debug(literalJsHbResult);
             console.groupEnd();
-		}
-        for (let index = 0; index < literalJsHbResultEntity.result.length; index++) {
-            const resultElement = literalJsHbResultEntity.result[index];
+        }
+        for (let index = 0; index < literalJsHbResult.result.length; index++) {
+            const resultElement = literalJsHbResult.result[index];
             resultArr.push(this.processJsHbResultEntityPriv(entityType, resultElement, refMap));
         }
         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -122,10 +477,13 @@ export class JsHbSessionDefault implements IJsHbSession {
         return resultArr;
     }
 
-    public newEntityInstance<T>(entityType: Type<T>): T {
+    private newEntityInstanceWithCreationId<T extends object>(entityType: Type<T>, creationId: number): T {
+        if (!this.isRecording()){
+            throw new Error('Invalid operation. It is not recording. is this Error correct?!');
+        }
         this.validatingControlFieldsExistence(entityType);
         let entityObj = new entityType();
-        _.set(entityObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(entityObj));
         if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
             console.debug('entityType: ' + entityType.name);
@@ -163,7 +521,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         lazyRefSet.refererObj = entityObj;
                         lazyRefSet.refererKey = keyItem;
                         lazyRefSet.session = this;
-                        _.set(entityObj, keyItem, lazyRefSet);
+                        lodashSet(entityObj, keyItem, lazyRefSet);
                     } else {
                         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
                             console.debug('GenericNode found, it is a LazyRef, and it is not a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
@@ -172,33 +530,63 @@ export class JsHbSessionDefault implements IJsHbSession {
                         lazyRef.refererObj = entityObj;
                         lazyRef.refererKey = keyItem;
                         lazyRef.session = this;
-                        _.set(entityObj, keyItem, lazyRef);
+                        lodashSet(entityObj, keyItem, lazyRef);
                     }
                 } else {
                     throw new Error('Property \'' + keyItem + ' of \'' + entityObj.constructor + '\'. LazyRef not properly defined on Reflect');
                 }
             }
         }
-        if (this.isRecording()) {
-            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                console.debug('isRecording, ');
-            }
+
+        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            console.debug('isRecording, ');
+        }
+
+        this._objectsByCreationId.set(creationId, entityObj);
+        let clazzOptions: NgJsHbDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        if (!clazzOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'NgJsHbDecorators.clazz\'');
+        }
+        if (!this.isOnRestoreEntireStateFromLiteral()) {    
+            this.storeOriginalLiteralEntry(
+                {
+                    method: 'newEntityInstance',
+                    reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    ref: {
+                        creationId: creationId,
+                        iAmAJsHbEntityRef: true
+                    }
+                });
+        }
+        
+        lodashSet(entityObj, this.jsHbManager.jsHbConfig.jsHbCreationIdName, creationId);
+        lodashSet(entityObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+
+        if (!this.isOnRestoreEntireStateFromLiteral()) {
             //gravando o playback
             let action: JsHbPlaybackAction = new JsHbPlaybackAction();
             action.fieldName = null;
             action.actionType = JsHbPlaybackActionType.Create;
-
+            
             action.ownerJavaClass = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, entityObj.constructor);
             if (!action.ownerJavaClass) {
                 throw new Error('the classe \'' + entityType + ' is not using the decorator \'NgJsHbDecorators.clazz\'');
             }
             action.ownerCreationId = this._nextCreationId;
-            _.set(entityObj, this.jsHbManager.jsHbConfig.jsHbCreationIdName, action.ownerCreationId);
-            _.set(entityObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-            this._nextCreationId++;
-            this.addPlaybackAction(action);
         }
+
         return entityObj;
+    }
+
+    public newEntityInstance<T extends object>(entityType: Type<T>): T {
+        if (!this.isRecording()){
+            throw new Error('Invalid operation. It is not recording.');
+        }
+
+        let newEntityReturn: T = this.newEntityInstanceWithCreationId<T>(entityType, this._nextCreationId);
+
+        this._nextCreationId++;
+        return newEntityReturn;
     }
 
     public startRecord(): void {
@@ -206,7 +594,6 @@ export class JsHbSessionDefault implements IJsHbSession {
             console.debug('reseting  this._currentJsHbPlayback, this._objectsCreationId and this._nextCreationId');
         }
         this._currentJsHbPlayback = new JsHbPlayback();
-        this._objectsCreationId = new Map<any, Number>();
         this._nextCreationId = 1;
     }
 
@@ -215,7 +602,7 @@ export class JsHbSessionDefault implements IJsHbSession {
             if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
                 console.debug('updating this.lastJsHbPlayback and resetting this.currentJsHbPlayback');
             }
-            this._lastJsHbPlayback = this._currentJsHbPlayback;
+            this._latestJsHbPlayback.push(this._currentJsHbPlayback);
             this._currentJsHbPlayback = null;
         } else {
             if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -231,7 +618,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'');
         }
-        let session: IJsHbSession = _.get(entity, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
+        let session: IJsHbSession = lodashGet(entity, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
         if (!session) {
             throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
@@ -240,10 +627,10 @@ export class JsHbSessionDefault implements IJsHbSession {
         //gravando o playback
         let action: JsHbPlaybackAction = new JsHbPlaybackAction();
         action.actionType = JsHbPlaybackActionType.Save;
-        if (_.has(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+        if (lodashHas(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' has a signature, that is, it has persisted');
-        } else if (_.has(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-            action.ownerCreationRefId = _.get(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+        } else if (lodashHas(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+            action.ownerCreationRefId = lodashGet(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
@@ -262,7 +649,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         if (!this.isRecording()){
             throw new Error('Invalid operation. Nao estah gravando. Entity: \'' + entity.constructor + '\'');
         }
-        let session: IJsHbSession = _.get(entity, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
+        let session: IJsHbSession = lodashGet(entity, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
         if (!session) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
@@ -271,9 +658,9 @@ export class JsHbSessionDefault implements IJsHbSession {
         //gravando o playback
         let action: JsHbPlaybackAction = new JsHbPlaybackAction();
         action.actionType = JsHbPlaybackActionType.Delete;
-        if (_.has(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-            action.ownerSignatureStr = _.get(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-        } else if (_.has(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+        if (lodashHas(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+            action.ownerSignatureStr = lodashGet(entity, this.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+        } else if (lodashHas(entity, this.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' has id of creation, that is, is not persisted.');
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
@@ -284,20 +671,28 @@ export class JsHbSessionDefault implements IJsHbSession {
         this.addPlaybackAction(action);
     }
 
+    public storeOriginalLiteralEntry(originalValueEntry: OriginalLiteralValueEntry): void {
+        this._originalLiteralValueEntries.push(originalValueEntry);
+    }
+
     public clear(): void {
         if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
             console.debug('clearing: this.objectsBySignature, this.objectsCreationId, this.nextCreationId, this.currentJsHbPlayback, this.lastJsHbPlayback and this.objectsBySignature');
         }
         this._objectsBySignature = null;
-        this._objectsCreationId = null;
+        this._objectsByCreationId = null;
+        this._originalLiteralValueEntries = null;
         this._nextCreationId = null;
         this._currentJsHbPlayback = null;
-        this._lastJsHbPlayback = null;
-        this._objectsBySignature = new Map<String, any>();
+        this._latestJsHbPlayback = null;
+        this._objectsBySignature = new Map();
+        this._objectsByCreationId = new Map();
+        this._originalLiteralValueEntries = [];
+        this._latestJsHbPlayback = [];
     }
 
     public getLastRecordedPlayback(): JsHbPlayback {
-        return this._lastJsHbPlayback;
+        return this._latestJsHbPlayback.length > 0? this._latestJsHbPlayback[this._latestJsHbPlayback.length - 1] : null;
     }
 
     public addPlaybackAction(action: JsHbPlaybackAction): void {
@@ -318,7 +713,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public getLastRecordedPlaybackAsLiteral(): any {
-        const result: any = JSONHelper.convertToLiteralObject(this.getLastRecordedPlayback(), true)
+        const result: any = this.getPlaybackAsLiteral(this.getLastRecordedPlayback());
         if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
             console.group('getLastRecordedPlaybackAsLiteral');
             console.debug(result as any as string);
@@ -327,7 +722,39 @@ export class JsHbSessionDefault implements IJsHbSession {
         return result;
     }
 
-    public getCachedBySignature<T>(signatureStr: String): T {
+    private getPlaybackAsLiteral(playback: JsHbPlayback): any {
+        const literalReturn: any = JSONHelper.convertToLiteralObject(playback, true)
+        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
+            console.group('getPlaybackAsLiteral');
+            console.debug(literalReturn as any as string);
+            console.groupEnd();
+        }
+        return literalReturn;
+    }
+
+    private getPlaybackFromLiteral(playbackLiteral: any): JsHbPlayback {
+        const playBackReturn: JsHbPlayback = new JsHbPlayback();
+        playBackReturn.actions = [];
+        for (const actionLiteral of playbackLiteral.actions) {
+            let action: JsHbPlaybackAction = new JsHbPlaybackAction();
+            action = lodashMergeWith(
+                action, 
+                actionLiteral, 
+                (value: any, srcValue: any) => {
+                    return srcValue;
+                }
+            );
+            playBackReturn.actions.push(action);
+        }
+        if (JsHbLogLevel.Debug >= this.jsHbManager.jsHbConfig.logLevel) {
+            console.group('getPlaybackFromLiteral');
+            console.debug(playBackReturn as any as string);
+            console.groupEnd();
+        }
+        return playBackReturn;
+    }
+
+    public getCachedBySignature<T extends object>(signatureStr: string): T {
         if (this._objectsBySignature.get(signatureStr)) {
             return this._objectsBySignature.get(signatureStr);
         } else {
@@ -353,11 +780,16 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private processJsHbResultEntityPriv<L>(entityType: Type<L>, result: any, refMap: Map<Number, any>): L {
-        let signatureStr: String = <String>_.get(result, this.jsHbManager.jsHbConfig.jsHbSignatureName);
+    public processJsHbResultEntityInternal<L>(entityType: Type<L>, literalResultField: any): L {
+        let refMap: Map<Number, any> = new Map();
+        return this.processJsHbResultEntityPriv(entityType, literalResultField, refMap);
+    }
+
+    private processJsHbResultEntityPriv<L>(entityType: Type<L>, body: any, refMap: Map<Number, any>): L {
+        let signatureStr: string = <string>lodashGet(body, this.jsHbManager.jsHbConfig.jsHbSignatureName);
         let entityValue: any = this._objectsBySignature.get(signatureStr);
         if (!entityValue) {
-            let jsHbIdRef: Number = <Number>_.get(result, this.jsHbManager.jsHbConfig.jsHbIdRefName);
+            let jsHbIdRef: Number = <Number>lodashGet(body, this.jsHbManager.jsHbConfig.jsHbIdRefName);
             if (jsHbIdRef) {
                 entityValue = refMap.get(jsHbIdRef);
             }
@@ -372,21 +804,26 @@ export class JsHbSessionDefault implements IJsHbSession {
             // if (signatureStr) {
             //     this._objectsBySignature.set(signatureStr, entityValue);
             // }
-            _.set(entityValue, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-            this.removeNonUsedKeysFromLiteral(entityValue, result);
+            lodashSet(entityValue, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+            this.removeNonUsedKeysFromLiteral(entityValue, body);
 
-            if (_.has(result, this.jsHbManager.jsHbConfig.jsHbIdName)) {
-                refMap.set(<Number>_.get(result, this.jsHbManager.jsHbConfig.jsHbIdName), entityValue);
+            if (lodashHas(body, this.jsHbManager.jsHbConfig.jsHbIdName)) {
+                refMap.set(<Number>lodashGet(body, this.jsHbManager.jsHbConfig.jsHbIdName), entityValue);
             } else {
                 throw new Error('This should not happen 1');
             }
 
-            _.set(entityValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            lodashSet(entityValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
             try {
-                this.tryCacheInstanceBySignature(entityValue, result);
-                _.mergeWith(entityValue, result, this.mergeWithCustomizerPropertyReplection(refMap));
+                this.tryCacheInstanceBySignature(
+                    {
+                        realInstance: entityValue, 
+                        literalJsHbResult: body
+                    }
+                );
+                lodashMergeWith(entityValue, body, this.mergeWithCustomizerPropertyReplection(refMap));
             } finally {
-                _.set(entityValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                lodashSet(entityValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
             }
         } else {
             if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -396,11 +833,11 @@ export class JsHbSessionDefault implements IJsHbSession {
         return entityValue;
     }
 
-    private createLoadedLazyRef<L, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): LazyRefMTO<L, I> {
-        let lr: LazyRefBase<L, I> = this.createApropriatedLazyRefBase<L, I>(genericNode, literalLazyObj, refMap, refererObj, refererKey);
+    private createLoadedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): LazyRefMTO<L, I> {
+        let lr: LazyRefBase<L, I> = this.createApropriatedLazyRefBase<L, I>(genericNode, literalLazyObj, refererObj, refererKey);
         
         this.trySetHibernateIdentifier(lr, genericNode, literalLazyObj, refMap);
-        this.tryGetFromObjectsBySignature(lr, genericNode, literalLazyObj, refMap);
+        this.tryGetFromObjectsBySignature(lr, literalLazyObj);
 
         if (lr.lazyLoadedObj) {
             if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -432,23 +869,23 @@ export class JsHbSessionDefault implements IJsHbSession {
                 }
 
                 lr.lazyLoadedObj = this.createCollection(lazyLoadedObjType, refererObj, refererKey);
-                for (const literalItem of literalLazyObj) {
+                for (const {} of literalLazyObj) {
                     // let realItem = new collTypeParam();
                     // this.tryCacheInstanceBySignature(lr.lazyLoadedObj, literalLazyObj);
-                    // _.mergeWith(realItem, literalItem, this.mergeWithCustomizerPropertyReplection(refMap));
+                    // lodashMergeWith(realItem, literalItem, this.mergeWithCustomizerPropertyReplection(refMap));
                     let realItem = this.processJsHbResultEntityPriv(collTypeParam, literalLazyObj, refMap);
-                    this.addOnCollection(lazyLoadedObjType, lr.lazyLoadedObj, realItem);
+                    this.addOnCollection(lr.lazyLoadedObj, realItem);
                 }
             } else {
                 // lr.lazyLoadedObj = new lazyLoadedObjType(); 
-                // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-                // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                // lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+                // lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 // this.removeNonUsedKeysFromLiteral(lr.lazyLoadedObj, literalLazyObj);
                 // try {
                 //     this.tryCacheInstanceBySignature(lr.lazyLoadedObj, literalLazyObj);
-                //     _.mergeWith(lr.lazyLoadedObj, literalLazyObj, this.mergeWithCustomizerPropertyReplection(refMap));
+                //     lodashMergeWith(lr.lazyLoadedObj, literalLazyObj, this.mergeWithCustomizerPropertyReplection(refMap));
                 // } finally {
-                //     _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                //     lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 // }
                 lr.lazyLoadedObj = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
             }
@@ -460,35 +897,27 @@ export class JsHbSessionDefault implements IJsHbSession {
         return lr;
     }
 
-    private tryCacheInstanceBySignature(realInstance: any, literalInstance: any): void {
-        let signatureStr: String = <String>_.get(literalInstance, this.jsHbManager.jsHbConfig.jsHbSignatureName);
+    public tryCacheInstanceBySignature(
+            tryOptions:
+                {
+                    realInstance: any,
+                    literalJsHbResult: {result: any},
+                    lazySignature?: string
+                }): void {
+        let signatureStr: string = <string>lodashGet(tryOptions.literalJsHbResult, this.jsHbManager.jsHbConfig.jsHbSignatureName);
         if (signatureStr) {
-            this._objectsBySignature.set(signatureStr, realInstance);
+            this._objectsBySignature.set(signatureStr, tryOptions.realInstance);
+        }
+        if (tryOptions.lazySignature) {
+            this._objectsBySignature.set(tryOptions.lazySignature, tryOptions.realInstance);
         }
     }
 
-    private lodashMergeOrGetBySignature(lr: LazyRefBase<any, any>, literalLazyObj: any, lazyLoadedObjType: Type<any>, refMap: Map<Number, any>): void {
-        if (this.getCachedBySignature(lr.signatureStr)) {
-            lr.lazyLoadedObj = this.getCachedBySignature(lr.signatureStr);
-            lr.respObs = null;
-        } else {
-            // lr.lazyLoadedObj = new lazyLoadedObjType() as any; 
-            // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-            // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
-            // this.removeNonUsedKeysFromLiteral(lr.lazyLoadedObj, literalLazyObj);
-            // try {
-            //     _.mergeWith(lr.lazyLoadedObj, literalLazyObj, this.mergeWithCustomizerPropertyReplection(refMap));
-            // } finally {
-            //     _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
-            // }
-            lr.lazyLoadedObj = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
-        }
-    }
 
-    private createNotLoadedLazyRef<L, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): LazyRefMTO<L, I> {
-        let lr: LazyRefBase<L, I> = this.createApropriatedLazyRefBase<L, I>(genericNode, literalLazyObj, refMap, refererObj, refererKey);
+    private createNotLoadedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): LazyRefMTO<L, I> {
+        let lr: LazyRefBase<L, I> = this.createApropriatedLazyRefBase<L, I>(genericNode, literalLazyObj, refererObj, refererKey);
         this.trySetHibernateIdentifier(lr, genericNode, literalLazyObj, refMap);
-        this.tryGetFromObjectsBySignature(lr, genericNode, literalLazyObj, refMap);
+        this.tryGetFromObjectsBySignature(lr, literalLazyObj);
 
         if (lr.lazyLoadedObj) {
             if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -497,102 +926,122 @@ export class JsHbSessionDefault implements IJsHbSession {
                 console.groupEnd();
             }
         } else {
-            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(lr.signatureStr);
-            lr.flatMapCallback = 
-                (response) => {
-                    if (lr.lazyLoadedObj == null) {
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.group('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef.lazyLoadedObj is not setted yet: ');
-                            console.debug(lr.lazyLoadedObj);
-                            console.groupEnd();
-                        }
-                        let refMapFlatMapCallback: Map<Number, any> = new Map<Number, any>();
-                        let literalLazyObj: any = response.json();
-                        //literal.result
-                        if (genericNode.gType !== LazyRefMTO) {
-                            throw new Error('Wrong type: ' + genericNode.gType.name);
-                        }
-                        let lazyLoadedObjType: Type<any> = null;
-                        if (genericNode.gParams[0] instanceof GenericNode) {
-                            lazyLoadedObjType = (<GenericNode>genericNode.gParams[0]).gType;
-                        } else {
-                            lazyLoadedObjType = <Type<any>>genericNode.gParams[0];
-                        }
-                        if (this.isCollection(lazyLoadedObjType)) {
-                            if (!(genericNode.gParams[0] instanceof GenericNode) || (<GenericNode>genericNode.gParams[0]).gParams.length <=0) {
-                                throw new Error('LazyRef not defined: \'' + refererKey + '\' em ' + refererObj.constructor.name);
-                            }
-                            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                                console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is collection: ' + lazyLoadedObjType.name);
-                            }
-                            let collTypeParam: Type<any> =  null;
-                            if ((<GenericNode>genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
-                                collTypeParam = (<GenericNode>(<GenericNode>genericNode.gParams[0]).gParams[0]).gType;
-                            } else {
-                                collTypeParam = <Type<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
-                            }
-                            if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                                console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is collection of: ' + collTypeParam.name);
-                            }
+            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(lr.signatureStr)
+                .pipe(
+                    //Em caso de erro, isso permitira que possa tentar novamente
+                    catchError((err) => {
+                        lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(lr.signatureStr);
+                        return throwError(err);
+                    })
+                );
+            // lr.flatMapCallback = 
+            //     (response) => {
+            //         if (lr.lazyLoadedObj == null) {
+            //             if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            //                 console.group('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef.lazyLoadedObj is not setted yet: ');
+            //                 console.debug(lr.lazyLoadedObj);
+            //                 console.groupEnd();
+            //             }
+            //             let literalLazyObj: any = response.body;
+            //             //literal.result
+            //             if (genericNode.gType !== LazyRefMTO) {
+            //                 throw new Error('Wrong type: ' + genericNode.gType.name);
+            //             }
+            //             let lazyLoadedObjType: Type<any> = null;
+            //             if (genericNode.gParams[0] instanceof GenericNode) {
+            //                 lazyLoadedObjType = (<GenericNode>genericNode.gParams[0]).gType;
+            //             } else {
+            //                 lazyLoadedObjType = <Type<any>>genericNode.gParams[0];
+            //             }
+            //             if (this.isCollection(lazyLoadedObjType)) {
+            //                 if (!(genericNode.gParams[0] instanceof GenericNode) || (<GenericNode>genericNode.gParams[0]).gParams.length <=0) {
+            //                     throw new Error('LazyRef not defined: \'' + refererKey + '\' em ' + refererObj.constructor.name);
+            //                 }
+            //                 if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            //                     console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is collection: ' + lazyLoadedObjType.name);
+            //                 }
+            //                 let collTypeParam: Type<any> =  null;
+            //                 if ((<GenericNode>genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
+            //                     collTypeParam = (<GenericNode>(<GenericNode>genericNode.gParams[0]).gParams[0]).gType;
+            //                 } else {
+            //                     collTypeParam = <Type<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
+            //                 }
+            //                 if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            //                     console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is collection of: ' + collTypeParam.name);
+            //                 }
 
-                            lr.lazyLoadedObj = this.createCollection(lazyLoadedObjType, refererObj, refererKey);
-                            for (const literalItem of literalLazyObj.result) {
-                                // let realItem = new collTypeParam();
-                                // _.set(realItem, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-                                // this.removeNonUsedKeysFromLiteral(realItem, literalItem);
-                                // _.set(realItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
-                                // try {
-                                //     _.mergeWith(realItem, literalItem, this.mergeWithCustomizerPropertyReplection(refMap));
-                                // } finally {
-                                //     _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
-                                // }                                
-                                let realItem = this.processJsHbResultEntityPriv(collTypeParam, literalItem, refMap);
+            //                 lr.lazyLoadedObj = this.createCollection(lazyLoadedObjType, refererObj, refererKey);
+            //                 for (const literalItem of literalLazyObj.result) {
+            //                     // let realItem = new collTypeParam();
+            //                     // lodashSet(realItem, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+            //                     // this.removeNonUsedKeysFromLiteral(realItem, literalItem);
+            //                     // lodashSet(realItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            //                     // try {
+            //                     //     lodashMergeWith(realItem, literalItem, this.mergeWithCustomizerPropertyReplection(refMap));
+            //                     // } finally {
+            //                     //     lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+            //                     // }                                
+            //                     let realItem = this.processJsHbResultEntityPriv(collTypeParam, literalItem, refMap);
 
-                                this.addOnCollection(lazyLoadedObjType, lr.lazyLoadedObj, realItem);
-                            }
-                        } else {
-                            // lr.lazyLoadedObj = new lazyLoadedObjType();
-                            // if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            //     console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is not collection: ' + lazyLoadedObjType.name);
-                            // }
-                            // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-                            // this.removeNonUsedKeysFromLiteral(lr.lazyLoadedObj, literalLazyObj.result);
-                            // _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
-                            // try {
-                            //     _.mergeWith(lr.lazyLoadedObj, literalLazyObj.result, this.mergeWithCustomizerPropertyReplection(refMapFlatMapCallback));            
-                            // } finally {
-                            //     _.set(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
-                            // }
-                            lr.lazyLoadedObj = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj.result, refMap);
-                            //foi a unica forma que encontrei de desacoplar o Observable<L> do Observable<Response>
-                            // O efeito colateral disso eh que qualquer *Map() chamado antes dessa troca fica
-                            // desatachado do novo Observable.
-                        }
-                    }
-                    if (lr.signatureStr) {                        
-                        if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
-                            console.group('createNotLoadedLazyRef => lr.flatMapCallback: keeping reference by signature ' + lr.signatureStr);
-                            console.debug(lr.lazyLoadedObj);
-                            console.groupEnd();
-                        }
-                        this.tryCacheInstanceBySignature(lr.lazyLoadedObj, literalLazyObj);
-                        // this._objectsBySignature.set(lr.signatureStr, lr.lazyLoadedObj);
-                    }
-                    return Observable.of(lr.lazyLoadedObj);
-                };
+            //                     this.addOnCollection(lr.lazyLoadedObj, realItem);
+            //                 }
+            //             } else {
+            //                 // lr.lazyLoadedObj = new lazyLoadedObjType();
+            //                 // if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            //                 //     console.debug('createNotLoadedLazyRef => lr.flatMapCallback: LazyRef is not collection: ' + lazyLoadedObjType.name);
+            //                 // }
+            //                 // lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+            //                 // this.removeNonUsedKeysFromLiteral(lr.lazyLoadedObj, literalLazyObj.result);
+            //                 // lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            //                 // try {
+            //                 //     lodashMergeWith(lr.lazyLoadedObj, literalLazyObj.result, this.mergeWithCustomizerPropertyReplection(refMapFlatMapCallback));            
+            //                 // } finally {
+            //                 //     lodashSet(lr.lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+            //                 // }
+            //                 lr.lazyLoadedObj = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj.result, refMap);
+            //                 let persistentOriginalValueItem: PersistentOriginalValueEntry;
+            //                 //foi a unica forma que encontrei de desacoplar o Observable<L> do Observable<Response>
+            //                 // O efeito colateral disso eh que qualquer *Map() chamado antes dessa troca fica
+            //                 // desatachado do novo Observable.
+            //             }
+            //         }
+            //         if (lr.signatureStr) {
+            //             if (!this.isOnRestoreEntireStateFromLiteral()) {
+            //                 if (!lodashHas(lr.refererObj, this.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+            //                     throw new Error('The referer object has no '+ this.jsHbManager.jsHbConfig.jsHbSignatureName + ' key. This should not happen.');
+            //                 }
+            //                 let ownerSignatureStr = lodashGet(lr.refererObj, this.jsHbManager.jsHbConfig.jsHbSignatureName);
+            //                 this.storeOriginalLiteralResult(
+            //                     {
+            //                         method: 'lazyRef',
+            //                         literalValue: literalLazyObj,
+            //                         ownerSignatureStr: ownerSignatureStr,
+            //                         ownerFieldName: lr.refererKey
+            //                     }
+            //                 );
+            //             }
+            //             if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
+            //                 console.group('createNotLoadedLazyRef => lr.flatMapCallback: keeping reference by signature ' + lr.signatureStr);
+            //                 console.debug(lr.lazyLoadedObj);
+            //                 console.groupEnd();
+            //             }
+            //             this.tryCacheInstanceBySignature(lr.lazyLoadedObj, literalLazyObj);
+            //             // this._objectsBySignature.set(lr.signatureStr, lr.lazyLoadedObj);
+            //         }
+            //         return of(lr.lazyLoadedObj);
+            //     };
         }
         return lr;
     }
 
-    private tryGetFromObjectsBySignature<L, I>(lr: LazyRefBase<L, I>, genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>) {
-        let signatureStr: String = <String>_.get(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbSignatureName);
+    private tryGetFromObjectsBySignature<L extends object, I>(lr: LazyRefBase<L, I>, literalLazyObj: any) {
+        let signatureStr: string = <string>lodashGet(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbSignatureName);
 
         let entityValue: any = null;
         if (signatureStr) {
             lr.signatureStr = signatureStr;
             entityValue = this._objectsBySignature.get(signatureStr);
         } else {
-            let originalObs: Observable<Response> = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(signatureStr);
         }
 
         if (entityValue) {
@@ -602,8 +1051,8 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private createApropriatedLazyRefBase<L, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): LazyRefBase<L, I> {
-        let jsHbHibernateIdLiteral: any = _.get(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbHibernateIdName);
+    public createApropriatedLazyRefBase<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string): LazyRefBase<L, I> {
+        let jsHbHibernateIdLiteral: any = lodashGet(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbHibernateIdName);
         let lazyRef: LazyRefBase<L, any> = null;
         if (jsHbHibernateIdLiteral) {
             lazyRef = new LazyRefBase<L, I>();
@@ -613,13 +1062,14 @@ export class JsHbSessionDefault implements IJsHbSession {
         lazyRef.refererObj = refererObj;
         lazyRef.refererKey = refererKey;
         lazyRef.session = this;
+        lazyRef.genericNode = genericNode;
         return lazyRef;
     }
 
-    private metadaKeys: Set<String>;
-    private isMetadataKey(keyName: String): boolean {
+    private metadaKeys: Set<string>;
+    private isMetadataKey(keyName: string): boolean {
         if (this.metadaKeys == null) {
-            this.metadaKeys = new Set<String>()
+            this.metadaKeys = new Set<string>()
                 .add(this.jsHbManager.jsHbConfig.jsHbHibernateIdName)
                 .add(this.jsHbManager.jsHbConfig.jsHbIdName)
                 .add(this.jsHbManager.jsHbConfig.jsHbIdRefName)
@@ -629,8 +1079,8 @@ export class JsHbSessionDefault implements IJsHbSession {
         return this.metadaKeys.has(keyName);
     }
 
-    private removeNonUsedKeysFromLiteral<L>(realObj: L, literalObj: any) {
-        let literalKeys: string[] = _.clone(_.keys(literalObj));
+    private removeNonUsedKeysFromLiteral<L extends object>(realObj: L, literalObj: any) {
+        let literalKeys: string[] = lodashClone(lodashKeys(literalObj));
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(realObj));
         for (let index = 0; index < literalKeys.length; index++) {
             const keyItem = literalKeys[index];
@@ -640,8 +1090,8 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private trySetHibernateIdentifier<L, I>(lr: LazyRefBase<L, I>, genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>): void {
-        let jsHbHibernateIdLiteral: any = _.get(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbHibernateIdName);
+    private trySetHibernateIdentifier<L extends object, I>(lr: LazyRefBase<L, I>, genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>): void {
+        let jsHbHibernateIdLiteral: any = lodashGet(literalLazyObj, this.jsHbManager.jsHbConfig.jsHbHibernateIdName);
         if (jsHbHibernateIdLiteral instanceof Object && !(jsHbHibernateIdLiteral instanceof Date)) {
             let hbIdType: Type<any> = null;
             if (genericNode.gParams[1] instanceof GenericNode) {
@@ -657,9 +1107,9 @@ export class JsHbSessionDefault implements IJsHbSession {
                 }
                 this.validatingControlFieldsExistence(hbIdType);
                 // lr.hbId = new hbIdType();
-                // _.set(lr.hbId, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+                // lodashSet(lr.hbId, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
                 // this.removeNonUsedKeysFromLiteral(lr.hbId, jsHbHibernateIdLiteral);
-                // _.mergeWith(lr.hbId, jsHbHibernateIdLiteral, this.mergeWithCustomizerPropertyReplection(refMap));
+                // lodashMergeWith(lr.hbId, jsHbHibernateIdLiteral, this.mergeWithCustomizerPropertyReplection(refMap));
                 lr.hbId = this.processJsHbResultEntityPriv(hbIdType, jsHbHibernateIdLiteral, refMap);
             } else {
                 if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
@@ -684,7 +1134,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private createCollection(collType: Type<any>, refererObj: any, refererKey: string): any {
+    public createCollection(collType: Type<any>, refererObj: any, refererKey: string): any {
         if (collType === Set) {
             //return new JsHbSet(this, refererObj, refererKey);
             return new JsHbSetCreator(this, refererObj, refererKey).createByProxy();
@@ -693,16 +1143,25 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private isCollection(typeTested: Type<any>): any {
+    public isCollection(typeTested: Type<any>): any {
         return (typeTested === Array)
                 || (typeTested === Set);
     }
 
-    private addOnCollection(collType: Type<any>, collection: any, element: any) {
+    public addOnCollection(collection: any, element: any) {
         if (collection instanceof Array) {
-            (<Array<any>>collection).push(element);
+            throw new Error('Colecction nao suportada: ' + (collection as any).prototype);
         } else if (collection instanceof Set){
             (<Set<any>>collection).add(element);
+        } else {
+            throw new Error('Colecction nao suportada: ' + collection.prototype);
+        }
+    }
+    public removeFromCollection(collection: any, element: any) {
+        if (collection instanceof Array) {
+            throw new Error('Colecction nao suportada: ' + (collection as any).prototype);
+        } else if (collection instanceof Set){
+            (<Set<any>>collection).delete(element);
         } else {
             throw new Error('Colecction nao suportada: ' + collection.prototype);
         }
@@ -735,7 +1194,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                 isHibernateComponent = true;
             }
             let correctSrcValue = srcValue;
-            let jsHbIdRef: Number = <Number>_.get(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIdRefName);
+            let jsHbIdRef: Number = <Number>lodashGet(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIdRefName);
             if (jsHbIdRef) {
                 correctSrcValue = refMap.get(jsHbIdRef);
                 if (!correctSrcValue) {
@@ -753,13 +1212,13 @@ export class JsHbSessionDefault implements IJsHbSession {
                     console.groupEnd();
                 }
                 // correctSrcValue = new prpType(); 
-                // _.set(correctSrcValue, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
-                // _.set(correctSrcValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                // lodashSet(correctSrcValue, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, this);
+                // lodashSet(correctSrcValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 // this.removeNonUsedKeysFromLiteral(correctSrcValue, srcValue);
                 // try {
-                //     _.mergeWith(correctSrcValue, srcValue, this.mergeWithCustomizerPropertyReplection(refMap));
+                //     lodashMergeWith(correctSrcValue, srcValue, this.mergeWithCustomizerPropertyReplection(refMap));
                 // } finally {
-                //     _.set(correctSrcValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                //     lodashSet(correctSrcValue, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 // }
                 correctSrcValue = thisLocal.processJsHbResultEntityPriv(prpType, srcValue, refMap);
 
@@ -777,28 +1236,28 @@ export class JsHbSessionDefault implements IJsHbSession {
                             let arrItemType: Type<any> = <Type<any>>prpGenType.gParams[0];
                             // let correctSrcValueCollItem = arrItemType;
                             // thisLocal.removeNonUsedKeysFromLiteral(correctSrcValueCollItem, srcValue);
-                            // _.set(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, thisLocal);
-                            // _.set(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                            // lodashSet(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME, thisLocal);
+                            // lodashSet(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                             // try {
-                            //     _.mergeWith(correctSrcValueCollItem, srcValue[index], thisLocal.mergeWithCustomizerPropertyReplection(refMap));
+                            //     lodashMergeWith(correctSrcValueCollItem, srcValue[index], thisLocal.mergeWithCustomizerPropertyReplection(refMap));
                             // } finally {
-                            //     _.set(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                            //     lodashSet(correctSrcValueCollItem, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                             // }
                             let correctSrcValueCollItem = thisLocal.processJsHbResultEntityPriv(arrItemType, srcValue[index], refMap);
 
-                            thisLocal.addOnCollection(prpGenType.gType, correctSrcValueColl, correctSrcValueCollItem);
+                            thisLocal.addOnCollection(correctSrcValueColl, correctSrcValueCollItem);
                         }
                         correctSrcValue = correctSrcValueColl;
                         //nada por enquanto
                     } else if (prpGenType.gType === LazyRefMTO) {
-                        // if (!_.has(source, thisLocal.jsHbManager.jsHbConfig.jsHbIsLazyUninitializedName)) {
+                        // if (!lodashHas(source, thisLocal.jsHbManager.jsHbConfig.jsHbIsLazyUninitializedName)) {
                         //     throw new Error('Aqui deveria existir \'' + thisLocal.jsHbManager.jsHbConfig.jsHbIsLazyUninitializedName + '\'. ' + JSON.stringify(srcValue));
                         // }
-                        if (!_.has(source, thisLocal.jsHbManager.jsHbConfig.jsHbIdName)) {
+                        if (!lodashHas(source, thisLocal.jsHbManager.jsHbConfig.jsHbIdName)) {
                             throw new Error('Aqui deveria existir \'' + thisLocal.jsHbManager.jsHbConfig.jsHbIdName + '\'. ' + JSON.stringify(srcValue));
                         }
-                        let refId: Number = <Number>_.get(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIdName);
-                        if (_.get(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIsLazyUninitializedName)) {
+                        let refId: Number = <Number>lodashGet(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIdName);
+                        if (lodashGet(srcValue, thisLocal.jsHbManager.jsHbConfig.jsHbIsLazyUninitializedName)) {
                             let lazyRef: LazyRefMTO<any, any> = thisLocal.createNotLoadedLazyRef(prpGenType, srcValue, refMap, object, key);
                             //there is no refId when 'jsHbIsLazyUninitialized'
                             //refMap.set(refId, lazyRef);
@@ -818,9 +1277,9 @@ export class JsHbSessionDefault implements IJsHbSession {
                         console.groupEnd();
                     }
                 }
-            } else if (_.has(object, key)) {
+            } else if (lodashHas(object, key)) {
                 throw new Error('Sem anotacao de tipo. key: ' + key + ', ' + value);
-            } else if (!_.has(object, key) && !thisLocal.isMetadataKey(key)) {
+            } else if (!lodashHas(object, key) && !thisLocal.isMetadataKey(key)) {
                 if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
                     console.debug('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
                 }
