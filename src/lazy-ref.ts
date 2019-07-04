@@ -10,15 +10,37 @@ import { flatMap } from 'rxjs/operators';
 import { HttpResponse } from '@angular/common/http';
 
 /**
- * Many-to-one
- *
- * @export
- * @class LazyRefMTO
- * @extends {Subject<L>}
- * @template L
- * @template I
+ * Base class to use as marker for {@link reflect-metadata#Reflect.metadata} with 
+ * {@link ./generic-tokenizer#GenericTokenizer GenericTokenizer}.
+ * 
+ * Do not use this as the field type, use {@link LazyRefMTO} or {@link LazyRefOTM}.
+ * Use this as 'interface like' to do your own implementation if you need! 
+ * See {@link IJsHbSession#createApropriatedLazyRef}
+ * 
+ * Code sample:
+ * ```ts
+   ...
+   private _myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>>;
+   @NgJsHbDecorators.property()
+   @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(MyChildEntity).gt().gt().tree))
+   public get myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>> {
+     return this._myChildEntitiesSet;
+   }
+   ...
+ * ```
+ * or
+ * ```ts
+   ...
+   private _myParentEntity(): LazyRefMTO<MyParentEntity, Number>;
+   @NgJsHbDecorators.property()
+   @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MyParentEntity).comma().tp(Number).gt().tree))
+   public get myParentEntity(): LazyRefMTO<MyParentEntity, Number> {
+     return this._myParentEntity;
+   }
+   ...
+ * ```
  */
-export class LazyRefMTO<L extends object, I> extends Subject<L> {
+export class LazyRef<L extends object, I> extends Subject<L> {
     /**
      * Alternative to instance of.
      */
@@ -44,64 +66,86 @@ export class LazyRefMTO<L extends object, I> extends Subject<L> {
      */
     subscribeToChange(observer?: PartialObserver<L>): void;
     subscribeToChange(next?: (value: L) => void, error?: (error: any) => void, complete?: () => void): void;
-    subscribeToChange(): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); }
+    subscribeToChange(): void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); }
     /**
      * TODO:
      * @param lazyLoadedObj 
      */
-    setLazyObj(lazyLoadedObj: L): void { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    setLazyObj(lazyLoadedObj: L): void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /**
      * true if it is lazy loaded.
-     *
-     * @returns {boolean}
-     * @memberof LazyRefMTO
+     * @returns true if it is lazy loaded.
      */
-    isLazyLoaded(): boolean { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    isLazyLoaded(): boolean { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
-    processResponse(responselike: { body: any }): L { throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!'); };
+    processResponse(responselike: { body: any }): L { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
     get genericNode(): GenericNode {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
     set genericNode(value: GenericNode) {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public get refererObj(): any {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public set refererObj(value: any) {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public get refererKey(): string {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public set refererKey(value: string) {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public get session(): IJsHbSession {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
 	public set session(value: IJsHbSession) {
-		throw new Error('LazyRefMTO is not the real implementation base, use LazyRefBase!');
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
+    }
+    /** Framework internal use. */
+	public get lazyLoadedObj(): L {
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
+    }
+    /** Framework internal use. */
+	public set lazyLoadedObj(value: L) {
+		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
+    }
+    /** Framework internal use. */
+    public get respObs(): Observable<HttpResponse<Object>> {
+        throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
+    }
+    /** Framework internal use. */
+    public set respObs(value: Observable<HttpResponse<Object>>) {
+        throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
 }
 
 /**
- * One-to-one.
+ * One-to-one.  
+ * See {@link LazyRef}
  */
-export declare type LazyRefOTM<L extends object> = LazyRefMTO<L, undefined>;
+export declare type LazyRefOTM<L extends object> = LazyRef<L, undefined>;
 
 /**
- * 
+ * One-to-one.  
+ * See {@link LazyRef}
  */
-export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
+export declare type LazyRefMTO<L extends object, I> = LazyRef<L, I>;
+
+/**
+ * Default implementation!  
+ * See {@link LazyRef}
+ */
+export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     private _hbId: I;
     private _lazyLoadedObj: L;
     private _genericNode: GenericNode;
@@ -143,7 +187,7 @@ export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
         if (prpGenType == null) {
             throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' is not decorated with com \'@Reflect.metadata("design:generics", GenericTokenizer\'...');
         }
-        if (prpGenType.gType !== LazyRefMTO) {
+        if (prpGenType.gType !== LazyRef) {
             throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' is not LazyRef');
         }
         let lazyRefGenericParam: Type<any> = null;
@@ -325,7 +369,7 @@ export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
                 console.groupEnd();
             }
             //literal.result
-            if (this.genericNode.gType !== LazyRefMTO) {
+            if (this.genericNode.gType !== LazyRef) {
                 throw new Error('Wrong type: ' + this.genericNode.gType.name);
             }
             let lazyLoadedObjType: Type<any> = null;
@@ -480,9 +524,6 @@ export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
     public get signatureStr(): string {
         return this._signatureStr;
     }
-    public get respObs(): Observable<HttpResponse<Object>> {
-        return this._respObs;
-    }
     public set hbId(value: I) {
         this._hbId = value;
     }
@@ -491,6 +532,9 @@ export class LazyRefBase<L extends object, I> extends LazyRefMTO<L, I> {
     }
     public set signatureStr(value: string) {
         this._signatureStr = value;
+    }
+    public get respObs(): Observable<HttpResponse<Object>> {
+        return this._respObs;
     }
     public set respObs(value: Observable<HttpResponse<Object>>) {
         this._respObs = value;
