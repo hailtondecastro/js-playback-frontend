@@ -126,16 +126,16 @@ export namespace NgJsHbDecorators {
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = JsHbPlaybackActionType.SetField;
                                     let allMD = session.resolveMetadatas({object: this});
-                                    let backendMetadatas = allMD.objectMD;
+                                    let bMd = allMD.objectMd;
                                     // let backendMetadatas: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                                     // if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                                     //     backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
                                     // }
 
                                     //if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                    if (backendMetadatas.$signature$) {
+                                    if (bMd.$signature$) {
                                         //action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                                        action.ownerSignatureStr = backendMetadatas.$signature$;
+                                        action.ownerSignatureStr = bMd.$signature$;
                                     } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                         action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
@@ -145,17 +145,17 @@ export namespace NgJsHbDecorators {
             
                                     if (value != null && value != undefined) {
                                         let allMD = session.resolveMetadatas({object: value});
-                                        let backendMetadatasValue = allMD.objectMD;
+                                        let bMdValue = allMD.objectMd;
                                         // let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                                         // if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                                         //     backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
                                         // }
 
                                         //if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                        if (backendMetadatasValue.$signature$) {
+                                        if (bMdValue.$signature$) {
                                             // tslint:disable-next-line:max-line-length
                                             //action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                                            action.settedSignatureStr = backendMetadatasValue.$signature$;
+                                            action.settedSignatureStr = bMdValue.$signature$;
                                         } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                             // tslint:disable-next-line:max-line-length
                                             action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;

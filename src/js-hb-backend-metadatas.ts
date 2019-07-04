@@ -1,5 +1,5 @@
 export interface JsHbBackendMetadatas {
-    $iAmJsHbBackendMetadatas$: boolean;
+    $iAmJsHbBackendMetadatas$: true;
     $id$?: number;
 	$idRef$?: number;
 	$signature$?: string;
