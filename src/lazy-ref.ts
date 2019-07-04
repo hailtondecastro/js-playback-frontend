@@ -9,6 +9,7 @@ import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap } from 'rxjs/operators';
 import { HttpResponse } from '@angular/common/http';
 import { JsHbContants } from './js-hb-constants';
+import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 
 /**
  * Base class to use as marker for {@link reflect-metadata#Reflect.metadata} with 
@@ -240,8 +241,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     public notifyModification(lazyLoadedObj: L) : void {
         this.notificationCount++;
         let currentLazyRefNotificationTimeMeasurement = Date.now() - this.notificationStartTime;
-        if (currentLazyRefNotificationTimeMeasurement > this.session.jsHbManager.jsHbConfig.lazyRefNotificationTimeMeasurement) {
+        if (currentLazyRefNotificationTimeMeasurement > this.session.jsHbManager.jsHbConfig.lazyRefNotificationTimeMeasurement 
+                ||this.notificationCount > this.session.jsHbManager.jsHbConfig.lazyRefNotificationCountMeasurement) {
             let speedPerSecond = (this.notificationCount / currentLazyRefNotificationTimeMeasurement) * 1000;
+            this.notificationStartTime = Date.now();
+            this.notificationCount = 0;
             if (speedPerSecond > this.session.jsHbManager.jsHbConfig.maxLazyRefNotificationPerSecond) {
                 throw new Error('Max notications per second exceded: ' +
                     speedPerSecond + '. Are you modifing any persistent '+
@@ -252,8 +256,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     ', misconfigured? Me:\n' +
                     this);
             }
-            this.notificationStartTime = Date.now();
-            this.notificationCount = 0;
         }
         this.next(lazyLoadedObj);
     }
@@ -307,21 +309,34 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     console.groupEnd();
                 }
 
+                let backendMetadatasRefererObj: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                    backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                }
+                let backendMetadatasLazyLoadedObj: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                if (lazyLoadedObj && lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                    backendMetadatasLazyLoadedObj = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                }
+
                 //recording playback
                 let action: JsHbPlaybackAction = new JsHbPlaybackAction();
                 action.fieldName = this.refererKey;
                 action.actionType = JsHbPlaybackActionType.SetField;
-                if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                //if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                if (backendMetadatasRefererObj.signature) {
+                    //action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                    action.ownerSignatureStr = backendMetadatasRefererObj.signature;
                 } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                     action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
-                } else if (!this._isOnLazyLoading) {
+                } else if (!this._isOnLazyLoading && !backendMetadatasRefererObj.isComponentHibernateId) {
                     throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner. Me:\n' + this);
                 }
 
                 if (lazyLoadedObj != null) {
-                    if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                        action.settedSignatureStr = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                    //if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                    if (backendMetadatasLazyLoadedObj.signature) {
+                        //action.settedSignatureStr = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                        action.settedSignatureStr = backendMetadatasLazyLoadedObj.signature;
                     } else if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                         action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                     } else if (!this._isOnLazyLoading) {
@@ -494,6 +509,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     public processResponse(responselike: { body: any }): L {
         let literalJsHbResult: {result: any};
         let isLazyRefOfCollection = false;
+        let backendMetadatasRefererObj: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+        if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+            backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+        }
+
         if (this.lazyLoadedObj == null) {
             literalJsHbResult = responselike.body;
             if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
@@ -544,25 +564,28 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         }
         if (this.signatureStr) {
             if (!this.session.isOnRestoreEntireStateFromLiteral()) {
-                if (!lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    throw new Error('The referer object has no '+ this.session.jsHbManager.jsHbConfig.jsHbSignatureName + ' key. This should not happen. Me:\n' + this);
+                //if (!lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                if (!backendMetadatasRefererObj.signature && !backendMetadatasRefererObj.isComponentHibernateId) {
+                    throw new Error('The referer object has no backendMetadatasRefererObj.signature. This should not happen. Me:\n' + this);
                 } else {
                     //this.refererObj is a component.
                     if (isLazyRefOfCollection) {
 
                     }
                 }
-                let ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName);
-                if (!ownerSignatureStr) {
+                //let ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName);
+                //if (!ownerSignatureStr) {
+                if (!backendMetadatasRefererObj.signature) {
                     if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: (!ownerSignatureStr): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
+                        console.debug('LazyRefBase.processResponse: (!backendMetadatasRefererObj.signature): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
                     }
                 }
                 let thisLocal = this;
                 this.session.storeOriginalLiteralEntry(
                     {
                         method: 'lazyRef',
-                        ownerSignatureStr: ownerSignatureStr,
+                        //ownerSignatureStr: ownerSignatureStr,
+                        ownerSignatureStr: backendMetadatasRefererObj.signature,
                         ownerFieldName: this.refererKey,
                         literalJsHbResult: literalJsHbResult,
                         ref: {
