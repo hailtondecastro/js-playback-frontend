@@ -74,28 +74,24 @@ export namespace JsHbForNodeTest {
         }
         newCacheHandler.putOnCache = (cacheKey, stream) => {
             newCacheHandler.callback('putOnCache', cacheKey, stream);
-            return JsHbForNodeTest.CacheHandlerSync.putOnCache(cacheKey, stream);
+            return cacheHandler.putOnCache(cacheKey, stream);
         }
         newCacheHandler.clearCache = () => {
             newCacheHandler.callback('clearCache');
-            return JsHbForNodeTest.CacheHandlerSync.clearCache();
+            return cacheHandler.clearCache();
         }
         newCacheHandler.getFromCache = (cacheKey) => {
-            return JsHbForNodeTest.CacheHandlerSync.getFromCache(cacheKey)
-                .pipe(
-                    map((stream) => {
-                        newCacheHandler.callback('getFromCache', cacheKey);
-                        return stream;
-                    })
-                );
+            newCacheHandler.callback('getFromCache', cacheKey);
+            return cacheHandler.getFromCache(cacheKey);
         }
         newCacheHandler.removeFromCache = (cacheKey) => {
             newCacheHandler.callback('removeFromCache', cacheKey);
-            return JsHbForNodeTest.CacheHandlerSync.removeFromCache(cacheKey);
+            return cacheHandler.removeFromCache(cacheKey);
         }   
 
         return newCacheHandler;
     }
+
     export const BufferSyncProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {

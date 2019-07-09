@@ -25,6 +25,7 @@ import * as fs from 'fs';
 import { ResponseLike } from '../src/js-hb-http-lazy-observable-gen';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
 import { StringStream } from '../src/lazy-ref';
+import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
 
 
@@ -424,10 +425,48 @@ import { StringStream } from '../src/lazy-ref';
             // //output: 'This will Error'
             // const subscribe = example.subscribe(val => console.log(val));
 
+            let obs1$ = of('obs1$').pipe(delay(10));
+            let obs2$ = of('obs1$').pipe(delay(10));
+
+            obs1$ = obs1$
+                .pipe(
+                    mapJustOnceRxOpr((value) => {
+                        console.log('obs1$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            obs1$ = obs1$
+                .pipe(
+                    flatMapJustOnceRxOpr((value) => {
+                        console.log('obs1$.pipe() => flatMap(): ' + value);
+                        return of(value);
+                    })
+                );
+
+            obs2$ = obs2$
+                .pipe(
+                    mapJustOnceRxOpr((value) => {
+                        console.log('obs2$.pipe() => map(): ' + value);
+                        return value;
+                    })
+                );
+
+            let obs3$ = combineLatest(obs1$, obs2$);
+
+            obs3$.subscribe((values) => {
+                console.log("obs3$.subscribe 1o: " + values);
+            });
+
+            obs3$.subscribe((values) => {
+                console.log("obs3$.subscribe 2o: " + values);
+            })
+
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IJsHbSession;
             let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
+                .configLogLevel(JsHbLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
 
@@ -521,7 +560,7 @@ import { StringStream } from '../src/lazy-ref';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let streamReadCount = 1;
+            let streamReadCount = 3;
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
@@ -559,59 +598,59 @@ import { StringStream } from '../src/lazy-ref';
                             }
                         );
             
-                        masterA.blobLazyB.subscribe( 
-                            {
-                                next: (valueStream) => {
-                                    asyncCount++;
-                                    let w = new memStreams.WritableStream();
-                                    let result = '';
-                                    (valueStream as Readable).on('data', (chunk) => {
-                                        result = chunk.toString();
-                                        chai.expect(result)
-                                            .to.satisfy(
-                                                (resultB: string) => {
-                                                    return resultB
-                                                        .startsWith('MasterAEnt_REG01_BlobLazyBMasterAEnt_'+
-                                                            'REG01_BlobLazyBMaster');
-                                                }
-                                            );
-                                        if (--streamReadCount === 0) {
-                                            setTimeout(() => {allStreamReadedSub.next(null);});
-                                        } else if (streamReadCount < 0) {
-                                            throw new Error('Invalid streamReadCount' + streamReadCount);
-                                        }
-                                    });
-                                },
-                                complete: () => {
-                                }
-                            }
-                        );
+                        // masterA.blobLazyB.subscribe( 
+                        //     {
+                        //         next: (valueStream) => {
+                        //             asyncCount++;
+                        //             let w = new memStreams.WritableStream();
+                        //             let result = '';
+                        //             (valueStream as Readable).on('data', (chunk) => {
+                        //                 result = chunk.toString();
+                        //                 chai.expect(result)
+                        //                     .to.satisfy(
+                        //                         (resultB: string) => {
+                        //                             return resultB
+                        //                                 .startsWith('MasterAEnt_REG01_BlobLazyBMasterAEnt_'+
+                        //                                     'REG01_BlobLazyBMaster');
+                        //                         }
+                        //                     );
+                        //                 if (--streamReadCount === 0) {
+                        //                     setTimeout(() => {allStreamReadedSub.next(null);});
+                        //                 } else if (streamReadCount < 0) {
+                        //                     throw new Error('Invalid streamReadCount' + streamReadCount);
+                        //                 }
+                        //             });
+                        //         },
+                        //         complete: () => {
+                        //         }
+                        //     }
+                        // );
             
-                        masterA.clobLazyA.subscribe( 
-                            {
-                                next: (value) => {
-                                    asyncCount++;
-                                    value.on('data', (chunk) => {
-                                        asyncCount++;
-                                        chai.expect(chunk)
-                                            .to.satisfy(
-                                                (chunk2: string) => {
-                                                    return chunk2
-                                                        .startsWith('MasterAEnt_REG01_ClobLazyBMasterAEnt_REG01_'+
-                                                            'ClobLazyBMasterAEnt_REG01_ClobLazyBMasterA');
-                                                }
-                                            );
-                                        if (--streamReadCount === 0) {
-                                            setTimeout(() => {allStreamReadedSub.next(null);});
-                                        } else if (streamReadCount < 0) {
-                                            throw new Error('Invalid streamReadCount' + streamReadCount);
-                                        }
-                                    });
-                                },
-                                complete: () => {
-                                }
-                            }
-                        );
+                        // masterA.clobLazyA.subscribe( 
+                        //     {
+                        //         next: (value) => {
+                        //             asyncCount++;
+                        //             value.on('data', (chunk) => {
+                        //                 asyncCount++;
+                        //                 chai.expect(chunk)
+                        //                     .to.satisfy(
+                        //                         (chunk2: string) => {
+                        //                             return chunk2
+                        //                                 .startsWith('MasterAEnt_REG01_ClobLazyBMasterAEnt_REG01_'+
+                        //                                     'ClobLazyBMasterAEnt_REG01_ClobLazyBMasterA');
+                        //                         }
+                        //                     );
+                        //                 if (--streamReadCount === 0) {
+                        //                     setTimeout(() => {allStreamReadedSub.next(null);});
+                        //                 } else if (streamReadCount < 0) {
+                        //                     throw new Error('Invalid streamReadCount: ' + streamReadCount);
+                        //                 }
+                        //             });
+                        //         },
+                        //         complete: () => {
+                        //         }
+                        //     }
+                        // );
             
                         jsHbSession.jsHbManager.jsHbConfig.cacheHandler.clearCache();
                     }
@@ -621,9 +660,9 @@ import { StringStream } from '../src/lazy-ref';
             combineLatest(
                 jsHbSession.createAsyncTasksWaiting(),
                 allStreamReaded$)
-                .subscribe(() => {
-                    chai.expect(asyncCount).to.eq(12, 'asyncCount');
-                    done();
+                    .subscribe(() => {
+                        chai.expect(asyncCount).to.eq(12, 'asyncCount');
+                        done();
                 });
         });
     });

@@ -4,7 +4,7 @@ import { IJsHbManager, JsHbManagerDefault } from './js-hb-manager';
 import { Type } from '@angular/core';
 import { catchError, map, flatMap, delay, finalize, mapTo } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
-import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe } from 'rxjs';
+import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe, PartialObserver, ObservableInput } from 'rxjs';
 import { JsHbContants } from './js-hb-constants';
 import { JsHbPlayback } from './js-hb-playback';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
@@ -113,7 +113,13 @@ export interface IJsHbSession {
     /** Framework internal use. */
     isOnRestoreEntireStateFromLiteral(): boolean;
     /** Framework internal use. */
-    keepAllFlagsRxOpr<T, A>(lazyLoadedObj: any, mapCallback: (srcValue: T) => A): OperatorFunction<T, A>;
+    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
     //keepAllFlagsRxOpr<T, A>(lazyLoadedObj: any, originalOp: OperatorFunction<T, A>): OperatorFunction<T, A>;
     // /** Framework internal use. */
     // keepIsOnRestoreRxOpr<T, A>(originalOp: OperatorFunction<T, A>): OperatorFunction<T, A>;
@@ -237,10 +243,17 @@ export interface IJsHbSession {
     /** Framework internal use. */
     fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>;
     
-    // /** Framework internal use. All framework internal subscribe() is stored here.*/
+    // /** Framework internal use. All internal subscribe() is stored here.*/
     // addSubscribedObservableForWaiting<T>(obs: Observable<T>): Observable<T>;
+
+    logAllSourceStackRxOpr<T>(): OperatorFunction<T, T>;
+    // /** Framework internal use */
+    // onlyOneRunRxOpr<T>(): OperatorFunction<T, T>;
     /** Framework internal use. All framework internal subscribe() is stored here.*/
-    addSubscribedObservable<T>(): OperatorFunction<T, T>;
+    addSubscribedObsRxOpr<T>(): OperatorFunction<T, T>;
+    /** Framework internal use. This Operator replace internal subscribe call.*/
+    doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
+    doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
     /**
      * Generate an Observable for waiting all internal async task.  
      * Use it be notified about completion of all inernal async tasks.
@@ -290,7 +303,74 @@ export class JsHbSessionDefault implements IJsHbSession {
     private _sessionId: string;
     private _asyncTasksWaitingArr: Set<Observable<any>> = new Set();
 
-    addSubscribedObservable<T>(): OperatorFunction<T, T> {
+    logAllSourceStackRxOpr<T>(): OperatorFunction<T, T> {
+        let thisLocal = this;
+        const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
+            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+                (source as any).logAllSourceStackRxOprId = 'source observable ' + this.nextMultiPurposeInstanceId();
+                console.debug('logAllSourceStackRxOpr(). source Observable logAllSourceStackRxOprId: ' + (source as any).logAllSourceStackRxOprId);
+            }
+            const isDone = { value: false };
+            const result$ = source
+                .pipe(
+                    map((value) => {
+                        if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+                            let currStack;
+                            try {
+                                throw new Error('error');
+                            } catch (error) {
+                                currStack = error.stack;
+                            }                        
+                            (source as any).logAllSourceStackRxOprId = 'logAllSourceStackRxOprId' + thisLocal.nextMultiPurposeInstanceId();
+                            console.group('logAllSourceStackRxOpr() Async');
+                            console.debug('logAllSourceStackRxOpr(). source => pipe(). source Observable ' + (source as any).logAllSourceStackRxOprId);
+                            console.debug('logAllSourceStackRxOpr(). source => pipe(). result$ Observable ' + (result$ as any).logAllSourceStackRxOprId);
+                            console.debug('logAllSourceStackRxOpr(). source => pipe(). Original Stack:\n' + (result$ as any).logAllSourceStackRxOprSourceStack);
+                            console.groupEnd();
+                        }
+                        isDone.value = true;
+                        thisLocal._asyncTasksWaitingArr.delete(result$);
+                        return value;
+                    })
+                );
+            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+                try {
+                    throw new Error('error');
+                } catch (error) {
+                    (result$ as any).logAllSourceStackRxOprSourceStack = error.stack;
+                }
+                (result$ as any).logAllSourceStackRxOprId = 'result observable: ' + thisLocal.nextMultiPurposeInstanceId();
+            }
+            return result$;
+        }
+
+        return resultOpr;
+    }
+
+    private _pipedResult: Map<string, any> = new Map();
+
+    // onlyOneRunRxOpr<T>(): OperatorFunction<T, T> {
+    //     let thisLocal = this;
+    //     const pipeId = 'onlyOneRunRxOpr_pipeId_' + thisLocal.nextMultiPurposeInstanceId();
+    //     const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
+    //         const result$ = source.pipe(
+    //             map((value) => {
+    //                 thisLocal._pipedResult.set(pipeId, value);
+    //                 return value;
+    //             })
+    //         );
+
+    //         if (thisLocal._pipedResult.has(pipeId)) {
+    //             return of(thisLocal._pipedResult.get(pipeId));
+    //         } else {
+    //             return result$;
+    //         }
+    //     }
+
+    //     return resultOpr;
+    // }
+
+    addSubscribedObsRxOpr<T>(): OperatorFunction<T, T> {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
             if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
@@ -375,19 +455,38 @@ export class JsHbSessionDefault implements IJsHbSession {
     // }
 
     createAsyncTasksWaiting(): Observable<void> {
+        //FAZER LIMPEZA?!?!?!?!?!
+        let result$: Observable<void>;
         if (this._asyncTasksWaitingArr.size > 0) {
-            return combineLatest(Array.from(this._asyncTasksWaitingArr))
+            result$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
                 .pipe(
                     map((value)=>{
                         console.log('generateAsyncTasksWaiting -> map: ' + value);
                     })
                 );
         } else {
-            return of(null);
+            result$ = of(null);
         }
+
+        return result$;
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // this._asyncTasksWaitingArr.clear();
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        // result$.subscribe((result)=>{
+        //     isSynchronouslyDone.value = true;
+        //     isSynchronouslyDone.result = result;
+        // });
+
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     createSerialAsyncTasksWaiting(): Observable<void> {
+        let result$: Observable<void>;
+
         if (this._asyncTasksWaitingArr.size > 0) {
             let serialResult$: Observable<void> = of(null);
             for (const item$ of Array.from(this._asyncTasksWaitingArr)) {
@@ -397,10 +496,26 @@ export class JsHbSessionDefault implements IJsHbSession {
                     })
                 );
             }
-            return serialResult$;
+            result$ = serialResult$;
         } else {
-            return of(null);
+            result$ = of(null);
         }
+
+        return result$;
+
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // this._asyncTasksWaitingArr.clear();
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        // result$.subscribe((result)=>{
+        //     isSynchronouslyDone.value = true;
+        //     isSynchronouslyDone.result = result;
+        // });
+
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     constructor(private _jsHbManager: IJsHbManager) {
@@ -424,7 +539,7 @@ export class JsHbSessionDefault implements IJsHbSession {
 
     public generateEntireStateAsLiteral(): Observable<any> {
         const thisLocal = this;
-        return this.createAsyncTasksWaiting()
+        let createAsyncTasksWaiting$ = this.createAsyncTasksWaiting()
             .pipe(
                 map(() => {
                     let jsHbSessionState: JsHbSessionState = {
@@ -444,6 +559,18 @@ export class JsHbSessionDefault implements IJsHbSession {
                     return jsHbSessionState;
                 })
             );
+
+        const isSynchronouslyDone = { value: false };
+        // createAsyncTasksWaiting$ = createAsyncTasksWaiting$.pipe(thisLocal.addSubscribedObsRxOpr());
+        createAsyncTasksWaiting$.subscribe(() =>{
+            isSynchronouslyDone.value = true;
+        });
+
+        if (!isSynchronouslyDone.value) {
+            return createAsyncTasksWaiting$;
+        } else {
+            return of(isSynchronouslyDone.value);
+        }
     }
 
     private restoreEntireStateCallbackTemplate<R>(callback: () => R): R {
@@ -457,7 +584,7 @@ export class JsHbSessionDefault implements IJsHbSession {
 
     public restoreEntireStateFromLiteral(literalState: any): Observable<void> {
         const thisLocal = this;
-        return this.restoreEntireStateCallbackTemplate(() => {
+        let restoreEntireStateCallbackTemplate$ = this.restoreEntireStateCallbackTemplate(() => {
             let lazyRefProcessResponseArr: Observable<any>[] = [];
             let literalStateLocal: JsHbSessionState = literalState;
             thisLocal._nextCreationId = literalStateLocal.nextCreationId;
@@ -537,12 +664,31 @@ export class JsHbSessionDefault implements IJsHbSession {
             }
             // forkJoinResult$ = this.addSubscribedObservableForWaiting(forkJoinResult$);
             // combineLatest$ = combineLatest$.pipe(thisLocal.addSubscribedObservable());
+            
+            const isPipedCallbackDone = { value: false, result: null as Observable<void>};
             return combineLatest$.pipe(
                 flatMap( () => {
-                    return thisLocal.rerunByPlaybacksIgnoreCreateInstance();
+                    if (!isPipedCallbackDone.value) {
+                        isPipedCallbackDone.value = true;
+                        isPipedCallbackDone.result = thisLocal.rerunByPlaybacksIgnoreCreateInstance();
+                    }
+                    return isPipedCallbackDone.result;
                 })
              );
         });
+
+        const isSynchronouslyDone = { value: false };
+        // restoreEntireStateCallbackTemplate$ = restoreEntireStateCallbackTemplate$.pipe(thisLocal.addSubscribedObsRxOpr());
+        restoreEntireStateCallbackTemplate$.subscribe(() =>{
+            isSynchronouslyDone.value = true;
+        });
+
+        if (!isSynchronouslyDone.value) {
+            return restoreEntireStateCallbackTemplate$;
+        } else {
+            return of(null);
+        }
+        
     }
 
     public isOnRestoreEntireStateFromLiteral(): boolean {
@@ -567,30 +713,110 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    keepAllFlagsRxOpr<T, A>(lazyLoadedObj: any, mapCallback: (srcValue: T) => A): OperatorFunction<T, A> {
+    private mapKeepAllFlagsRxOprPriv<T, R>(when: 'justOnce' | 'eachPipe', lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
         const thisLocal = this;
         const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
-        let newOp: OperatorFunction<T, A> = (source) => {
+        const isPipedCallbackDone = { value: false, result: null as R};
+        let newOp: OperatorFunction<T, R> = (source) => {
+            let projectExtentend = (value: T, index: number) => {
+                if (!isPipedCallbackDone.value || when === 'eachPipe') {
+                    isPipedCallbackDone.value = true;
+
+                    const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
+                    lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                    thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
+                    try {
+                        isPipedCallbackDone.result = project(value, index);
+                    } finally {
+                        lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
+                    }
+                }
+                return isPipedCallbackDone.result;
+            }
             return source
                 .pipe(
-                    map((srcValue) => {
-                        const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
-                        const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
-                        lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
-                        thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
-                        try {
-                            return mapCallback(srcValue);
-                        } finally {
-                            lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
-                            thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
-                        }
-                    })
+                    map(projectExtentend)
                 );
         }
 
         return newOp;
     }
+
+    private flatMapKeepAllFlagsRxOprPriv<T, R>(when: 'justOnce' | 'eachPipe', lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+        const thisLocal = this;
+        const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
+        const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
+        let newOp: OperatorFunction<T, R> = (source) => {
+            let projectExtentend = (value: T, index: number) => {
+                if (!isPipedCallbackDone.value || when === 'eachPipe') {
+                    isPipedCallbackDone.value = true;
+
+                    const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
+                    lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                    thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
+                    try {
+                        isPipedCallbackDone.result = project(value, index);
+                    } finally {
+                        lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
+                    }
+                }
+                return isPipedCallbackDone.result;
+            }
+            return source
+                .pipe(
+                    flatMap(projectExtentend)
+                );
+        }
+
+        return newOp;
+    }
+
+    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+        return this.mapKeepAllFlagsRxOprPriv('justOnce', lazyLoadedObj, project);
+    }
+
+    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+        return this.mapKeepAllFlagsRxOprPriv('eachPipe', lazyLoadedObj, project);
+    }
+
+    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+        return this.flatMapKeepAllFlagsRxOprPriv('justOnce', lazyLoadedObj, project);
+    }
+
+    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+        return this.flatMapKeepAllFlagsRxOprPriv('eachPipe', lazyLoadedObj, project);
+    }
+
+    // mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+    //     const thisLocal = this;
+    //     const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+    //     const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
+    //     let newOp: OperatorFunction<T, R> = (source) => {
+    //         return source
+    //             .pipe(
+    //                 map((srcValue, index) => {
+    //                     const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+    //                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
+    //                     lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+    //                     thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
+    //                     try {
+    //                         return project(srcValue, index);
+    //                     } finally {
+    //                         lodashSet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+    //                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
+    //                     }
+    //                 })
+    //             );
+    //     }
+
+    //     return newOp;
+    // }
 
     // keepAllFlagsRxOpr<T, A>(lazyLoadedObj: any, originalOp: OperatorFunction<T, A>): OperatorFunction<T, A> {
     //     const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
@@ -714,16 +940,26 @@ export class JsHbSessionDefault implements IJsHbSession {
         } else if (action.fieldName) {
             resolvedSettedValue$ = of(action.simpleSettedValue as P);
         }
-        // resolvedSettedValue$ = this.addSubscribedObservableForWaiting(resolvedSettedValue$);
-        resolvedSettedValue$ = resolvedSettedValue$.pipe(thisLocal.addSubscribedObservable());
-        return resolvedSettedValue$;
+        
+        const isSynchronouslyDone = { value: false, result: null as P};
+        // resolvedSettedValue$ = resolvedSettedValue$.pipe(thisLocal.addSubscribedObsRxOpr());
+        resolvedSettedValue$.subscribe((resolvedSettedValue)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = resolvedSettedValue;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return resolvedSettedValue$;
+        }
     }
     /**
      * Based on '[JsHbReplayable.java].replay()'
      */
     private rerunByPlaybacksIgnoreCreateInstance(): Observable<void> {
         const thisLocal = this;
-        let obsArr: Observable<void>[] = [];
+        //let obsArr: Observable<void>[] = [];
         let allPlaybacks: JsHbPlayback[] = [
             ...this._latestJsHbPlayback.slice(),
             ...(this._currentJsHbPlayback? [this._currentJsHbPlayback]: [])
@@ -740,11 +976,11 @@ export class JsHbSessionDefault implements IJsHbSession {
                         thisLocal.jsHbManager.jsHbConfig);
                     let resolvedSettedValue$: Observable<any> = thisLocal.actionResolveSettedValue(action, fieldEtc);
 
-                    obsArr.push(resolvedSettedValue$.pipe(map((value) => {})));
+                    //obsArr.push(resolvedSettedValue$.pipe(map((value) => {})));
                     //result$ = new Subject<void>();
 
                     // resolvedSettedValue$ = this.addSubscribedObservableForWaiting(resolvedSettedValue$);
-                    resolvedSettedValue$ = resolvedSettedValue$.pipe(thisLocal.addSubscribedObservable());
+                    // resolvedSettedValue$ = resolvedSettedValue$.pipe(thisLocal.addSubscribedObsRxOpr());
                     resolvedSettedValue$.subscribe((resolvedSettedValue) => {
                         thisLocal.restoreEntireStateCallbackTemplate(()=> {
                             const wasCollectionAsyncronousModified = { value: true };
@@ -791,7 +1027,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                                     if (resolvedOwnerValue[resolvedFieldName] && (resolvedOwnerValue[resolvedFieldName] as LazyRef<any, any>).iAmLazyRef) {
                                         let setLazyObjNoNext$ = (resolvedOwnerValue[resolvedFieldName] as LazyRef<any, any>).setLazyObjNoNext(resolvedSettedValue);
                                         // setLazyObjNoNext$ = this.addSubscribedObservableForWaiting(setLazyObjNoNext$);
-                                        setLazyObjNoNext$ = setLazyObjNoNext$.pipe(thisLocal.addSubscribedObservable());
+                                        setLazyObjNoNext$ = setLazyObjNoNext$.pipe(thisLocal.addSubscribedObsRxOpr());
                                         setLazyObjNoNext$.subscribe(() => {});
                                     } else {
                                         thisLocal.restoreEntireStateCallbackTemplate(()=> {
@@ -897,14 +1133,33 @@ export class JsHbSessionDefault implements IJsHbSession {
                 }
             }
         }
-        let combineLatestResult$: Observable<void>;
-        if (obsArr.length > 0) {
-            combineLatestResult$ = combineLatest(obsArr).pipe(map(() => {}));
+
+        let createAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting();
+        const isSynchronouslyDone = { value: false };
+        // createAsyncTasksWaiting$ = createAsyncTasksWaiting$.pipe(thisLocal.addSubscribedObsRxOpr());
+        createAsyncTasksWaiting$.subscribe(() =>{
+            isSynchronouslyDone.value = true;
+        });
+
+        if (!isSynchronouslyDone.value) {
+            return createAsyncTasksWaiting$;
         } else {
-            combineLatestResult$ = of(null);
+            return of(null);
         }
-        //this.addAsyncTaskWaiting(forkJoinResult$);
-        return combineLatestResult$;
+
+        // return this.createSerialAsyncTasksWaiting();
+        // let combineLatestResult$: Observable<void>;
+        // if (obsArr.length > 0) {
+        //     combineLatestResult$ = this.createSerialAsyncTasksWaiting()
+        //         .pipe(
+        //             flatMap() => {
+        //                 combineLatest(obsArr).pipe(map(() => {})
+        //             );
+        // } else {
+        //     combineLatestResult$ = of(null);
+        // }
+        // //this.addAsyncTaskWaiting(forkJoinResult$);
+        // return combineLatestResult$;
     }
 
     resolveMetadatas(
@@ -1024,7 +1279,7 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
     public processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<L> {
-        let resultL$: Observable<L>;
+        let result$: Observable<L>;
 
         if (!literalJsHbResult.result) {
             throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
@@ -1058,8 +1313,8 @@ export class JsHbSessionDefault implements IJsHbSession {
             console.groupEnd();
         }
         let refMap: Map<Number, any> = new Map<Number, any>();
-        resultL$ = this.processJsHbResultEntityPriv(entityType, literalJsHbResult.result, refMap);
-        resultL$.pipe(
+        result$ = this.processJsHbResultEntityPriv(entityType, literalJsHbResult.result, refMap);
+        result$.pipe(
             map((resultL) => {
                 if (JsHbLogLevel.Trace >= this.jsHbManager.jsHbConfig.logLevel) {
                     console.group('JsHbSessionDefault.processJsHbResultEntity<L>() => result$.pipe(). resultL:');
@@ -1075,7 +1330,20 @@ export class JsHbSessionDefault implements IJsHbSession {
         //     console.groupEnd();
         // }
 
-        return resultL$;
+        const isSynchronouslyDone = { value: false, result: null as L};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
+
+        // return resultL$;
     }
 
     public processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<Array<L>> {
@@ -1111,7 +1379,21 @@ export class JsHbSessionDefault implements IJsHbSession {
             console.debug(resultObsArr);
             console.groupEnd();
         }
-        return combineLatest(resultObsArr);
+        let result$ = combineLatest(resultObsArr);
+
+        const isSynchronouslyDone = { value: false, result: null as L[]};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
+
         // concat(...resultObsArr).subscribe((value) => {  })
         // return concat(...resultObsArr).subscribe((value) => {});
     }
@@ -1159,7 +1441,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         }
                         let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>();
                         let setLazyObjOnLazyLoading$ = lazyRefSet.setLazyObjOnLazyLoading(this.createCollection(lazyRefGenericParam, entityObj, keyItem));
-                        setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(this.addSubscribedObservable());
+                        // setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(this.addSubscribedObsRxOpr());
                         setLazyObjOnLazyLoading$.subscribe(
                             {
                                 next: () => {}
@@ -1235,12 +1517,25 @@ export class JsHbSessionDefault implements IJsHbSession {
             this.addPlaybackAction(action);
         }
 
-        return this.createAsyncTasksWaiting()
+        let result$ = this.createAsyncTasksWaiting()
             .pipe(
                 map(() => {
                     return entityObj;
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as T};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     public newEntityInstance<T extends object>(entityType: Type<T>): Observable<T> {
@@ -1249,13 +1544,26 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
 
         let newEntityInstanceWithCreationId$ = this.newEntityInstanceWithCreationId<T>(entityType, this._nextCreationId);
-        return newEntityInstanceWithCreationId$
+        let result$ = newEntityInstanceWithCreationId$
             .pipe(
                 map((newEntityReturn) => {
                     this._nextCreationId++;
                     return newEntityReturn;
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as T};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
 
         // let newEntityReturn: T = 
         // this._nextCreationId++;
@@ -1379,6 +1687,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         this._currentJsHbPlayback = null;
         this._latestJsHbPlayback = null;
         this._nextMultiPurposeInstanceId = 1;
+        this._pipedResult = new Map();
         this._objectsBySignature = new Map();
         this._objectsByCreationId = new Map();
         this._lazyrefsByEntityMap = new Map();
@@ -1388,20 +1697,33 @@ export class JsHbSessionDefault implements IJsHbSession {
         this._latestJsHbPlayback = [];
         
         let clearCache$: Observable<void> = this.jsHbManager.jsHbConfig.cacheHandler.clearCache();
-        clearCache$ = clearCache$.pipe(this.addSubscribedObservable());
+        clearCache$ = clearCache$.pipe(this.addSubscribedObsRxOpr());
         clearCache$.subscribe(() => {});
     }
 
     getLastRecordedPlayback(): Observable<JsHbPlayback> {
         const thisLocal = this;
-        return this.createAsyncTasksWaiting().pipe(map(() => {
+        let result$ = this.createAsyncTasksWaiting().pipe(map(() => {
             return thisLocal._latestJsHbPlayback.length > 0? thisLocal._latestJsHbPlayback[thisLocal._latestJsHbPlayback.length - 1] : null;
         }));
+
+        const isSynchronouslyDone = { value: false, result: null as JsHbPlayback};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     getLastRecordedStreams(): Observable<Map<String, Stream>> {
         const thisLocal = this;
-        return this.getLastRecordedPlayback()
+        let result$ = this.getLastRecordedPlayback()
             .pipe(
                 flatMap((playback) => {
                     const idAndStreamObsArr: Observable<{attachRefId: String, stream: Stream}>[] = [];
@@ -1440,11 +1762,24 @@ export class JsHbSessionDefault implements IJsHbSession {
                     return resultMap;
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as Map<String, Stream>};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     getLastRecordedPlaybackAndStreams(): Observable<{playback: JsHbPlayback, streams: Map<String, Stream>}> {
         const thisLocal = this;
-        return this.getLastRecordedPlayback()
+        let result$ = this.getLastRecordedPlayback()
             .pipe(
                 flatMap((playback) => {
                     return thisLocal.getLastRecordedStreams()
@@ -1458,11 +1793,24 @@ export class JsHbSessionDefault implements IJsHbSession {
                         );
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as {playback: JsHbPlayback, streams: Map<String, Stream>}};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     getLastRecordedPlaybackAsLiteralAndStreams(): Observable<{playbackLiteral: any, streams: Map<String, Stream>}> {
         const thisLocal = this;
-        return this.getLastRecordedPlaybackAsLiteral()
+        let result$ = this.getLastRecordedPlaybackAsLiteral()
             .pipe(
                 flatMap((playbackLiteral) => {
                     return this.getLastRecordedStreams()
@@ -1476,6 +1824,19 @@ export class JsHbSessionDefault implements IJsHbSession {
                         );
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as {playbackLiteral: any, streams: Map<String, Stream>}};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     public addPlaybackAction(action: JsHbPlaybackAction): void {
@@ -1497,7 +1858,7 @@ export class JsHbSessionDefault implements IJsHbSession {
 
     public getLastRecordedPlaybackAsLiteral(): Observable<any> {
         const thisLocal = this;
-        const result$: Observable<any> = this.getLastRecordedPlayback()
+        let result$: Observable<any> = this.getLastRecordedPlayback()
             .pipe(
                 map((playback) => {
                     let resultLit =  thisLocal.getPlaybackAsLiteral(playback);
@@ -1509,7 +1870,19 @@ export class JsHbSessionDefault implements IJsHbSession {
                     return resultLit;
                 })
             );
-        return result$;
+
+        const isSynchronouslyDone = { value: false, result: null as any};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     getLastRecordedAtaches(): Map<String, Stream> {
@@ -1584,7 +1957,7 @@ export class JsHbSessionDefault implements IJsHbSession {
             let realItem$: Observable<L> = this.processJsHbResultEntityPriv(entityType, literalItem, refMap);
             realItemObsArr.push(realItem$);
         }
-        return combineLatest(realItemObsArr)
+        let result$ = combineLatest(realItemObsArr)
             .pipe(
                 map((realItemArr) => {
                     for (const realItem of realItemArr) {                               
@@ -1592,16 +1965,42 @@ export class JsHbSessionDefault implements IJsHbSession {
                     }
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     public processJsHbResultEntityInternal<L>(entityType: Type<L>, literalResultField: any): Observable<L> {
         let refMap: Map<Number, any> = new Map();
-        return this.processJsHbResultEntityPriv(entityType, literalResultField, refMap);
+        let result$ = this.processJsHbResultEntityPriv(entityType, literalResultField, refMap);
+
+        const isSynchronouslyDone = { value: false, result: null as L};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     private processJsHbResultEntityPriv<L>(entityType: Type<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
         //let signatureStr: string = <string>lodashGet(literalResultField, this.jsHbManager.jsHbConfig.jsHbSignatureName);
-        let resultObsArr: Observable<any>[] = [];
+        // let resultObsArr: Observable<any>[] = [];
         if (!literalResultField) {
             throw new Error('literalResultField nao pode ser nula');
         }
@@ -1646,7 +2045,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         literalJsHbResult: literalResultField
                     }
                 );
-                lodashMergeWith(entityValue as any, literalResultField, this.mergeWithCustomizerPropertyReplection(refMap, resultObsArr));
+                lodashMergeWith(entityValue as any, literalResultField, this.mergeWithCustomizerPropertyReplection(refMap));
             } finally {
                 lodashSet(entityValue as any, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
             }
@@ -1656,24 +2055,47 @@ export class JsHbSessionDefault implements IJsHbSession {
             }
         }
 
-        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting();
+        let result$ = this.createSerialAsyncTasksWaiting().pipe(
+            map(() => {
+                return entityValue;
+            })
+        );
 
-        const isDone = { value: false };
-        createSerialAsyncTasksWaiting$.subscribe(() => {
-            isDone.value = true;
+        const isSynchronouslyDone = { value: false, result: null as L};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
         });
-        if (isDone.value) {
-            return of(entityValue);
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
         } else {
-            return this.createSerialAsyncTasksWaiting().pipe(
-                map(() => {
-                    return entityValue;
-                })
-            );
+            return result$;
         }
+
+        // let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting();
+        // const isDone = { value: false };
+        // createSerialAsyncTasksWaiting$.subscribe(() => {
+        //     isDone.value = true;
+        // });
+        // if (isDone.value) {
+        //     return of(entityValue);
+        // } else {
+        //     return this.createSerialAsyncTasksWaiting().pipe(
+        //         map(() => {
+        //             return entityValue;
+        //         })
+        //     );
+        // }
     }
 
-    private createLoadedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): Observable<LazyRef<L, I>> {
+    private createLoadedLazyRef<L extends object, I>(
+            genericNode: GenericNode,
+            literalLazyObj: any,
+            refMap: Map<Number, any>,
+            refererObj: any,
+            refererKey: string): Observable<LazyRef<L, I>> {
         let lr: LazyRef<L, I> = this.createApropriatedLazyRef<L, I>(genericNode, literalLazyObj, refererObj, refererKey);
         
         let trySetHibernateIdentifier$ = this.trySetHibernateIdentifier(lr, genericNode, literalLazyObj, refMap);
@@ -1735,13 +2157,14 @@ export class JsHbSessionDefault implements IJsHbSession {
                     // }
                     if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                         isValueByFieldProcessor.value = true;
-                        let lazyLoadedObj$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo);
+                        let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo);
                         // if (fieldEtc.propertyOptions.fieldProcessorEvents.onFromLiteralValue) {
                         //     fieldEtc.propertyOptions.fieldProcessorEvents.onFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo, (lazyLoadedObj$ as any) as Observable<L>)
                         // }
                         // lazyLoadedObj$ = this.addSubscribedObservableForWaiting(lazyLoadedObj$);
-                        lazyLoadedObj$ = lazyLoadedObj$.pipe(this.addSubscribedObservable());
-                        lazyLoadedObj$.subscribe(
+                        // lazyLoadedObj$ = lazyLoadedObj$.pipe(this.addSubscribedObsRxOpr());
+                        callFromLiteralValue$ = callFromLiteralValue$.pipe(this.addSubscribedObsRxOpr());
+                        callFromLiteralValue$.subscribe(
                             {
                                 next: (value) => {
                                     lr.setLazyObjOnLazyLoading(value);
@@ -1772,7 +2195,12 @@ export class JsHbSessionDefault implements IJsHbSession {
                 }
             }
         }
-        return trySetHibernateIdentifier$
+        let result$ = this.createSerialAsyncTasksWaiting()
+            .pipe(
+                flatMap(() => {
+                    return trySetHibernateIdentifier$;
+                })
+            )
             .pipe(
                 flatMap(() => {
                     return tryGetFromObjectsBySignature$;
@@ -1794,6 +2222,19 @@ export class JsHbSessionDefault implements IJsHbSession {
                 })
             );
         // return lr;
+
+        const isSynchronouslyDone = { value: false, result: null as LazyRef<L, I>};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     public tryCacheInstanceBySignature(
@@ -1826,7 +2267,12 @@ export class JsHbSessionDefault implements IJsHbSession {
     }
 
 
-    private createNotLoadedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>, refererObj: any, refererKey: string): Observable<LazyRef<L, I>> {
+    private createNotLoadedLazyRef<L extends object, I>(
+            genericNode: GenericNode, 
+            literalLazyObj: any,
+            refMap: Map<Number, any>,
+            refererObj: any,
+            refererKey: string): Observable<LazyRef<L, I>> {
         let propertyOptions: NgJsHbDecorators.PropertyOptions<L> = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
             throw new Error('@NgJsHbDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
@@ -1871,7 +2317,12 @@ export class JsHbSessionDefault implements IJsHbSession {
                     );
             }
         }
-        return trySetHibernateIdentifier$
+        let result$ = this.createSerialAsyncTasksWaiting()
+            .pipe(
+                flatMap(() => {
+                    return trySetHibernateIdentifier$;
+                })
+            )
             .pipe(
                 flatMap(() => {
                     return tryGetFromObjectsBySignature$;
@@ -1882,6 +2333,19 @@ export class JsHbSessionDefault implements IJsHbSession {
                     return lr;
                 })
             );
+
+        const isSynchronouslyDone = { value: false, result: null as LazyRef<L, I>};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
+        }
     }
 
     private tryGetFromObjectsBySignature<L extends object, I>(lr: LazyRef<L, I>, literalLazyObj: any): Observable<void> {
@@ -1903,11 +2367,24 @@ export class JsHbSessionDefault implements IJsHbSession {
         } else {
         }
 
+        let result$: Observable<void>;
         if (entityValue) {
-            return lr.setLazyObjOnLazyLoading(entityValue);
+            result$ = lr.setLazyObjOnLazyLoading(entityValue);
         } else {
-            //nothing
-            return of(null);
+            result$ = of(null);
+        }
+
+        const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(isSynchronouslyDone.result);
+        } else {
+            return result$;
         }
     }
 
@@ -1975,7 +2452,11 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private trySetHibernateIdentifier<L extends object, I>(lr: LazyRef<L, I>, genericNode: GenericNode, literalLazyObj: any, refMap: Map<Number, any>): Observable<void> {
+    private trySetHibernateIdentifier<L extends object, I>(
+            lr: LazyRef<L, I>,
+            genericNode: GenericNode,
+            literalLazyObj: any,
+            refMap: Map<Number, any>): Observable<void> {
         let result$: Observable<void> = of(null);
         if (!literalLazyObj){
             throw new Error('literalLazyObj nao pode ser nula');
@@ -2031,7 +2512,92 @@ export class JsHbSessionDefault implements IJsHbSession {
                 console.groupEnd();
             }
         }
-        return result$;
+
+        const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(this.addSubscribedObsRxOpr());
+        result$.subscribe((result)=>{
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = result;
+        });
+
+        if (isSynchronouslyDone.value) {
+            return of(null);
+        } else {
+            return result$;
+        }
+    }
+
+    /**
+     * Returns an Observable with subscribe called.
+     * @param observer 
+     */
+    doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
+    doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
+    doSubriscribeWithProvidedObservableRxOpr<T>(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
+        return this.doSubriscribeObservableRxOpr('provided', observerOrNext, error, complete);
+    }
+
+    doSubriscribeWithInternalObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
+    doSubriscribeWithInternalObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
+    doSubriscribeWithInternalObservableRxOpr<T>(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
+        return this.doSubriscribeObservableRxOpr('internal', observerOrNext, error, complete);
+    }
+
+    private doSubriscribeObservableRxOpr<T>(observableFrom: 'internal' | 'provided', observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
+        let thisLocal = this;
+        const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
+            if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
+                console.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable jsHbTraceId: ' + (source as any).jsHbTraceId);
+            }
+
+            let observerOriginal: PartialObserver<T>;
+            if ((observerOrNext as PartialObserver<T>).next
+                || (observerOrNext as PartialObserver<T>).complete
+                || (observerOrNext as PartialObserver<T>).error
+                || (observerOrNext as PartialObserver<T>).next) {
+                if (error || complete) {
+                    throw new Error('observerOrNext is a PartialObserver and error or complete are passed as parameter');
+                }
+                observerOriginal = observerOrNext as PartialObserver<T>;
+            } else {
+                observerOriginal = {
+                    next: observerOrNext as (value: T) => void,
+                    error: error,
+                    complete: complete
+                }
+            }
+
+            let result$;
+            if (observableFrom === 'provided') {
+                result$ = source.pipe(this.addSubscribedObsRxOpr());
+            } else {
+                result$ = source;
+            }
+
+            const isSynchronouslyDone = { value: false, result: null as T};
+            let observerNew: PartialObserver<T> = {...observerOriginal};
+            observerNew.next = (value) => {
+                isSynchronouslyDone.value = true;
+                isSynchronouslyDone.result = value;
+
+                if (!observerNew.closed) {
+                    observerNew.closed;
+                    if (observerOriginal.next) {
+                        observerOriginal.next(value);
+                    }
+                }
+            }
+    
+            result$.subscribe(observerNew);
+
+            if (isSynchronouslyDone.value) {
+                return of(isSynchronouslyDone.result);
+            } else {
+                return result$;
+            }
+        };
+
+        return resultOpr;
     }
 
     public createCollection(collType: Type<any>, refererObj: any, refererKey: string): any {
@@ -2066,7 +2632,10 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private mergeWithCustomizerPropertyReplection(refMap: Map<Number, any>, resultObsArr: Observable<any>[]): MergeWithCustomizer {
+    private mergeWithCustomizerPropertyReplection(
+            refMap: Map<Number, any>,
+            // resultObsArr: Observable<any>[]
+            ): MergeWithCustomizer {
         let thisLocal = this;
         return function (value: any, srcValue: any, key?: string, object?: Object, source?: Object) {
             const keepAllFlagsCallback = thisLocal.keepAllFlagsCallbackCreate(object);
@@ -2204,7 +2773,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         if (backendMetadatasSrcValue.$isLazyUninitialized$) {
                             const lazyRefSyncSafe = { value: null as any };
                             let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key);
-                            createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObservable());
+                            // createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
                             createNotLoadedLazyRef$.subscribe(
                                 {
                                     next: (lazyRef) => {
@@ -2233,7 +2802,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         } else {
                             const lazyRefSyncSafe = { value: null as any };
                             let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key);
-                            createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObservable());
+                            // createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
                             //sync safe return
                             createNotLoadedLazyRef$.subscribe(
                                 {
@@ -2267,8 +2836,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                         && !fieldEtc.propertyOptions.lazyDirectRawRead) {
                     const correctSrcValueSyncSafe = { value: null as any };
                     let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(fieldEtc.prpType, srcValue, refMap);
-                    processJsHbResultEntityPriv$ = processJsHbResultEntityPriv$
-                        .pipe(thisLocal.addSubscribedObservable());
+                    // processJsHbResultEntityPriv$ = processJsHbResultEntityPriv$
+                    //     .pipe(thisLocal.addSubscribedObsRxOpr());
                     processJsHbResultEntityPriv$.subscribe(
                         {
                             next(correctSrcValueSubs) {
@@ -2302,8 +2871,8 @@ export class JsHbSessionDefault implements IJsHbSession {
                     isFromLiteralValue.value = true;
                     let fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(correctSrcValue, fieldEtc.fieldInfo);
                     fromLiteralValue$ = fromLiteralValue$
-                        .pipe(thisLocal.addSubscribedObservable())
-                        .pipe(thisLocal.keepAllFlagsRxOpr(object, (fromLiteralValue) => { return fromLiteralValue; }));
+                        .pipe(thisLocal.addSubscribedObsRxOpr())
+                        .pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (fromLiteralValue) => { return fromLiteralValue; }));
                     fromLiteralValue$.subscribe((correctSrcValueFlv) => {
                         if (JsHbLogLevel.Trace >= thisLocal.jsHbManager.jsHbConfig.logLevel) {
                             console.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection => function => fromLiteralValue$.subscribe(). fromLiteralValue, for property \''+key+'\'. lodashSet(object, key, correctSrcValue)');
