@@ -17,6 +17,25 @@ export class JsHbPlaybackAction {
     private _actionType: JsHbPlaybackActionType;
     private _fieldName: string;
     private _simpleSettedValue: any;
+    private _attachRefId: string;
+
+
+    /**
+     * Getter attachRefId
+     * @return {number}
+     */
+	public get attachRefId(): string {
+		return this._attachRefId;
+	}
+
+    /**
+     * Setter attachRefId
+     * @param {string} value
+     */
+	public set attachRefId(value: string) {
+		this._attachRefId = value;
+	}
+
 
     /**
      * Getter ownerSignatureStr

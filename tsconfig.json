@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+      "paths": { "*": ["types/*"] },
     "baseUrl": ".",
     "declaration": true,
     "experimentalDecorators": true,
@@ -11,18 +12,24 @@
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "inlineSourceMap": true,
-    "lib": ["es6"],
+    "lib": ["es6", "dom"],
     "typeRoots": [
       "node_modules/@types"
     ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
-    "target": "es5"
+    "target": "es5",
+    "resolveJsonModule": true,
+    "esModuleInterop": true  
   },
   "exclude": [
     "node_modules",
     "dist",
+    "dist_dev",
     "ts_src"
   ],
-
+  "angularCompilerOptions": {
+    "genDir": "dist_dev",
+    "skipTemplateCodegen": true
+  }
 }

@@ -1,15 +1,33 @@
 import { JsHbContants } from './js-hb-constants';
-import { LazyRef } from './lazy-ref';
+import { LazyRef, LazyRefPrpMarker, StringStreamMarker, StringStream } from './lazy-ref';
 import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { get as lodashGet, has } from 'lodash';
 import { Type } from '@angular/core';
-import { JsHbLogLevel } from './js-hb-config';
+import { JsHbLogLevel, FieldInfo } from './js-hb-config';
 import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
+import { IFieldProcessor, IFieldProcessorEvents } from './field-processor';
+import { Stream, Readable } from 'stream';
+import { Observable, of, from } from 'rxjs';
+import { GenericNode, GenericTokenizer } from './generic-tokenizer';
+import { JsHbManagerDefault } from './js-hb-manager';
+import getStream = require("get-stream");
+import * as memStreams from 'memory-streams';
+import { ReadLine } from 'readline';
+import * as readline from 'readline';
 
 export namespace NgJsHbDecorators {
-    export interface PropertyOptions {
-        persistent: boolean;
+    /**
+     * L: In case of LazyRef this is first type parameter of LazyRef.
+     */
+    export interface PropertyOptions<L> {
+        persistent: boolean,
+        //isLazyProperty?: boolean,
+        lazyDirectRawRead?: boolean,
+        lazyDirectRawWrite?: boolean,
+        fieldProcessorResolver?: () => IFieldProcessor<L>,
+        /** Framework internal use. */
+        fieldProcessorEvents?: IFieldProcessorEvents<L>;
     }
     /**
      * Decorator for get property.  
@@ -29,27 +47,51 @@ export namespace NgJsHbDecorators {
        ...
      * ```
      */
-    export function property<T>(options: PropertyOptions): MethodDecorator;
+    export function property<T>(options: PropertyOptions<T>): MethodDecorator;
     export function property<T>(): MethodDecorator;
     export function property<T>(): MethodDecorator {
-        let options: {notPersistent: boolean};
+        let options: PropertyOptions<T> = { persistent: true };
         if (arguments.length > 0) {
             options = arguments[0];
         }
-        const optionsConst: PropertyOptions =
+        const optionsConst: PropertyOptions<T> =
             {
                 persistent: true
             }
         if (options) {
             Object.assign(optionsConst, options);
         }
+        if (!optionsConst.fieldProcessorEvents) {
+            optionsConst.fieldProcessorEvents =
+                {
+                };
+        }
 
-        let returnFunc: MethodDecorator = function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
+        let returnFunc: MethodDecorator = function<Z> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<Z>) {
             Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
-            let oldSet = descriptor.set;
+            const oldSet = descriptor.set;
             descriptor.set = function(value) {
+                // let processedValue: Z = value;
                 let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
-                if (optionsConst.persistent) {
+                // let prpGenType: GenericNode = GenericTokenizer.resolveNode(target, propertyKey as string);
+                let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.jsHbConfig);
+                if (fieldEtc.propertyOptions.persistent) {
+                    // let prpType: Type<Z> = Reflect.getMetadata('design:type', target, propertyKey);
+                    // let info: FieldInfo = {
+                    //     fieldName: propertyKey as string,
+                    //     fieldType: prpType,
+                    //     ownerType: target.constructor as Type<any>,
+                    //     ownerValue: target
+                    // }
+                    // let fieldProcessor: IFieldProcessor<Z>;
+                    // if (optionsConst.fieldProcessorResolver) {
+                    //     fieldProcessor = optionsConst.fieldProcessorResolver() as any as IFieldProcessor<Z>;
+                    // } else {
+                    //     fieldProcessor = session.jsHbManager.jsHbConfig.getTypeProcessor(prpType);
+                    // }
+
+                    // const isValueByFieldProcessorStream: {value: boolean} = { value: false };
+
                     if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
                         console.group('NgJsHbDecorators.set' +
                             'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
@@ -61,9 +103,9 @@ export namespace NgJsHbDecorators {
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nada
                     } else {
-                        if (target instanceof Object && !(target instanceof Date)) {
+                        if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
-                                throw new Error('The property \'' + propertyKey.toString() + '\' de \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
+                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
                             let actualValue = lodashGet(this, propertyKey);
                             if (actualValue !== value) {
@@ -80,67 +122,130 @@ export namespace NgJsHbDecorators {
                                         console.groupEnd();
                                     }
                                     //fazer aqui o registro de JsHbPlaybackAction
-                                    let action: JsHbPlaybackAction = new JsHbPlaybackAction();
+                                    const action: JsHbPlaybackAction = new JsHbPlaybackAction();
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = JsHbPlaybackActionType.SetField;
-                                    let backendMetadatas: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                                    let backendMetadatas: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                                     if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                                         backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
                                     }
 
                                     //if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                    if (backendMetadatas.signature) {
+                                    if (backendMetadatas.$signature$) {
                                         //action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                                        action.ownerSignatureStr = backendMetadatas.signature;
+                                        action.ownerSignatureStr = backendMetadatas.$signature$;
                                     } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                         action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
-                                        throw new Error('The property \'' + propertyKey.toString() + ' de \'' + target.constructor + '\' has a not managed owner');
+                                        // tslint:disable-next-line:max-line-length
+                                        throw new Error('The property \'' + propertyKey.toString() + ' of \'' + target.constructor + '\' has a not managed owner');
                                     }
             
                                     if (value != null && value != undefined) {
-                                        let backendMetadatasValue: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                                        let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                                         if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                                             backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
                                         }
 
                                         //if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                        if (backendMetadatasValue.signature) {
+                                        if (backendMetadatasValue.$signature$) {
+                                            // tslint:disable-next-line:max-line-length
                                             //action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                                            action.settedSignatureStr = backendMetadatasValue.signature;
+                                            action.settedSignatureStr = backendMetadatasValue.$signature$;
                                         } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                                            // tslint:disable-next-line:max-line-length
                                             action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                         } else {
                                             if (value instanceof Object && !(value instanceof Date)) {
-                                                throw new Error('The property \'' + propertyKey.toString() + ' de \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
+                                                // tslint:disable-next-line:max-line-length
+                                                throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
                                             }
                                             action.simpleSettedValue = value;
                                         }
                                     } else {
                                         action.simpleSettedValue = null;
                                     }
-                                    session.addPlaybackAction(action);
+
+                                    if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                                        // isValueByFieldProcessorStream.value = true;
+                                        action.attachRefId = session.jsHbManager.jsHbConfig.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
+                                        if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
+                                            let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
+                                            toDirectRaw$ = session.addAsyncTaskWaiting(toDirectRaw$);
+                                            toDirectRaw$.subscribe((stream) => {
+                                                if (stream) {
+                                                    session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream).subscribe(() => {
+                                                        session.addPlaybackAction(action);
+                                                    });
+                                                    session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId).subscribe((stream) => {
+                                                        oldSet.call(this, stream);
+                                                    });
+                                                } else {
+                                                    if (value) {
+                                                        throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + value.constructor);
+                                                    }
+                                                    action.simpleSettedValue = null;
+                                                    action.attachRefId = null;
+                                                    session.addPlaybackAction(action);
+                                                }
+                                            });
+                                        } else {
+                                            if (!(value as any as Stream).pipe) {
+                                                throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
+                                            } else {
+                                                let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
+                                                putOnCache$ = session.addAsyncTaskWaiting(putOnCache$);
+                                                putOnCache$.subscribe(() => {
+                                                    session.addPlaybackAction(action);
+                                                });
+                                                let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
+                                                getFromCache$ = session.addAsyncTaskWaiting(getFromCache$);
+                                                getFromCache$.subscribe((stream) => {
+                                                    oldSet.call(this, stream);
+                                                });
+                                            }
+                                        }
+                                    } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
+                                        // isValueByFieldProcessorStream.value = true;
+                                        let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
+                                            action.simpleSettedValue, 
+                                            fieldEtc.fieldInfo);
+                                        toLiteralValue$ = session.addAsyncTaskWaiting(toLiteralValue$);
+                                        toLiteralValue$.subscribe(
+                                            {
+                                                next: (processedValue) => {
+                                                    action.simpleSettedValue = processedValue;
+                                                    session.addPlaybackAction(action);
+                                                }
+                                            }
+                                        );
+                                    } else {
+                                        session.addPlaybackAction(action);
+                                    }
                                 }
                             } else {
                                 if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
                                     console.group('NgJsHbDecorators.set' +
                                         '(actualValue === value)\n' +
-                                        'NOT recording action: ' + JsHbPlaybackActionType.SetField + '. value: ');
+                                        'NOT recording action, BUT may process : ' + JsHbPlaybackActionType.SetField + '. value: ');
                                     console.debug(value);
                                     console.groupEnd();
                                 }
                             }
                         }
                     }
-                    oldSet.call(this, value);
-                    if (session && !isOnlazyLoad) {
-                        session.notifyAllLazyrefsAboutEntityModification(this, null);
+
+                    if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                        oldSet.call(this, value);
+                        if (session && !isOnlazyLoad) {
+                            session.notifyAllLazyrefsAboutEntityModification(this, null);
+                        }
                     }
                 } else {
                     oldSet.call(this, value);
                     if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
                         console.group('NgJsHbDecorators.set' +
-                            '!propertyOptions.persistent. Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
+                            '!(propertyOptions.persistent && genericNode.gType !== LazyRef && genericNode.gType !== LazyRefPrpMarker). Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
                         console.debug(target);
                         console.debug(value);
                         console.groupEnd();
@@ -203,4 +308,103 @@ export namespace NgJsHbDecorators {
             (options.disambiguationId? ':' + options.disambiguationId : '') +
             ':' + options.javaClass;
     }
+
+    export const BufferProcessor: IFieldProcessor<Buffer> = {
+        fromLiteralValue: (value, info) => {
+            if (value) {
+                return of(Buffer.from(value, 'base64'));
+            } else {
+                return of(null);
+            }
+        },
+        toLiteralValue: (value, info) => {
+            if (value) {
+                let base64Str = value.toString('base64');                            
+                return of(base64Str);
+            }
+        }
+    };
+    export const StringProcessor: IFieldProcessor<String> = {
+        fromLiteralValue: (value: string, info: any) => {
+            return of(value);
+        },
+        fromDirectRaw: (stream: Stream, info: any) => {
+            return from(getStream(stream, {}) as Promise<string>);
+        }
+    };
+    export const StreamProcessor: IFieldProcessor<String> = {
+        fromLiteralValue: (value, info) => {
+            if (value) {
+                let base64AB = Buffer.from(value, 'base64');
+                let ws = new memStreams.WritableStream();
+                ws.write(base64AB);
+                //let rs = new memStreams.ReadableStream(base64AB.to);
+                //let myReadableStreamBuffer = new Stream.Readable(); 
+                let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
+                myReadableStreamBuffer.push(base64AB);
+                return of(myReadableStreamBuffer);
+            } else {
+                return of(null);
+            }
+        },
+        fromDirectRaw: (stream, info) => {
+            if (stream) {
+                if ((stream as Stream).addListener && (stream as Stream).pipe) {
+                    return of(stream);
+                } else {
+                    throw new Error('Not supported');
+                }
+            } else {
+                return of(null);
+            }
+        }
+    };
+    export const StringStreamProcessor: IFieldProcessor<StringStream> = {
+            fromLiteralValue: (value, info) => {
+                if (value) {
+                    let base64AB = Buffer.from(value, 'base64');
+                    let ws = new memStreams.WritableStream();
+                    ws.write(base64AB);
+                    //let rs = new memStreams.ReadableStream(base64AB.to);
+                    //let myReadableStreamBuffer = new Stream.Readable(); 
+                    let myReadableStreamBuffer = new memStreams.ReadableStream(value); 
+                    myReadableStreamBuffer.setEncoding('utf-8');
+                    return of(myReadableStreamBuffer);
+                } else {
+                    return of(null);
+                }
+            },
+            fromDirectRaw: (stream, info) => {
+                if (stream) {
+                    if ((stream as Stream).addListener && (stream as Stream).pipe) {
+                        (stream as any as Readable).setEncoding('utf-8');
+                        return of(stream);
+                    } else {
+                        throw new Error('Not supported');
+                    }
+                } else {
+                    return of(null);
+                }
+            }
+    };
+
+    export const TypeProcessorEntries = 
+    [ 
+        {
+            type: Buffer,
+            processor: NgJsHbDecorators.BufferProcessor
+        },
+        {                
+            type: String,
+            processor: NgJsHbDecorators.StringProcessor
+        },
+        {                
+            type: Stream,
+            processor: NgJsHbDecorators.StreamProcessor
+        },
+        {
+            type: StringStreamMarker,
+            processor: NgJsHbDecorators.StringStreamProcessor
+        }
+    ];
 }

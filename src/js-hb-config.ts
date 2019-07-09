@@ -1,3 +1,28 @@
+import {Buffer} from 'buffer';
+import { Type } from "@angular/core";
+import { IFieldProcessor } from "./field-processor";
+import { Stream } from "stream";
+import { Observable } from 'rxjs';
+import { NgJsHbDecorators } from './js-hb-decorators';
+//import * as toBlob from 'stream-to-blob';
+
+interface TypeProcessorEntry<T, TM> {type: Type<TM>, processor: IFieldProcessor<T>}
+
+export interface FieldInfo {
+	ownerType: Type<any>,
+	fieldType: Type<any>,
+	ownerValue: any,
+    //gNode: GenericNode,
+    fieldName: string
+}
+
+export interface CacheHandler {
+    getFromCache(cacheKey: string): Observable<Stream>;
+    removeFromCache(cacheKey: string): Observable<void>;
+    putOnCache(cacheKey: string, stream: Stream): Observable<void>;
+    clearCache(): Observable<void>;
+}
+
 export interface IJsHbConfig {
     // jsHbIdName: string;
     // jsHbIdRefName: string;
@@ -13,6 +38,9 @@ export interface IJsHbConfig {
     maxLazyRefNotificationPerSecond: number;
     lazyRefNotificationTimeMeasurement: number;
     lazyRefNotificationCountMeasurement: number;
+    attachPrefix: string;
+    cacheStoragePrefix: string;
+    cacheHandler: CacheHandler;
     // configJsHbIdName(jsHbIdName: string): IJsHbConfig;
     // configJsHbIdRefName(jsHbIdRefName: string): IJsHbConfig;
     // configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig;
@@ -24,6 +52,20 @@ export interface IJsHbConfig {
     configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IJsHbConfig;
     configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IJsHbConfig;
     configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): IJsHbConfig;
+    configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IJsHbConfig;
+    configCacheHandler(cacheHandler: CacheHandler): IJsHbConfig;
+    /**
+     * Default: "jsHbAttachPrefix_"
+     * @param attachPrefix 
+     */
+    configAttachPrefix(attachPrefix: string): IJsHbConfig;
+    /**
+     * Default: "jsCacheStoragePrefix_"
+     * @param cacheStoragePrefix 
+     */
+    configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig;
+    configAttachPrefix(attachPrefix: string): IJsHbConfig;
+    getTypeProcessor<L,LM>(type: Type<LM>): IFieldProcessor<L>;
 }
 
 export enum JsHbLogLevel {
@@ -35,7 +77,87 @@ export enum JsHbLogLevel {
     Error = 250
 }
 
+// export const b64toBlob: (b64Data: string, contentType: string, sliceSize: number) => any = 
+//     (b64Data, contentType = '', sliceSize = 512) => {
+//     const byteCharacters = atob(b64Data);
+//     const byteArrays = [];
+
+//     for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+//         const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+//         const byteNumbers = new Array(slice.length);
+//         for (let i = 0; i < slice.length; i++) {
+//             byteNumbers[i] = slice.charCodeAt(i);
+//         }
+
+//         const byteArray = new Uint8Array(byteNumbers);
+//         byteArrays.push(byteArray);
+//     }
+
+//     const blob = Buffer.from(byteArrays);
+//     return blob;
+// }
+
+// export class JsHbConfigDefault implements IJsHbConfig {
+//     constructor() {
+//         this._fieldProcessorEntryMap.set(
+//             Buffer,
+//             {
+//                 fromLiteralValue: (value, info) => {
+//                     return (value? b64toBlob(value, 'application/octet-stream', 512) : null);
+//                 },
+//                 toLiteralValue: (value, info, onEndCallback) => {
+//                     if (value) {
+//                         const reader = new FileReader();
+//                         reader.onloadend = (ev) => {
+//                             let base64 = (reader.result as string).split(',')[1];
+//                             onEndCallback(base64);
+//                         };
+//                         reader.readAsDataURL(value);
+//                     } else {
+//                         onEndCallback(null);
+//                     }
+//                 }
+//             });
+//     }
+
 export class JsHbConfigDefault implements IJsHbConfig {
+    constructor() {
+        this.configAddFieldProcessors( NgJsHbDecorators.TypeProcessorEntries);
+        this.configCacheHandler(
+            {
+                clearCache: () => {
+                    throw new Error('CacheHandler not defined!');
+                },
+                getFromCache: () => {
+                    throw new Error('CacheHandler not defined!');
+                },
+                putOnCache:  () => {
+                    throw new Error('CacheHandler not defined!');
+                },
+                removeFromCache: () => {
+                    throw new Error('CacheHandler not defined!');
+                }
+            });
+    }
+
+    private _attachPrefix: string;
+    private _cacheStoragePrefix: string = 'jsCacheStoragePrefix_';
+    configAttachPrefix(attachPrefix: string): IJsHbConfig {
+        this._attachPrefix = attachPrefix;
+        return this;
+    }
+    configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig {
+        this._cacheStoragePrefix = cacheStoragePrefix;
+        return this;
+    }
+	public get attachPrefix(): string {
+		return this._attachPrefix;
+	}
+	public get cacheStoragePrefix(): string {
+		return this._cacheStoragePrefix;
+	}
+
     // private _jsHbIdName: string                         = 'jsHbId';
     // private _jsHbIdRefName: string                      = 'jsHbIdRef';
     // private _jsHbSignatureName: string                  = 'jsHbSignature';
@@ -49,8 +171,19 @@ export class JsHbConfigDefault implements IJsHbConfig {
     private _maxLazyRefNotificationPerSecond: number    = 10;
     private _lazyRefNotificationTimeMeasurement: number = 5000;
     private _lazyRefNotificationCountMeasurement: number = 30;
-    private _logLevel: JsHbLogLevel = JsHbLogLevel.Trace;
+    private _logLevel: JsHbLogLevel = JsHbLogLevel.Warn;
+    private _fieldProcessorEntryMap: Map<Type<any>, IFieldProcessor<any>> = new Map();
+    private _cacheHandler: CacheHandler;
 
+	public get cacheHandler(): CacheHandler {
+		return this._cacheHandler;
+	}
+
+	configCacheHandler(value: CacheHandler): IJsHbConfig {
+        this._cacheHandler = value;
+        return this;
+    }
+    
     // public configJsHbIdName(jsHbIdName: string): IJsHbConfig { this.jsHbIdName = jsHbIdName; return this; }
     // public configJsHbIdRefName(jsHbIdRefName: string): IJsHbConfig { this.jsHbIdRefName = jsHbIdRefName; return this; }
     // public configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig { this.jsHbSignatureName = jsHbSignatureName; return this; }
@@ -155,5 +288,19 @@ export class JsHbConfigDefault implements IJsHbConfig {
     }   
 	public set lazyRefNotificationCountMeasurement(value: number ) {
 		this._lazyRefNotificationCountMeasurement = value;
+    }
+    public configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IJsHbConfig {
+        for (const entry of entries) {
+            this._fieldProcessorEntryMap.set(entry.type, entry.processor);
+        }
+        this._fieldProcessorEntryMap;
+        return this;
+    }
+    public getTypeProcessor<L, LM>(type: Type<LM>): IFieldProcessor<L> {
+        if (this._fieldProcessorEntryMap.get(type)) {
+            return this._fieldProcessorEntryMap.get(type);
+        } else {
+            return null;
+        }
     }
 }
