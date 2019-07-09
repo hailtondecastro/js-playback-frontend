@@ -6,6 +6,22 @@ import { get as lodashGet, has } from 'lodash';
 import { Type } from '@angular/core';
 
 export namespace NgJsHbDecorators {
+    /**
+     * Decorator for get property.<br>
+     * Exemplo:
+     * ```ts
+     * ...
+     * private _myField: string;
+     * @NgJsHbDecorators.property()
+     * public get myField(): string {
+     *   return this._myField;
+     * }
+     * public set myField(value: string) {
+     *   this._myField = value;
+     * }
+     * ...
+     * ```
+     */
     export function property<T>(): MethodDecorator {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
             let oldSet = descriptor.set;
@@ -62,11 +78,30 @@ export namespace NgJsHbDecorators {
         };
     }
 
+    /**
+     * Used with {@link NgJsHbDecorators#clazz}.
+     */
     export interface clazzOptions {
+        /**
+         * Mapped java entity class.
+         */
         javaClass: string;
+        /**
+         * Use it if you have to typescript classes mapping the same java entity class.
+         */
         disambiguationId?: string;
     }
 
+    /**
+     * Decorator for persistent entity.<br>
+     * Exemplo:
+     * ```ts
+     * ...
+     * @NgJsHbDecorators.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
+     * export class MyPersistentEntityJs {
+     * ...
+     * ```
+     */
     export function clazz<T>(options: clazzOptions): ClassDecorator {
         return function<T> (target: T): T | void {
             Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, options, target);
@@ -79,8 +114,6 @@ export namespace NgJsHbDecorators {
 
     /**
      * Internal use only! It is no a decorator!
-     * @param options 
-     * @param entityType 
      */
     export function mountContructorByJavaClassMetadataKey(options: clazzOptions, entityType: Type<any>): string {
         return JsHbContants.JSHB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +

@@ -9,12 +9,21 @@ import { IJsHbSession, JsHbSessionDefault } from './js-hb-session';
 import { JsHbContants } from './js-hb-constants';
 import { IJsHbHttpLazyObservableGen } from './js-hb-http-lazy-observable-gen';
 
+/**
+ * Contract.
+ */
 export interface IJsHbManager {
-	//mergeWithCustomizerPropertyReplection(jsHbSession: IJsHbSession, refMap: Map<Number, any>): MergeWithCustomizer;
-    jsHbConfig: IJsHbConfig;
-	//createLoadedLazyRef<L, I>(jsHbSession: IJsHbSession, genericNode: GenericNode, literalLazyObj: any): LazyRef<L, I>;
-	//createNotLoadedLazyRef<L, I>(jsHbSession: IJsHbSession, genericNode: GenericNode, literalLazyObj: any): LazyRef<L, I>;
+	/**
+	 * Configuration.
+	 */
+	jsHbConfig: IJsHbConfig;
+	/**
+	 * Creates a new session.
+	 */
 	createSession(): IJsHbSession;
+	/**
+	 * Adapter for your application.
+	 */
 	httpLazyObservableGen: IJsHbHttpLazyObservableGen;
 }
 
