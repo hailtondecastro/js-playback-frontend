@@ -1,5 +1,5 @@
 import { JsHbContants } from './js-hb-constants';
-import { LazyRefMTO } from './lazy-ref';
+import { LazyRef } from './lazy-ref';
 import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { get as lodashGet, has } from 'lodash';
@@ -7,8 +7,9 @@ import { Type } from '@angular/core';
 
 export namespace NgJsHbDecorators {
     /**
-     * Decorator for get property.<br>
-     * Exemplo:
+     * Decorator for get property.
+     * 
+     * Examplo:
      * ```ts
      * ...
      * private _myField: string;
@@ -26,7 +27,7 @@ export namespace NgJsHbDecorators {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
             let oldSet = descriptor.set;
             descriptor.set = function(value) {
-                if (value instanceof LazyRefMTO) {
+                if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                     //nada
                 } else {
                     if (target instanceof Object && !(target instanceof Date)) {
@@ -93,8 +94,9 @@ export namespace NgJsHbDecorators {
     }
 
     /**
-     * Decorator for persistent entity.<br>
-     * Exemplo:
+     * Decorator for persistent entity.
+     * 
+     * Sample:
      * ```ts
      * ...
      * @NgJsHbDecorators.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
