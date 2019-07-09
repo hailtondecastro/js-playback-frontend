@@ -93,8 +93,8 @@ export class JsHbSetCreator<T> {
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }
                 let allMD = this.session.resolveMetadatas({object: value, refererObject: this.refererObj, key: this.refererKey});
-                let backendMetadatasRefererObj = allMD.refererObjMD;
-                let backendMetadatasValue = allMD.objectMD;
+                let mdRefererObj = allMD.refererObjMd;
+                let mdValue = allMD.objectMd;
                 // let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                 // if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                 //     backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
@@ -109,19 +109,19 @@ export class JsHbSetCreator<T> {
                 action.fieldName = this.refererKey;
                 action.actionType = JsHbPlaybackActionType.CollectionAdd;
                 //if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                if (backendMetadatasRefererObj.$signature$) {
-                    action.ownerSignatureStr = backendMetadatasRefererObj.$signature$;
+                if (mdRefererObj.$signature$) {
+                    action.ownerSignatureStr = mdRefererObj.$signature$;
                 } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                     action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
-                } else if (!backendMetadatasRefererObj.$isComponentHibernateId$) {
+                } else if (!mdRefererObj.$isComponentHibernateId$) {
                     throw new Error('The proprerty \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner');
                 }
     
                 if (value != null) {
                     //if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    if (backendMetadatasValue.$signature$) {
+                    if (mdValue.$signature$) {
                         //action.settedSignatureStr = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                        action.settedSignatureStr = backendMetadatasValue.$signature$;
+                        action.settedSignatureStr = mdValue.$signature$;
                     } else if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                         action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                     } else {
@@ -145,8 +145,8 @@ export class JsHbSetCreator<T> {
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }
                 let allMD = this.session.resolveMetadatas({object: value, refererObject: this.refererObj, key: this.refererKey});
-                let backendMetadatasRefererObj = allMD.refererObjMD;
-                let backendMetadatasValue = allMD.objectMD;
+                let mdRefererObj = allMD.refererObjMd;
+                let mdValue = allMD.objectMd;
 
                 // let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                 // if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
@@ -162,9 +162,9 @@ export class JsHbSetCreator<T> {
                 action.fieldName = this.refererKey;
                 action.actionType = JsHbPlaybackActionType.CollectionRemove;
                 //if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                if (backendMetadatasRefererObj.$signature$) {
+                if (mdRefererObj.$signature$) {
                     //action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                    action.ownerSignatureStr = backendMetadatasRefererObj.$signature$;
+                    action.ownerSignatureStr = mdRefererObj.$signature$;
                 } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                     action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                 } else {
@@ -172,9 +172,9 @@ export class JsHbSetCreator<T> {
                 }
                 if (value != null) {
                     //if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    if (backendMetadatasValue.$signature$) {
+                    if (mdValue.$signature$) {
                         //action.settedSignatureStr = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                        action.settedSignatureStr = backendMetadatasValue.$signature$;
+                        action.settedSignatureStr = mdValue.$signature$;
                     } else if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                         action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                     } else {

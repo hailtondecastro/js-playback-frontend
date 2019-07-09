@@ -14,7 +14,8 @@ import { JsHbManagerDefault, IJsHbManager } from '../src/js-hb-manager';
 import { JsHbConfigDefault, IJsHbConfig, JsHbLogLevel } from '../src/js-hb-config';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
 import resultMasterLiteral from './master-a-test.json';
-import resultMasterLazyPrpOverSizedTest from './master-lazy-prp-over-sized-test.json';
+import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
+import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import { MasterAEnt } from './entities/master-a-ent';
 import { NgJsHbDecorators } from '../src/js-hb-decorators';
 import { JsHbContants } from '../src/js-hb-constants';
@@ -327,7 +328,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 
         });
 
-        it('master-a-async-test', (done) => {
+        it('master-a-test-async', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IJsHbSession;
@@ -483,7 +484,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 });
         });
 
-        it('master-a-sync-test', (done) => {
+        it('master-a-test-sync', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
 
             let jsHbSession: IJsHbSession;
@@ -641,7 +642,179 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 });
         });
 
-        it('master-lazy-prp-over-sized-async-test', (done) => {
+        it('master-a-detail-a-test-sync', (done) => {
+            let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
+
+            let jsHbSession: IJsHbSession;
+            let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
+                // .configLogLevel(JsHbLogLevel.Trace)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
+                
+            let asyncCount = 0;
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                console.log(operation + ', ' + cacheKey + ', ' + stream);
+                asyncCount++;
+            }
+
+            let propertyOptionsString: NgJsHbDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: NgJsHbDecorators.PropertyOptions<Stream> =
+                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: NgJsHbDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: NgJsHbDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'vcharA' || fieldName === 'vcharB';
+                                }
+                            );
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            };
+
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                                }
+                            );
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            };
+
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                                }
+                            );
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            };
+
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobA' || fieldName === 'blobB';
+                                }
+                            );
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            };
+
+            let streamReadCount = 1;
+            let allStreamReadedSub = new Subject<void>();
+            let allStreamReaded$ = allStreamReadedSub.asObservable();
+
+            let jsHbManager: IJsHbManager = new JsHbManagerDefault(
+                jsHbConfig, 
+                {
+                    generateHttpObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(10));
+                    },
+                    generateHttpObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<Stream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(10));
+                    }
+                });
+
+            let propertyOptions: NgJsHbDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+
+            propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        asyncCount++;
+                        return source;
+                    }
+                );
+            }
+
+            jsHbSession = jsHbManager.createSession();
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterADetailATestLiteral);
+            masterA$.subscribe(
+                {
+                    next: (masterA) => {
+                        masterA.blobLazyA.subscribe( 
+                            {
+                                next: (valueStream) => {
+                                    asyncCount++;
+                                    let w = new memStreams.WritableStream();
+                                    let result = '';
+                                    (valueStream as Readable).on('data', (chunk) => {
+                                        result = chunk.toString();
+                                        chai.expect('MasterAEnt_REG01_BlobLazyA').to.eq(result);
+                                    });
+                                    if (--streamReadCount === 0) {
+                                        setTimeout(() => {
+                                            allStreamReadedSub.next(null);
+                                        });
+                                    } else if (streamReadCount < 0) {
+                                        throw new Error('Invalid streamReadCount' + streamReadCount);
+                                    }
+                                },
+                                complete: () => {
+                                }
+                            }
+                        );
+
+                        masterA.detailAEntCol.subscribe((coll) => {
+                            let detailAEntArr = Array.from(coll);
+                            for (let index = 0; index < detailAEntArr.length; index++) {
+                                const detailAItem = detailAEntArr[index];
+                                //console.log(detailAItem);
+                                chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharA)
+                                    .to.eq(detailAItem.detailAComp.vcharA);
+                                chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharB)
+                                    .to.eq(detailAItem.detailAComp.vcharB);
+                                chai.expect(masterA)
+                                    .to.eq(detailAItem.compId.masterA);
+                            }
+                        });
+                    }
+                }
+            );
+
+            combineLatest(
+                jsHbSession.createAsyncTasksWaiting(),
+                allStreamReaded$)
+                .subscribe(() => {
+                    chai.expect(asyncCount).to.eq(5, 'asyncCount');
+                    done();
+                });
+        });
+
+        it('master-lazy-prp-over-sized-test-async', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IJsHbSession;
@@ -766,7 +939,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterLazyPrpOverSizedTest);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterLazyPrpOverSizedLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {

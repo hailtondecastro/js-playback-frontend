@@ -6,7 +6,7 @@ import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-act
 import { IJsHbSession, OriginalLiteralValueEntry } from './js-hb-session';
 import { JsHbLogLevel, FieldInfo } from './js-hb-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
-import { flatMap, map } from 'rxjs/operators';
+import { flatMap, map, finalize } from 'rxjs/operators';
 import { JsHbContants } from './js-hb-constants';
 import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 import { NgJsHbDecorators } from './js-hb-decorators';
@@ -21,6 +21,17 @@ import { flatMapJustOnceRxOpr } from './rxjs-util';
 
 export class StringStreamMarker {
 }
+
+// const consoleOriginalClone = {...console};
+// global.console.log = (message?: any, ...optionalParams: any[]) => {
+//     consoleOriginalClone.log(message, ...optionalParams);
+// }
+// global.console.debug = (message?: any, ...optionalParams: any[]) => {
+//     consoleOriginalClone.debug(message, ...optionalParams);
+// }
+// global.console.warn = (message?: any, ...optionalParams: any[]) => {
+//     consoleOriginalClone.warn(message, ...optionalParams);
+// }
 
 export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
            /**
@@ -136,9 +147,9 @@ export class LazyRef<L extends object, I> extends Subject<L> {
      */
     signatureStr: string;
     // callFromLiteralValue$: Observable<L>;
-    backendMetadatasRefererObj: JsHbBackendMetadatas;
-    backendMetadatasLazyLoadedObj: JsHbBackendMetadatas;
-    backendMetadatasHibernateIdMetadata: JsHbBackendMetadatas;
+    bMdRefererObj: JsHbBackendMetadatas;
+    bMdLazyLoadedObj: JsHbBackendMetadatas;
+    bMdHibernateIdMetadata: JsHbBackendMetadatas;
     /**
      * Unlike the common subscribe, which must be executed every time the data
      * changed, it is only executed once and triggers a next to
@@ -162,6 +173,8 @@ export class LazyRef<L extends object, I> extends Subject<L> {
     setLazyObjOnLazyLoading(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
     setLazyObjNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    /** Framework internal use. */
+    setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
     notifyModification(lazyLoadedObj: L) : void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /**
@@ -358,18 +371,18 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     public setLazyObjOnLazyLoading(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.onLazyLoadingCallbackTemplate( () => {
-            return thisLocal.setLazyObj(lazyLoadedObj)
-                .pipe(thisLocal.session.logAllSourceStackRxOpr())
-                .pipe(
-                    thisLocal.mapKeepAllFlagsRxOpr(() => {})
-                )
-                .pipe(
-                    thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                        lazyLoadedObj,
-                        () => {}
-                    )
-                );
+        let result$ = this.lazyLoadingCallbackAsyncTemplate( () => {
+            return thisLocal.setLazyObj(lazyLoadedObj);
+                // .pipe(thisLocal.session.logAllSourceStackRxOpr())
+                // .pipe(
+                //     thisLocal.mapKeepAllFlagsRxOpr(() => {})
+                // )
+                // .pipe(
+                //     thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                //         lazyLoadedObj,
+                //         () => {}
+                //     )
+                // );
         });
 
         const isSynchronouslyDone = { value: false, result: null as void};
@@ -401,16 +414,25 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     public setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.onLazyLoadingCallbackTemplate(() => {
-            return thisLocal.setLazyObjNoNext(lazyLoadedObj)
-                .pipe(thisLocal.mapKeepAllFlagsRxOpr(() => {}))
-                .pipe(
-                    thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                        lazyLoadedObj,
-                        () => {}
-                    )
-                );
+        let result$ = this.noNextCallbackAsyncTemplate(() => {
+            return this.lazyLoadingCallbackAsyncTemplate(() => {
+                return thisLocal.setLazyObj(lazyLoadedObj);
+                    // .pipe(thisLocal.mapKeepAllFlagsRxOpr(() => {}))
+                    // .pipe(
+                    //     thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                    //         lazyLoadedObj,
+                    //         () => {}
+                    //     )
+                    // );
+            });
         });
+                // .pipe(thisLocal.mapKeepAllFlagsRxOpr(() => {}))
+                // .pipe(
+                //     thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                //         lazyLoadedObj,
+                //         () => {}
+                //     )
+                // );
 
         const isSynchronouslyDone = { value: false, result: null as void};
         // result$ = result$.pipe(thisLocal.session.addSubscribedObsRxOpr());
@@ -428,17 +450,17 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     public setLazyObjNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.onNoNextCallbackTemplate(() => {
-            return thisLocal.setLazyObj(lazyLoadedObj)
-                .pipe(
-                    thisLocal.mapKeepAllFlagsRxOpr( () => {} )
-                )
-                .pipe(
-                    thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                        lazyLoadedObj,
-                        () => {}
-                    )
-                );
+        let result$ = this.noNextCallbackAsyncTemplate(() => {
+            return thisLocal.setLazyObj(lazyLoadedObj);
+                // .pipe(
+                //     thisLocal.mapKeepAllFlagsRxOpr( () => {} )
+                // )
+                // .pipe(
+                //     thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                //         lazyLoadedObj,
+                //         () => {}
+                //     )
+                // );
         });
 
         const isSynchronouslyDone = { value: false, result: null as void};
@@ -479,7 +501,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     private processResponseOnLazyLoading(responselike: { body: any }): Observable<L> {
         const thisLocal = this;
-        let result$ = this.onLazyLoadingCallbackTemplate(() => {
+        let result$ = this.lazyLoadingCallbackTemplate(() => {
             return thisLocal.processResponse(responselike);
         })
 
@@ -503,7 +525,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         // }
     }
 
-    private onLazyLoadingCallbackTemplate<R>(callback: () => R): R {
+    private lazyLoadingCallbackTemplate<R>(callback: () => R): R {
         try {
             this._isOnLazyLoading = true;
             return callback();
@@ -512,13 +534,29 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         }
     }
 
-    private onNoNextCallbackTemplate<R>(callback: () => R): R {
+    private lazyLoadingCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
+        const thisLocal = this;
+        this._isOnLazyLoading = true;
+        return callback().pipe(finalize(() => {
+            thisLocal._isOnLazyLoading = false;
+        }));
+    }
+
+    private noNextCallbackTemplate<R>(callback: () => R): R {
         try {
             this._needCallNextOnSetLazyObj = false;
             return callback();
         } finally {
             this._needCallNextOnSetLazyObj = true;
         }
+    }
+
+    private noNextCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
+        const thisLocal = this;
+        this._needCallNextOnSetLazyObj = false;
+        return callback().pipe(finalize(() => {
+            thisLocal._needCallNextOnSetLazyObj = false;
+        }));
     }
 
     public setLazyObj(lazyLoadedObj: L): Observable<void> {
@@ -587,8 +625,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     console.groupEnd();
                 }
 
-                let backendMetadatasRefererObj = this.backendMetadatasRefererObj;
-                let backendMetadatasLazyLoadedObj = this.backendMetadatasLazyLoadedObj;
+                let mdRefererObj = this.bMdRefererObj;
+                let mdLazyLoadedObj = this.bMdLazyLoadedObj;
                 // let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
                 // if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
                 //     backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
@@ -603,20 +641,20 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 action.fieldName = this.refererKey;
                 action.actionType = JsHbPlaybackActionType.SetField;
                 //if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                if (backendMetadatasRefererObj.$signature$) {
+                if (mdRefererObj.$signature$) {
                     //action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                    action.ownerSignatureStr = backendMetadatasRefererObj.$signature$;
+                    action.ownerSignatureStr = mdRefererObj.$signature$;
                 } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                     action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
-                } else if (!this._isOnLazyLoading && !backendMetadatasRefererObj.$isComponentHibernateId$) {
+                } else if (!this._isOnLazyLoading && !mdRefererObj.$isComponentHibernateId$) {
                     throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner. Me:\n' + this);
                 }
 
                 if (lazyLoadedObj != null) {
                     //if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    if (backendMetadatasLazyLoadedObj.$signature$) {
+                    if (mdLazyLoadedObj.$signature$) {
                         //action.settedSignatureStr = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                        action.settedSignatureStr = backendMetadatasLazyLoadedObj.$signature$;
+                        action.settedSignatureStr = mdLazyLoadedObj.$signature$;
                     } else if (lodashHas(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                         action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                     //} else if (propertyOptions.isLazyProperty) {
@@ -889,7 +927,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 }
                 let localObs: Observable<L> = 
                     thisLocal.respObs
-                        .pipe(thisLocal.session.logAllSourceStackRxOpr())
+                        .pipe(thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'))
                         .pipe(
                             flatMapJustOnceRxOpr(thisLocal.createFlatMapCallback())
                         );
@@ -1120,9 +1158,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         let lazyLoadedObj$: Observable<L>;
         let literalJsHbResult: {result: any};
         let isLazyRefOfCollection = false;
-        let backendMetadatasRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+        let mdRefererObj: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
         if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-            backendMetadatasRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+            mdRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbMetadatasName);
         }
         
         let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.jsHbConfig);
@@ -1169,9 +1207,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     let processJsHbResultEntityArrayInternal$ = this.session.processJsHbResultEntityArrayInternal(collTypeParam, lazyLoadedColl, literalJsHbResult.result);
                     lazyLoadedObj$ = processJsHbResultEntityArrayInternal$
                         .pipe(
-                            flatMapJustOnceRxOpr(() => {
+                            thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, () => {
                                 return this.setLazyObjOnLazyLoadingNoNext(lazyLoadedColl)
-                                    .pipe(thisLocal.mapKeepAllFlagsRxOpr( () => {} ))
                                     .pipe(
                                         thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
                                             lazyLoadedColl, 
@@ -1181,7 +1218,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                         )
                                     )
                             })
-                        )
+                        );
                         // this.setLazyObjOnLazyLoadingNoNext(lazyLoadedColl)
                         //     .pipe(thisLocal.keepAllFlagsRxOpr( () => {} ))
                         //     .pipe(
@@ -1219,7 +1256,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
                     let fromDirectRaw$ = 
                         getFromCache$
-                            .pipe(thisLocal.session.logAllSourceStackRxOpr())
+                            .pipe(thisLocal.session.logRxOpr('LazyRef_processResponse_fromDirectRaw_getFromCache'))
                             .pipe(
                                 flatMapJustOnceRxOpr( (cacheStream) => {
                                     return fieldEtc.fieldProcessorCaller.callFromDirectRaw(cacheStream, fieldEtc.fieldInfo);
@@ -1260,7 +1297,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                             .pipe(
                                 flatMapJustOnceRxOpr((fromStreamValue) => {
                                     return of(fromStreamValue)
-                                        .pipe(thisLocal.session.logAllSourceStackRxOpr())
+                                        .pipe(thisLocal.session.logRxOpr('LazyRef_processResponse_fromDirectRaw'))
                                         .pipe(
                                             thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(
                                                 fromStreamValue,
@@ -1269,7 +1306,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                                         console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromDirectRaw" result. Me:\n' + this);
                                                     }
                                                     thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
-                                                        backendMetadatasRefererObj,
+                                                        mdRefererObj,
                                                         fieldEtc,
                                                         null);
                                                     return thisLocal.setLazyObjOnLazyLoadingNoNext(fromStreamValueB);
@@ -1330,7 +1367,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                     console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
                                 }
                                 thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
-                                    backendMetadatasRefererObj,
+                                    mdRefererObj,
                                     fieldEtc,
                                     literalJsHbResult);
                                 return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
@@ -1371,8 +1408,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         if (this.signatureStr && !lazyLoadedObj$) {
             if (!this.session.isOnRestoreEntireStateFromLiteral()) {
                 //if (!lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                if (!backendMetadatasRefererObj.$signature$ && !backendMetadatasRefererObj.$isComponentHibernateId$) {
-                    throw new Error('The referer object has no backendMetadatasRefererObj.signature. This should not happen. Me:\n' + this);
+                if (!mdRefererObj.$signature$ && !mdRefererObj.$isComponentHibernateId$) {
+                    throw new Error('The referer object has no mdRefererObj.$signature$. This should not happen. Me:\n' + this);
                 } else {
                     //this.refererObj is a component.
                     if (isLazyRefOfCollection) {
@@ -1381,9 +1418,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 }
                 //let ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName);
                 //if (!ownerSignatureStr) {
-                if (!backendMetadatasRefererObj.$signature$) {
+                if (!mdRefererObj.$signature$) {
                     if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
-                        console.debug('LazyRefBase.processResponse: (!backendMetadatasRefererObj.signature): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
+                        console.debug('LazyRefBase.processResponse: (!mdRefererObj.$signature$): owner entity not found for LazyRef, the owner must be a hibernate component. Me:\n' + this);
                     }
                 }
                 let thisLocal = this;
@@ -1391,7 +1428,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     {
                         method: 'lazyRef',
                         //ownerSignatureStr: ownerSignatureStr,
-                        ownerSignatureStr: backendMetadatasRefererObj.$signature$,
+                        ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
                         literalJsHbResult: literalJsHbResult,
                         ref: {
@@ -1491,7 +1528,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
         }
     }
 
-    private lazyRefPrpStoreOriginalliteralEntryIfNeeded(backendMetadatasRefererObj: JsHbBackendMetadatas, fieldEtc: FieldEtc<L, any>, literalJsHbResult: any): void {
+    private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: JsHbBackendMetadatas, fieldEtc: FieldEtc<L, any>, literalJsHbResult: any): void {
         const thisLocal = this;
         let result$: Observable<void>;
         if (!this.session.isOnRestoreEntireStateFromLiteral()) {
@@ -1503,7 +1540,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 this.session.storeOriginalLiteralEntry(
                     {
                         method: 'lazyRef',
-                        ownerSignatureStr: backendMetadatasRefererObj.$signature$,
+                        ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
                         attachRefId: this.attachRefId,
                         ref: {
@@ -1516,7 +1553,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 this.session.storeOriginalLiteralEntry(
                     {
                         method: 'lazyRef',
-                        ownerSignatureStr: backendMetadatasRefererObj.$signature$,
+                        ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
                         literalJsHbResult: literalJsHbResult,
                         ref: {
@@ -1748,7 +1785,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
             // }
             // return isPipedCallbackDone.result;
 
-            console.debug('calling flatMapCallback()()'); console.debug('this.next()\n' + thisLocal);
+            //console.debug('calling flatMapCallback()()'); console.debug('this.next()\n' + thisLocal);
             return this.processResponseOnLazyLoading(response);
         };
     }

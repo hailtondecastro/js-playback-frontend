@@ -174,7 +174,7 @@ export namespace JsHbForNodeTest {
                 let base64AB = Buffer.from(value, 'base64');
                 let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                 myReadableStreamBuffer.push(base64AB);
-                console.log()
+                //console.log()
                 return of(myReadableStreamBuffer);
             } else {
                 return of(null);

@@ -156,12 +156,12 @@ export class DetailAEnt {
     private _hbVersion: number;
     private _detailAComp: DetailAComp;
 
-
     /**
      * Getter compId
      * @return {DetailACompId}
      */
 	@NgJsHbDecorators.property()
+	@NgJsHbDecorators.hibernateId()
 	public get compId(): DetailACompId {
 		return this._compId;
 	}
