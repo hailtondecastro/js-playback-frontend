@@ -20,8 +20,6 @@ export namespace JsHbForNodeTest {
             },
             getFromCache: (cacheKey) => {
                 let base64AB = CacheMap.get(cacheKey);
-                //let rs = new memStreams.ReadableStream(base64AB.to);
-                //let myReadableStreamBuffer = new Stream.Readable(); 
                 let myReadableStreamBuffer;
                 if (base64AB) {
                     let ws = new memStreams.WritableStream();
@@ -129,8 +127,6 @@ export namespace JsHbForNodeTest {
             if (value) {
                 let ws = new memStreams.WritableStream();
                 ws.write(value);
-                //let rs = new memStreams.ReadableStream(base64AB.to);
-                //let myReadableStreamBuffer = new Stream.Readable(); 
                 let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                 myReadableStreamBuffer.push(value);
                 return of(myReadableStreamBuffer);
@@ -174,7 +170,6 @@ export namespace JsHbForNodeTest {
                 let base64AB = Buffer.from(value, 'base64');
                 let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                 myReadableStreamBuffer.push(base64AB);
-                //console.log()
                 return of(myReadableStreamBuffer);
             } else {
                 return of(null);
@@ -212,8 +207,6 @@ export namespace JsHbForNodeTest {
                     let valueBuffer = Buffer.from(value, 'utf8');
                     let ws = new memStreams.WritableStream();
                     ws.write(valueBuffer);
-                    //let rs = new memStreams.ReadableStream(base64AB.to);
-                    //let myReadableStreamBuffer = new Stream.Readable(); 
                     let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                     myReadableStreamBuffer.push(valueBuffer);
                     myReadableStreamBuffer.setEncoding('utf-8');

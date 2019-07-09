@@ -1,12 +1,4 @@
 import {HttpResponse, HttpHeaders} from '@angular/common/http';
-// let Blob = Buffer;
-// (global as any).Blob = Blob;
-// let atob = require('atob');
-// (global as any).atob = atob;
-// let btoa = require('btoa');
-// (global as any).btoa = btoa;
-// let FileReader = require('filereader');
-// (global as any).FileReader = FileReader;
 
 import * as chai from 'chai';
 import { IJsHbSession } from '../src/js-hb-session';
@@ -123,7 +115,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
             obs1$ = obs1$
                 .pipe(
                     mapJustOnceRxOpr((value) => {
-                    //map((value) => {
                         asyncCount++;
                         if (--streamReadCount === 0) {
                             setTimeout(() => {
@@ -140,7 +131,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
             obs1$ = obs1$
                 .pipe(
                     flatMapJustOnceRxOpr((value) => {
-                    //flatMap((value) => {
                         asyncCount++;
                         if (--streamReadCount === 0) {
                             setTimeout(() => {
@@ -155,7 +145,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 )
                 .pipe(
                     flatMapJustOnceRxOpr((value) => {
-                    //flatMap((value) => {
                         asyncCount++;
                         if (--streamReadCount === 0) {
                             setTimeout(() => {
@@ -173,7 +162,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
             obs2$ = obs2$
                 .pipe(
                     mapJustOnceRxOpr((value) => {
-                    //map((value) => {
                         asyncCount++;
                         if (--streamReadCount === 0) {
                             setTimeout(() => {
@@ -792,7 +780,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                             let detailAEntArr = Array.from(coll);
                             for (let index = 0; index < detailAEntArr.length; index++) {
                                 const detailAItem = detailAEntArr[index];
-                                //console.log(detailAItem);
                                 chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharA)
                                     .to.eq(detailAItem.detailAComp.vcharA);
                                 chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharB)
@@ -972,60 +959,6 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                                 }
                             }
                         );
-            
-                        // masterA.blobLazyB.subscribe( 
-                        //     {
-                        //         next: (valueStream) => {
-                        //             asyncCount++;
-                        //             let w = new memStreams.WritableStream();
-                        //             let result = '';
-                        //             (valueStream as Readable).on('data', (chunk) => {
-                        //                 result = chunk.toString();
-                        //                 chai.expect(result)
-                        //                     .to.satisfy(
-                        //                         (resultB: string) => {
-                        //                             return resultB
-                        //                                 .startsWith('MasterAEnt_REG01_BlobLazyBMasterAEnt_'+
-                        //                                     'REG01_BlobLazyBMaster');
-                        //                         }
-                        //                     );
-                        //                 if (--streamReadCount === 0) {
-                        //                     setTimeout(() => {allStreamReadedSub.next(null);});
-                        //                 } else if (streamReadCount < 0) {
-                        //                     throw new Error('Invalid streamReadCount' + streamReadCount);
-                        //                 }
-                        //             });
-                        //         },
-                        //         complete: () => {
-                        //         }
-                        //     }
-                        // );
-            
-                        // masterA.clobLazyA.subscribe( 
-                        //     {
-                        //         next: (value) => {
-                        //             asyncCount++;
-                        //             value.on('data', (chunk) => {
-                        //                 asyncCount++;
-                        //                 chai.expect(chunk)
-                        //                     .to.satisfy(
-                        //                         (chunk2: string) => {
-                        //                             return chunk2
-                        //                                 .startsWith('MasterAEnt_REG01_ClobLazyBMasterAEnt_REG01_'+
-                        //                                     'ClobLazyBMasterAEnt_REG01_ClobLazyBMasterA');
-                        //                         }
-                        //                     );
-                        //                 if (--streamReadCount === 0) {
-                        //                     setTimeout(() => {allStreamReadedSub.next(null);});
-                        //                 } else if (streamReadCount < 0) {
-                        //                     throw new Error('Invalid streamReadCount: ' + streamReadCount);
-                        //                 }
-                        //             });
-                        //         },
-                        //         complete: () => {
-                        //         }
-                        //     }
-                        // );
             
                         jsHbSession.jsHbManager.jsHbConfig.cacheHandler.clearCache();
                     }

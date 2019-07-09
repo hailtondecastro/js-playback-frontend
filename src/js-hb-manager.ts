@@ -28,15 +28,10 @@ export interface IJsHbManager {
 	httpLazyObservableGen: IJsHbHttpLazyObservableGen;
 }
 
-//@Injectable()
 export class JsHbManagerDefault implements IJsHbManager{
-	//private _httpLazyObservableGen: IJsHbHttpLazyObservableGen;
-	//private _jsHbConfig: IJsHbConfig;
     constructor(
 			private _jsHbConfig: IJsHbConfig,
 			private _httpLazyObservableGen: IJsHbHttpLazyObservableGen) {
-		//this._jsHbConfig = this._injector.get(JsHbContants.I_JSHB_CONFIG_IMPLE);
-		//this._httpLazyObservableGen = this._injector.get(JsHbContants.I_JSHB_HTTP_LAZY_OBSERVABLE_GEN_IMPLE);
 
 		if (!this._httpLazyObservableGen) {
 			throw new Error('_httpLazyObservableGen can not be null');
@@ -99,11 +94,6 @@ export class JsHbManagerDefault implements IJsHbManager{
 			let lazyLoadedObjType: Type<any> = null;
 			let propertyOptions: NgJsHbDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
-			// if (!optionsConst) {
-			//	propertyOptions = Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
-			// } else {
-			// 	propertyOptions = optionsConst;
-			// }
 			let lazyRefGenericParam: Type<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
@@ -210,13 +200,3 @@ export class JsHbManagerDefault implements IJsHbManager{
 		return fielEtcCacheMap.get(owner).get(fieldName) as FieldEtc<P, GP>;
 	}
 }
-
-// let jsHbManagerFactory = (config: IJsHbConfig, observableGen: IJsHbHttpLazyObservableGen) => {
-//   return new JsHbManagerDefault(config, observableGen);
-// };
-
-// export let JsHbManagerProvider =
-//   { provide: IJsHbManager,
-//     useFactory: heroServiceFactory,
-//     deps: [Logger, UserService]
-//   };
