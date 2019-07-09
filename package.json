@@ -7,9 +7,9 @@
   "scripts": {
     "build": "npm run clear-all && npm run build:prepare-dist-folder && tsc --p tsconfig-dist.json --extendedDiagnostics && npm run build:embed-source-contents",
     "build-fast": "tsc --p tsconfig-dist.json --extendedDiagnostics && npm run build:embed-source-contents",
-    "clear-all": "node ./build-utils/clear-all -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true",
-    "build:embed-source-contents": "node ./build-utils/embed-source-contents -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true",
-    "build:prepare-dist-folder": "node ./build-utils/prepare-dist-folder -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true"
+    "clear-all": "node ./build-utils/clear-all -baseDistFolder ./dist -verbose true",
+    "build:embed-source-contents": "node ./build-utils/embed-source-contents -baseDistFolder ./dist -verbose true",
+    "build:prepare-dist-folder": "node ./build-utils/prepare-dist-folder -baseDistFolder ./dist -verbose true"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.117",
@@ -25,6 +25,7 @@
   "dependencies": {
     "@angular/common": "^6.0.6",
     "@angular/core": "^6.1.10",
+    "@angular/http": "^6.1.10",
     "@types/node": "^10.3.5",
     "lodash": "^4.17.5",
     "reflect-metadata": "^0.1.9",
