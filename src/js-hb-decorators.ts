@@ -5,6 +5,7 @@ import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-act
 import { get as lodashGet, has } from 'lodash';
 import { Type } from '@angular/core';
 import { JsHbLogLevel } from './js-hb-config';
+import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 
 export namespace NgJsHbDecorators {
     export interface PropertyOptions {
@@ -82,17 +83,31 @@ export namespace NgJsHbDecorators {
                                     let action: JsHbPlaybackAction = new JsHbPlaybackAction();
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = JsHbPlaybackActionType.SetField;
-                                    if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                        action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                    let backendMetadatas: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                                    if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                                        backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                                    }
+
+                                    //if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                                    if (backendMetadatas.signature) {
+                                        //action.ownerSignatureStr = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                        action.ownerSignatureStr = backendMetadatas.signature;
                                     } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                         action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
                                         throw new Error('The property \'' + propertyKey.toString() + ' de \'' + target.constructor + '\' has a not managed owner');
                                     }
             
-                                    if (value != null) {
-                                        if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                                            action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                    if (value != null && value != undefined) {
+                                        let backendMetadatasValue: JsHbBackendMetadatas = { iAmJsHbBackendMetadatas: true };
+                                        if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                                            backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                                        }
+
+                                        //if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                                        if (backendMetadatasValue.signature) {
+                                            //action.settedSignatureStr = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                                            action.settedSignatureStr = backendMetadatasValue.signature;
                                         } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
                                             action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                                         } else {
