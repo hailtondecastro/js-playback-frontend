@@ -1,0 +1,24 @@
+export class JsHbArray<T> extends Array<T> {
+
+    public push(...items: T[]): number {
+        return super.push(...items);
+    }
+
+    public pop(): T | undefined {
+        return super.pop();
+    }
+
+    get
+    this[n: number]: T {
+        get {
+            return super[n];
+        }
+        set {
+            super[n] = value;
+        }
+    }
+
+    // public get(n: number): T {
+    //     return super[n];
+    // }
+}

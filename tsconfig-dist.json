@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "declaration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "../../local_modules_dist/ng-js-hb-supersync",
+    "rootDir": ".",
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "inlineSourceMap": false,
+    "sourceMap": true,
+    "lib": ["es6"],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "target": "es5"
+  },
+  "exclude": [
+    "node_modules",
+    "dist/**",
+    "dist_dev/**"
+  ]
+}

@@ -1,0 +1,36 @@
+import { MergeWithCustomizer } from 'lodash';
+import { Type } from '@angular/core';
+import { GenericNode, GenericTokenizer } from './generic-tokenizer';
+
+export namespace LodashUtils {
+	export function mergeWithCustomizerPropertyReplection(): MergeWithCustomizer {
+        return function(value: any, srcValue: any, key?: string, object?: Object, source?: Object) {
+			let prpType: Type<any> = Reflect.getMetadata("design:type", object, key);
+			let correctSrcValue = source;
+			if (prpType) {
+				let prpGenType: GenericNode = GenericTokenizer.resolveNode(object, key);
+				if (prpGenType) {
+					if (prpGenType.gType === Array) {
+						let correctSrcValueArr = [];
+						for (let index = 0; index < srcValue.length; index++) {
+							let arrType: Type<any> = <Type<any>>prpGenType.gParams[0];
+							let correctSrcValueArrItem = new arrType();
+							_.mergeWith(correctSrcValueArrItem, srcValue[index], mergeWithCustomizerPropertyReplection());
+							correctSrcValueArr.push(correctSrcValueArrItem);
+						}
+						correctSrcValue = correctSrcValueArr;
+						//nada por enquanto
+					} else {
+						//nada
+					}
+				} else {
+					correctSrcValue = new prpType();
+					_.mergeWith(correctSrcValue, srcValue, mergeWithCustomizerPropertyReplection());
+				}
+			} else {
+				//nada
+			}
+			return correctSrcValue;
+        }
+    }
+}
