@@ -4,8 +4,13 @@ export interface IJsHbConfig {
     jsHbSignatureName: string;
     jsHbIsLazyUninitializedName: string;
     jsHbHibernateIdName: string;
+	jsHbIsComponentName: string;
+	jsHbIsAssociativeName: string;
+	jsHbIsLazyPropertyName: string;
     jsHbCreationIdName: string;
     logLevel: JsHbLogLevel;
+    maxLazyRefNotificationPerSecond: number;
+    lazyRefNotificationTimeMeasurement: number;
     configJsHbIdName(jsHbIdName: string): IJsHbConfig;
     configJsHbIdRefName(jsHbIdRefName: string): IJsHbConfig;
     configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig;
@@ -13,6 +18,8 @@ export interface IJsHbConfig {
     configJsHbHibernateIdName(jsHbHibernateIdName: string): IJsHbConfig;
     configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig;    
     configLogLevel(logLevel: JsHbLogLevel): IJsHbConfig;
+    configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IJsHbConfig;
+    configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IJsHbConfig;
 }
 
 export enum JsHbLogLevel {
@@ -25,12 +32,17 @@ export enum JsHbLogLevel {
 }
 
 export class JsHbConfigDefault implements IJsHbConfig {
-    private _jsHbIdName: string                        = 'jsHbId';
-    private _jsHbIdRefName: string                     = 'jsHbIdRef'; 
-    private _jsHbSignatureName: string                 = 'jsHbSignature';     
-    private _jsHbIsLazyUninitializedName: string       = 'jsHbIsLazyUninitialized';               
-    private _jsHbHibernateIdName: string               = 'jsHbHibernateId';          
-    private _jsHbCreationIdName: string                = 'jsHbCreationId';
+    private _jsHbIdName: string                         = 'jsHbId';
+    private _jsHbIdRefName: string                      = 'jsHbIdRef';
+    private _jsHbSignatureName: string                  = 'jsHbSignature';
+    private _jsHbIsLazyUninitializedName: string        = 'jsHbIsLazyUninitialized';
+    private _jsHbHibernateIdName: string                = 'jsHbHibernateId';
+	private _jsHbIsComponentName: string                = 'jsHbIsComponent';
+	private _jsHbIsAssociativeName: string              = 'jsHbIsAssociative';
+	private _jsHbIsLazyPropertyName: string             = 'jsHbIsLazyProperty';
+    private _jsHbCreationIdName: string                 = 'jsHbCreationId';
+    private _maxLazyRefNotificationPerSecond: number    = 10;
+    private _lazyRefNotificationTimeMeasurement: number = 5000;
     private _logLevel: JsHbLogLevel = JsHbLogLevel.Trace;
 
     public configJsHbIdName(jsHbIdName: string): IJsHbConfig { this.jsHbIdName = jsHbIdName; return this; }
@@ -38,120 +50,90 @@ export class JsHbConfigDefault implements IJsHbConfig {
     public configJsHbSignatureName(jsHbSignatureName: string): IJsHbConfig { this.jsHbSignatureName = jsHbSignatureName; return this; }
     public configJsHbIsLazyUninitializedName(jsHbIsLazyUninitializedName: string): IJsHbConfig { this.jsHbIsLazyUninitializedName = jsHbIsLazyUninitializedName; return this; }
     public configJsHbHibernateIdName(jsHbHibernateIdName: string): IJsHbConfig { this.jsHbHibernateIdName = jsHbHibernateIdName; return this; }
+	public configJsHbIsAssociativeName(value: string): IJsHbConfig { this._jsHbIsAssociativeName = value; return this; }
+	public configJsHbIsLazyPropertyName(value: string): IJsHbConfig { this._jsHbIsLazyPropertyName = value; return this; }
+	public configJsHbIsComponentName(value: string): IJsHbConfig { this._jsHbIsComponentName = value; return this; }
     public configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
     public configLogLevel(logLevel: JsHbLogLevel): IJsHbConfig { this.logLevel = logLevel; return this; }
+    public configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IJsHbConfig { this.maxLazyRefNotificationPerSecond = maxLazyRefNotificationPerSecond; return this; }
+    public configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IJsHbConfig { this.lazyRefNotificationTimeMeasurement = lazyRefNotificationTimeMeasurement; return this; }
 
-    /**
-     * Getter jsHbIdName
-     * @return {string}
-     */
     public get jsHbIdName(): string {
         return this._jsHbIdName;
     }
 
-    /**
-     * Getter jsHbIdRefName
-     * @return {string}
-     */
     public get jsHbIdRefName(): string {
         return this._jsHbIdRefName;
     }
 
-    /**
-     * Getter jsHbSignatureName
-     * @return {string}
-     */
     public get jsHbSignatureName(): string {
         return this._jsHbSignatureName;
     }
 
-    /**
-     * Getter jsHbIsLazyUninitializedName
-     * @return {string}
-     */
     public get jsHbIsLazyUninitializedName(): string {
         return this._jsHbIsLazyUninitializedName;
     }
 
-    /**
-     * Getter jsHbHibernateIdName
-     * @return {string}
-     */
     public get jsHbHibernateIdName(): string {
         return this._jsHbHibernateIdName;
     }
 
-    /**
-     * Setter jsHbIdName
-     * @param {string} value
-     */
     public set jsHbIdName(value: string) {
         this._jsHbIdName = value;
     }
 
-    /**
-     * Setter jsHbIdRefName
-     * @param {string} value
-     */
     public set jsHbIdRefName(value: string) {
         this._jsHbIdRefName = value;
     }
 
-    /**
-     * Setter jsHbSignatureName
-     * @param {string} value
-     */
     public set jsHbSignatureName(value: string) {
         this._jsHbSignatureName = value;
     }
 
-    /**
-     * Setter jsHbIsLazyUninitializedName
-     * @param {string} value
-     */
     public set jsHbIsLazyUninitializedName(value: string) {
         this._jsHbIsLazyUninitializedName = value;
     }
 
-    /**
-     * Setter jsHbHibernateIdName
-     * @param {string} value
-     */
     public set jsHbHibernateIdName(value: string) {
         this._jsHbHibernateIdName = value;
     }
 
-
-    /**
-     * Getter jsHbCreationIdName
-     * @return {string                }
-     */
-	public get jsHbCreationIdName(): string                 {
+	public get jsHbCreationIdName(): string {
 		return this._jsHbCreationIdName;
 	}
 
-    /**
-     * Setter jsHbCreationIdName
-     * @param {string                } value
-     */
-	public set jsHbCreationIdName(value: string                ) {
+	public set jsHbCreationIdName(value: string) {
 		this._jsHbCreationIdName = value;
 	}
 
-    /**
-     * Getter logLevel
-     * @return {JsHbLogLevel}
-     */
 	public get logLevel(): JsHbLogLevel {
 		return this._logLevel;
 	}
 
-    /**
-     * Setter logLevel
-     * @param {JsHbLogLevel} value
-     */
 	public set logLevel(value: JsHbLogLevel) {
 		this._logLevel = value;
+    }
+    
+    public get jsHbIsAssociativeName(): string {
+		return this._jsHbIsAssociativeName;
+	}
+	public get jsHbIsLazyPropertyName(): string {
+		return this._jsHbIsLazyPropertyName;
+	}
+	public get jsHbIsComponentName(): string {
+		return this._jsHbIsComponentName;
+    }
+	public get maxLazyRefNotificationPerSecond(): number{
+		return this._maxLazyRefNotificationPerSecond;
+    }
+	public get lazyRefNotificationTimeMeasurement(): number  {
+		return this._lazyRefNotificationTimeMeasurement;
+	}
+	public set lazyRefNotificationTimeMeasurement(value: number ) {
+		this._lazyRefNotificationTimeMeasurement = value;
+	}
+	public set maxLazyRefNotificationPerSecond(value: number) {
+		this._maxLazyRefNotificationPerSecond = value;
 	}
 
 }

@@ -1,10 +1,5 @@
-import { MergeWithCustomizer } from 'lodash';
-import { Type, Inject, Injectable, Injector } from '@angular/core';
-import { GenericNode } from './generic-tokenizer';
+import { Injectable, Injector } from '@angular/core';
 import { IJsHbConfig, JsHbLogLevel } from './js-hb-config';
-import { LazyRef, LazyRefDefault } from './lazy-ref';
-import { Observable } from 'rxjs/Observable';
-import { Response } from '@angular/http';
 import { IJsHbSession, JsHbSessionDefault } from './js-hb-session';
 import { JsHbContants } from './js-hb-constants';
 import { IJsHbHttpLazyObservableGen } from './js-hb-http-lazy-observable-gen';
@@ -59,34 +54,18 @@ export class JsHbManagerDefault implements IJsHbManager{
 		return result;
 	}
 
-    /**
-     * Getter httpLazyObservableProvider
-     * @return {IJsHbHttpLazyObservableProvider}
-     */
 	public get httpLazyObservableGen(): IJsHbHttpLazyObservableGen {
 		return this._httpLazyObservableGen;
 	}
 
-    /**
-     * Setter httpLazyObservableProvider
-     * @param {IJsHbHttpLazyObservableProvider} value
-     */
 	public set httpLazyObservableProvider(value: IJsHbHttpLazyObservableGen) {
 		this._httpLazyObservableGen = value;
 	}
 
-    /**
-     * Getter jsHbConfig
-     * @return {IJsHbConfig}
-     */
 	public get jsHbConfig(): IJsHbConfig {
 		return this._jsHbConfig;
 	}
 
-    /**
-     * Setter jsHbConfig
-     * @param {IJsHbConfig} value
-     */
 	public set jsHbConfig(value: IJsHbConfig) {
 		if (JsHbLogLevel.Debug >= this.jsHbConfig.logLevel) {
 			console.group('JsHbManagerDefault.jsHbConfig() set: ' + value);
