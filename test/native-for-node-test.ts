@@ -1,21 +1,22 @@
 import { CacheHandler } from "../src/js-hb-config";
-import { from, Observable, forkJoin, of, interval, Subject } from "rxjs";
-import { map, flatMap, timeout, delay } from "rxjs/operators";
+import { from, Observable, of, interval, Subject } from "rxjs";
+import { map, flatMap, timeout, delay, finalize } from "rxjs/operators";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 import * as memStreams from 'memory-streams';
 import { Readable, Stream } from "stream";
 import { IFieldProcessor } from "../src/field-processor";
-import getStream = require("get-stream");
+import getStream from 'get-stream';
 import { StringStream } from "../src/lazy-ref";
 import { StringStreamMarker } from "../src/lazy-ref";
+import streamToObservable from 'stream-to-observable';
 
 export namespace JsHbForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();
-    export const CacheHandlerDefault: CacheHandler = 
+    export const CacheHandlerSync: CacheHandler = 
         {
             clearCache: () => {
-                return of(null).pipe(delay(10));
+                return of(null);
             },
             getFromCache: (cacheKey) => {
                 let base64AB = CacheMap.get(cacheKey);
@@ -28,7 +29,7 @@ export namespace JsHbForNodeTest {
                     myReadableStreamBuffer = new memStreams.ReadableStream('');
                     myReadableStreamBuffer.push(base64AB);
                 }
-                return of(myReadableStreamBuffer).pipe(delay(10));
+                return of(myReadableStreamBuffer);
             },
             putOnCache: (cacheKey, stream) => {
                 let resultSub = new Subject<void>();
@@ -37,77 +38,190 @@ export namespace JsHbForNodeTest {
                     CacheMap.set(cacheKey, chunk);
                     resultSub.next();
                 });
-                return result$.pipe(delay(10));
+                return result$;
             },
             removeFromCache: (cacheKey) => {
                 CacheMap.delete(cacheKey);
-                return of(null).pipe(delay(10));
+                return of(null);
             }
         };
 
-        
-    export const BufferAsyncProcessor: IFieldProcessor<Buffer> = {
+    export const CacheHandlerAsync: CacheHandler = 
+        {
+            clearCache: () => {
+                return CacheHandlerSync.clearCache().pipe(delay(10));
+            },
+            getFromCache: (cacheKey) => {
+                return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(10));
+            },
+            putOnCache: (cacheKey, stream) => {
+                return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(10));
+            },
+            removeFromCache: (cacheKey) => {
+                return CacheHandlerSync.removeFromCache(cacheKey).pipe(delay(10));
+            }
+        };
+
+    export interface CacheHandlerWithInterceptor extends CacheHandler {
+        callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => void
+    }
+    export function createCacheHandlerWithInterceptor(cacheHandler: CacheHandler): CacheHandlerWithInterceptor {
+        CacheMap.clear();
+        let newCacheHandler: CacheHandlerWithInterceptor =
+        {
+            ...cacheHandler,
+            callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => {}
+        }
+        newCacheHandler.putOnCache = (cacheKey, stream) => {
+            newCacheHandler.callback('putOnCache', cacheKey, stream);
+            return JsHbForNodeTest.CacheHandlerSync.putOnCache(cacheKey, stream);
+        }
+        newCacheHandler.clearCache = () => {
+            newCacheHandler.callback('clearCache');
+            return JsHbForNodeTest.CacheHandlerSync.clearCache();
+        }
+        newCacheHandler.getFromCache = (cacheKey) => {
+            return JsHbForNodeTest.CacheHandlerSync.getFromCache(cacheKey)
+                .pipe(
+                    map((stream) => {
+                        newCacheHandler.callback('getFromCache', cacheKey);
+                        return stream;
+                    })
+                );
+        }
+        newCacheHandler.removeFromCache = (cacheKey) => {
+            newCacheHandler.callback('removeFromCache', cacheKey);
+            return JsHbForNodeTest.CacheHandlerSync.removeFromCache(cacheKey);
+        }   
+
+        return newCacheHandler;
+    }
+    export const BufferSyncProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {
-                return of(Buffer.from(value, 'base64')).pipe(delay(10));
+                return of(Buffer.from(value, 'base64'));
             } else {
-                return of(null).pipe(timeout(10));
+                return of(null);
+            }
+        },
+        fromDirectRaw: (stream, info) => {
+            if (stream) {
+                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
+                return from(
+                    streamToObservable(stream)
+                        .forEach((chunk) => {
+                            chunkConcatArrRef.value.push(chunk as Buffer);
+                        })
+                ).pipe(
+                    map(() => {
+                        return Buffer.concat(chunkConcatArrRef.value);
+                    })
+                );
+            } else {
+                of(null);
             }
         },
         toLiteralValue: (value, info) => {
             if (value) {
-                let base64Str = value.toString('base64');                            
-                return of(base64Str).pipe(delay(10));
+                let base64Str = value.toString('base64');
+                return of(base64Str);
+            } else {
+                return of(null);
             }
-        }
-    };
-    export const StringAsyncProcessor: IFieldProcessor<String> = {
-        fromLiteralValue: (value: string, info: any) => {
-            return of(value);
         },
-        fromDirectRaw: (stream: Stream, info: any) => {
-            return from(getStream(stream, {}) as Promise<string>).pipe(delay(10));
-        }
-    };
-    export const StreamAsyncProcessor: IFieldProcessor<String> = {
-        fromLiteralValue: (value, info) => {
+        toDirectRaw: (value, info) => {
             if (value) {
-                let base64AB = Buffer.from(value, 'base64');
                 let ws = new memStreams.WritableStream();
-                ws.write(base64AB);
+                ws.write(value);
                 //let rs = new memStreams.ReadableStream(base64AB.to);
                 //let myReadableStreamBuffer = new Stream.Readable(); 
                 let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
+                myReadableStreamBuffer.push(value);
+                return of(myReadableStreamBuffer);
+            } else {
+                return of(null);
+            }
+        }
+    };
+    export const StringSyncProcessor: IFieldProcessor<String> = {
+        fromLiteralValue: (value, info) => {
+            return of(value);
+        },
+        fromDirectRaw: (stream, info) => {
+            if (stream) {
+                if ((stream as Stream).addListener && (stream as Stream).pipe) {
+                    let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
+                    return from(resultPrmStr);
+                } else {
+                    throw new Error('Not supported');
+                }
+            } else {
+                return of(null);
+            }
+        },
+        toLiteralValue: (value, info) => {
+            return of(value);
+        },
+        toDirectRaw: (value, info) => {
+            if (value) {
+                let myReadableStreamBuffer = new memStreams.ReadableStream(value.toString()); 
+                myReadableStreamBuffer.setEncoding('utf-8');
+                return of(myReadableStreamBuffer);
+            } else {
+                return of(null);
+            }
+        }
+    };
+    export const StreamSyncProcessor: IFieldProcessor<Stream> = {
+        fromLiteralValue: (value, info) => {
+            if (value) {
+                let base64AB = Buffer.from(value, 'base64');
+                let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
                 myReadableStreamBuffer.push(base64AB);
                 console.log()
-                return of(myReadableStreamBuffer).pipe(delay(10));
+                return of(myReadableStreamBuffer);
             } else {
-                return of(null).pipe(delay(10));
+                return of(null);
             }
         },
         fromDirectRaw: (stream, info) => {
             if (stream) {
                 if ((stream as Stream).addListener && (stream as Stream).pipe) {
-                    return of(stream).pipe(delay(10));
+                    return of(stream);
                 } else {
                     throw new Error('Not supported');
                 }
             } else {
-                return of(null).pipe(delay(10));
+                return of(null);
+            }
+        },
+        toDirectRaw: (value, info) => {
+            if (value) {
+                return of(value);
+            } else {
+                return of(null);
+            }
+        },
+        toLiteralValue: (value, info) => {
+            if (value) {
+                return of(value);
+            } else {
+                return of(null);
             }
         }
     };
-    export const StringStreamProcessor: IFieldProcessor<StringStream> = {
+    export const StringStreamSyncProcessor: IFieldProcessor<StringStream> = {
             fromLiteralValue: (value, info) => {
                 if (value) {
-                    let base64AB = Buffer.from(value, 'base64');
+                    let valueBuffer = Buffer.from(value, 'utf8');
                     let ws = new memStreams.WritableStream();
-                    ws.write(base64AB);
+                    ws.write(valueBuffer);
                     //let rs = new memStreams.ReadableStream(base64AB.to);
                     //let myReadableStreamBuffer = new Stream.Readable(); 
-                    let myReadableStreamBuffer = new memStreams.ReadableStream(value); 
+                    let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
+                    myReadableStreamBuffer.push(valueBuffer);
                     myReadableStreamBuffer.setEncoding('utf-8');
-                    return of(myReadableStreamBuffer).pipe(delay(10));
+                    return of(myReadableStreamBuffer);
                 } else {
                     return of(null);
                 }
@@ -116,16 +230,56 @@ export namespace JsHbForNodeTest {
                 if (stream) {
                     if ((stream as Stream).addListener && (stream as Stream).pipe) {
                         (stream as any as Readable).setEncoding('utf-8');
-                        return of(stream).pipe(delay(10));
+                        return of(stream);
                     } else {
                         throw new Error('Not supported');
                     }
                 } else {
                     return of(null);
                 }
+            },
+            toDirectRaw: (value, info) => {
+                if (value) {
+                    return of(value);
+                } else {
+                    return of(null);
+                }
+            },
+            toLiteralValue: (value, info) => {
+                if (value) {
+                    return from(getStream(value));
+                } else {
+                    return of(null);
+                }
             }
     };
-    export const TypeProcessorEntries = 
+
+    export const BufferAsyncProcessor: IFieldProcessor<Buffer> = {
+        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
+        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
+        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
+        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+    };
+    export const StringAsyncProcessor: IFieldProcessor<String> = {
+            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
+            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
+            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
+            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+    };
+    export const StreamAsyncProcessor: IFieldProcessor<Stream> = {
+            fromLiteralValue: (value, info) => { return StreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
+            fromDirectRaw: (stream, info) => { return StreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
+            toDirectRaw: (value, info) => { return StreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
+            toLiteralValue: (value, info) => { return StreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+    };
+    export const StringStreamAsyncProcessor: IFieldProcessor<StringStream> = {
+            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
+            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
+            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
+            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+    };
+
+    export const TypeProcessorEntriesAsync = 
     [ 
         {
             type: Buffer,
@@ -141,7 +295,27 @@ export namespace JsHbForNodeTest {
         },
         {
             type: StringStreamMarker,
-            processor: StringStreamProcessor
+            processor: StringAsyncProcessor
+        }
+    ];
+
+    export const TypeProcessorEntriesSync = 
+    [ 
+        {
+            type: Buffer,
+            processor: BufferSyncProcessor
+        },
+        {                
+            type: String,
+            processor: StringSyncProcessor
+        },
+        {                
+            type: Stream,
+            processor: StreamSyncProcessor
+        },
+        {
+            type: StringStreamMarker,
+            processor: StringSyncProcessor
         }
     ];
 }

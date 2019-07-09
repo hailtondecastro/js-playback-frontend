@@ -106,18 +106,19 @@ export class JsHbManagerDefault implements IJsHbManager{
 			// }
 			let lazyRefGenericParam: Type<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
+			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
+				fieldProcessor = propertyOptions.fieldProcessorResolver();
+			} else {
+				fieldProcessor = jsHbConfig.getTypeProcessor(prpType);
+			}
+
 			if (prpGenType) {
 				if (prpGenType.gParams[0] instanceof GenericNode) {
 					lazyLoadedObjType = (<GenericNode>prpGenType.gParams[0]).gType;
 				} else {
 					lazyLoadedObjType = <Type<any>>prpGenType.gParams[0];
 				}
-		
-				if (propertyOptions.fieldProcessorResolver) {
-					fieldProcessor = propertyOptions.fieldProcessorResolver();
-				} else {
-					fieldProcessor = jsHbConfig.getTypeProcessor(prpType);
-				}
+
 				if (prpGenType.gType === LazyRef || prpGenType.gType === LazyRefPrpMarker) {
 					if (prpGenType.gParams.length > 0) {
 						if (prpGenType.gParams[0] instanceof GenericNode) {
@@ -159,9 +160,10 @@ export class JsHbManagerDefault implements IJsHbManager{
 									null:
 									(value, info) => {
 										let fromLiteralValue$ = fieldProcessorConst.fromLiteralValue(value, info);
+										//console.log(propertyOptionsConst);
 										if (propertyOptionsConst.fieldProcessorEvents
-												&& propertyOptionsConst.fieldProcessorEvents.onToLiteralValue) {
-											propertyOptionsConst.fieldProcessorEvents.onToLiteralValue(value, info, fromLiteralValue$);
+												&& propertyOptionsConst.fieldProcessorEvents.onFromLiteralValue) {
+											fromLiteralValue$ = propertyOptionsConst.fieldProcessorEvents.onFromLiteralValue(value, info, fromLiteralValue$);
 										}
 										return fromLiteralValue$;
 									},
@@ -172,7 +174,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 										let fromDirectRaw$ = fieldProcessorConst.fromDirectRaw(rawResponse, info);
 										if (propertyOptionsConst.fieldProcessorEvents
 											&& propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw) {
-											propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw(rawResponse, info, fromDirectRaw$);
+											fromDirectRaw$ = propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw(rawResponse, info, fromDirectRaw$);
 										}
 										return fromDirectRaw$;
 									},
@@ -181,9 +183,9 @@ export class JsHbManagerDefault implements IJsHbManager{
 									null:
 									(value, info) => {
 										let toLiteralValue$ = fieldProcessorConst.toLiteralValue(value, info);
-										if (propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw
-											&& propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw) {
-											propertyOptionsConst.fieldProcessorEvents.onFromDirectRaw(value, info, toLiteralValue$);
+										if (propertyOptionsConst.fieldProcessorEvents
+											&& propertyOptionsConst.fieldProcessorEvents.onToLiteralValue) {
+											toLiteralValue$ = propertyOptionsConst.fieldProcessorEvents.onToLiteralValue(value, info, toLiteralValue$);
 										}
 										return toLiteralValue$;
 									},
@@ -194,7 +196,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 									let toDirectRaw$ = fieldProcessorConst.toDirectRaw(value, info);
 									if (propertyOptionsConst.fieldProcessorEvents 
 										&& propertyOptionsConst.fieldProcessorEvents.onToDirectRaw) {
-											propertyOptionsConst.fieldProcessorEvents.onToDirectRaw(value, info, toDirectRaw$);
+										toDirectRaw$ = propertyOptionsConst.fieldProcessorEvents.onToDirectRaw(value, info, toDirectRaw$);
 									}
 									return toDirectRaw$;
 								}

@@ -125,10 +125,12 @@ export namespace NgJsHbDecorators {
                                     const action: JsHbPlaybackAction = new JsHbPlaybackAction();
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = JsHbPlaybackActionType.SetField;
-                                    let backendMetadatas: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                                    if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                                        backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                                    }
+                                    let allMD = session.resolveMetadatas({object: this});
+                                    let backendMetadatas = allMD.objectMD;
+                                    // let backendMetadatas: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                                    // if (has(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                                    //     backendMetadatas = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                                    // }
 
                                     //if (has(this, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
                                     if (backendMetadatas.$signature$) {
@@ -142,10 +144,12 @@ export namespace NgJsHbDecorators {
                                     }
             
                                     if (value != null && value != undefined) {
-                                        let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
-                                        if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
-                                            backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
-                                        }
+                                        let allMD = session.resolveMetadatas({object: value});
+                                        let backendMetadatasValue = allMD.objectMD;
+                                        // let backendMetadatasValue: JsHbBackendMetadatas = { $iAmJsHbBackendMetadatas$: true };
+                                        // if (has(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName)) {
+                                        //     backendMetadatasValue = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbMetadatasName);
+                                        // }
 
                                         //if (has(value, session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
                                         if (backendMetadatasValue.$signature$) {
@@ -171,13 +175,18 @@ export namespace NgJsHbDecorators {
                                         action.attachRefId = session.jsHbManager.jsHbConfig.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
                                         if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
                                             let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
-                                            toDirectRaw$ = session.addAsyncTaskWaiting(toDirectRaw$);
+                                            toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObservable());
+                                            //toDirectRaw$ = session.addSubscribedObservableForWaiting(toDirectRaw$);
                                             toDirectRaw$.subscribe((stream) => {
                                                 if (stream) {
-                                                    session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream).subscribe(() => {
+                                                    let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream)
+                                                    putOnCache$ = putOnCache$.pipe(session.addSubscribedObservable());
+                                                    putOnCache$.subscribe(() => {
                                                         session.addPlaybackAction(action);
                                                     });
-                                                    session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId).subscribe((stream) => {
+                                                    let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
+                                                    getFromCache$ = getFromCache$.pipe(session.addSubscribedObservable());
+                                                    getFromCache$.subscribe((stream) => {
                                                         oldSet.call(this, stream);
                                                     });
                                                 } else {
@@ -190,16 +199,18 @@ export namespace NgJsHbDecorators {
                                                 }
                                             });
                                         } else {
-                                            if (!(value as any as Stream).pipe) {
+                                            if (!((value as any as Stream).addListener && (value as any as Stream).pipe)) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
                                             } else {
                                                 let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
-                                                putOnCache$ = session.addAsyncTaskWaiting(putOnCache$);
+                                                //putOnCache$ = session.addSubscribedObservableForWaiting(putOnCache$);
+                                                putOnCache$ = putOnCache$.pipe(session.addSubscribedObservable());
                                                 putOnCache$.subscribe(() => {
                                                     session.addPlaybackAction(action);
                                                 });
                                                 let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
-                                                getFromCache$ = session.addAsyncTaskWaiting(getFromCache$);
+                                                //getFromCache$ = session.addSubscribedObservableForWaiting(getFromCache$);
+                                                getFromCache$ = getFromCache$.pipe(session.addSubscribedObservable());
                                                 getFromCache$.subscribe((stream) => {
                                                     oldSet.call(this, stream);
                                                 });
@@ -210,7 +221,8 @@ export namespace NgJsHbDecorators {
                                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
                                             action.simpleSettedValue, 
                                             fieldEtc.fieldInfo);
-                                        toLiteralValue$ = session.addAsyncTaskWaiting(toLiteralValue$);
+                                        // toLiteralValue$ = session.addSubscribedObservableForWaiting(toLiteralValue$);
+                                        toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObservable());
                                         toLiteralValue$.subscribe(
                                             {
                                                 next: (processedValue) => {
@@ -235,12 +247,12 @@ export namespace NgJsHbDecorators {
                         }
                     }
 
-                    if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                        oldSet.call(this, value);
-                        if (session && !isOnlazyLoad) {
-                            session.notifyAllLazyrefsAboutEntityModification(this, null);
-                        }
+                    // if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                    oldSet.call(this, value);
+                    if (session && !isOnlazyLoad) {
+                        session.notifyAllLazyrefsAboutEntityModification(this, null);
                     }
+                    // }
                 } else {
                     oldSet.call(this, value);
                     if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {

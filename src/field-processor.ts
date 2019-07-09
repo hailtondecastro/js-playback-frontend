@@ -8,18 +8,18 @@ import { ResponseLike } from "./js-hb-http-lazy-observable-gen";
 export interface IFieldProcessor<L> {
     fromLiteralValue?(value: any, info: FieldInfo): Observable<L>;
     fromDirectRaw?(value: Stream, info: FieldInfo): Observable<L>;
-    toLiteralValue?(value: any, info: FieldInfo): Observable<any>;
-    toDirectRaw?(value: any, info: FieldInfo): Observable<Stream>;
+    toLiteralValue?(value: L, info: FieldInfo): Observable<any>;
+    toDirectRaw?(value: L, info: FieldInfo): Observable<Stream>;
 }
 
 /** Framework internal use. */
 export interface IFieldProcessorEvents<L> {
     /** Framework internal use. */
-    onFromLiteralValue?: (value: any, info: FieldInfo, obs: Observable<L>) => void;
+    onFromLiteralValue?: (value: any, info: FieldInfo, obs: Observable<L>) => Observable<L>;
     /** Framework internal use. */
-    onFromDirectRaw?: (rawValue: Stream, info: FieldInfo, obs: Observable<L>) => void;
+    onFromDirectRaw?: (rawValue: Stream, info: FieldInfo, obs: Observable<L>) => Observable<L>;
     /** Framework internal use. */
-    onToLiteralValue?: (value: any, info: FieldInfo, obs: Observable<L>) => void;
+    onToLiteralValue?: (value: L, info: FieldInfo, obs: Observable<L>) => Observable<L>;
     /** Framework internal use. */
-    onToDirectRaw?: (value: any, info: FieldInfo, obs: Observable<Stream>) => void;
+    onToDirectRaw?: (value: L, info: FieldInfo, obs: Observable<Stream>) => Observable<Stream>;
 }

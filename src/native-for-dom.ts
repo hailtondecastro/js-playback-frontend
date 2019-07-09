@@ -1,5 +1,5 @@
 
-import { of, from, Observable, forkJoin } from "rxjs";
+import { of, from, Observable, combineLatest } from "rxjs";
 import { IFieldProcessor } from "./field-processor";
 import getStream = require("get-stream");
 import { Stream } from "stream";
@@ -24,7 +24,11 @@ export namespace JsHbForDom {
                                         for (const req of requests) {
                                             obsArr.push(from(cache.delete(req)));
                                         }
-                                        return forkJoin(obsArr);
+                                        if (obsArr.length > 0) {
+                                            return combineLatest(obsArr);
+                                        } else {
+                                            return of(null);
+                                        }
                                     })
                                 )
                         })

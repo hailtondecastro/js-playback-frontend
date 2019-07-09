@@ -68,25 +68,25 @@ export class MasterAEnt {
 		return this._detailAEntCol;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawRead: true, persistent: true})
+	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyA(): LazyRefPrp<Stream> {
 		return this._blobLazyA;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawRead: true, persistent: true})
+	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyB(): LazyRefPrp<Stream> {
 		return this._blobLazyB;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawRead: true, persistent: true})
+	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyA(): LazyRefPrp<StringStream> {
 		return this._clobLazyA;
     }
     
-	@NgJsHbDecorators.property({lazyDirectRawRead: true, persistent: true})
+	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyB(): LazyRefPrp<StringStream> {
 		return this._clobLazyB;
