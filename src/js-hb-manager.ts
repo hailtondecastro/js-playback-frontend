@@ -1,6 +1,6 @@
 import { IJsHbManager } from './js-hb-manager';
 import { Injectable, Injector, Type } from '@angular/core';
-import { IJsHbConfig, JsHbLogLevel, FieldInfo } from './js-hb-config';
+import { IJsHbConfig, JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
 import { IJsHbSession, JsHbSessionDefault } from './js-hb-session';
 import { JsHbContants } from './js-hb-constants';
 import { IJsHbHttpLazyObservableGen } from './js-hb-http-lazy-observable-gen';
@@ -29,30 +29,35 @@ export interface IJsHbManager {
 }
 
 export class JsHbManagerDefault implements IJsHbManager{
+	private consoleLike: ConsoleLike;
+	private consoleLikeLogRxOpr: ConsoleLike;
+	private consoleLikeMerge: ConsoleLike;
     constructor(
 			private _jsHbConfig: IJsHbConfig,
 			private _httpLazyObservableGen: IJsHbHttpLazyObservableGen) {
-
+		const thisLocal = this;
 		if (!this._httpLazyObservableGen) {
 			throw new Error('_httpLazyObservableGen can not be null');
 		}
 		if (!this._jsHbConfig) {
 			throw new Error('_jsHbConfig can not be null');
 		}
+		thisLocal.consoleLike = this.jsHbConfig.getConsole(JsHbLogger.JsHbManagerDefault);
 
-		if (JsHbLogLevel.Debug >= this._jsHbConfig.logLevel) {
-			console.group('JsHbManagerDefault.constructor()');
-			console.debug(this._httpLazyObservableGen as any); console.debug(this._jsHbConfig as any as string);
-			console.groupEnd();
+		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+			thisLocal.consoleLike.group('JsHbManagerDefault.constructor()');
+			thisLocal.consoleLike.debug(this._httpLazyObservableGen as any); thisLocal.consoleLike.debug(this._jsHbConfig as any as string);
+			thisLocal.consoleLike.groupEnd();
 		}
 	}	
 	
 	public createSession(): IJsHbSession {
+		const thisLocal = this;
 		let result = new JsHbSessionDefault(this);
-		if (JsHbLogLevel.Debug >= this.jsHbConfig.logLevel) {
-			console.group('JsHbManagerDefault.createSession():');
-			console.debug(result as any as string);
-			console.groupEnd();
+		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+			thisLocal.consoleLike.group('JsHbManagerDefault.createSession():');
+			thisLocal.consoleLike.debug(result as any as string);
+			thisLocal.consoleLike.groupEnd();
 		}
 		return result;
 	}
@@ -70,10 +75,11 @@ export class JsHbManagerDefault implements IJsHbManager{
 	}
 
 	public set jsHbConfig(value: IJsHbConfig) {
-		if (JsHbLogLevel.Debug >= this.jsHbConfig.logLevel) {
-			console.group('JsHbManagerDefault.jsHbConfig() set: ' + value);
-			console.debug(value as any as string);
-			console.groupEnd();
+		const thisLocal = this;
+		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+			thisLocal.consoleLike.group('JsHbManagerDefault.jsHbConfig() set: ' + value);
+			thisLocal.consoleLike.debug(value as any as string);
+			thisLocal.consoleLike.groupEnd();
 		}
 		this._jsHbConfig = value;
 	}

@@ -4,7 +4,7 @@ import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { get as lodashGet, has } from 'lodash';
 import { Type } from '@angular/core';
-import { JsHbLogLevel, FieldInfo } from './js-hb-config';
+import { JsHbLogLevel, FieldInfo, JsHbLogger } from './js-hb-config';
 import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 import { IFieldProcessor, IFieldProcessorEvents } from './field-processor';
 import { Stream, Readable } from 'stream';
@@ -49,6 +49,7 @@ export namespace NgJsHbDecorators {
     export function property<T>(options: PropertyOptions<T>): MethodDecorator;
     export function property<T>(): MethodDecorator;
     export function property<T>(): MethodDecorator {
+
         let options: PropertyOptions<T> = { persistent: true };
         if (arguments.length > 0) {
             options = arguments[0];
@@ -71,14 +72,15 @@ export namespace NgJsHbDecorators {
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
                 let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
+                const consoleLike = session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.NgJsHbDecorators)
                 let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.jsHbConfig);
                 if (fieldEtc.propertyOptions.persistent) {
-                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('NgJsHbDecorators.set' +
+                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                        consoleLike.group('NgJsHbDecorators.set' +
                             'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
-                        console.debug(target);
-                        console.debug(value);
-                        console.groupEnd();
+                        consoleLike.debug(target);
+                        consoleLike.debug(value);
+                        consoleLike.groupEnd();
                     }
                     let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
@@ -94,13 +96,13 @@ export namespace NgJsHbDecorators {
                                     if (!session.isRecording()){
                                         throw new Error('Invalid operation. It is not recording. is this Error correct?!');
                                     }
-                                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
-                                        console.group('NgJsHbDecorators.set' +
+                                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                                        consoleLike.group('NgJsHbDecorators.set' +
                                             '(actualValue !== value) && !isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()\n' +
                                             'Recording action: ' + JsHbPlaybackActionType.SetField + '. actual and new value: ');
-                                        console.debug(actualValue);
-                                        console.debug(value);
-                                        console.groupEnd();
+                                        consoleLike.debug(actualValue);
+                                        consoleLike.debug(value);
+                                        consoleLike.groupEnd();
                                     }
                                     //do the JsHbPlaybackAction log here
                                     const action: JsHbPlaybackAction = new JsHbPlaybackAction();
@@ -195,12 +197,12 @@ export namespace NgJsHbDecorators {
                                     }
                                 }
                             } else {
-                                if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
-                                    console.group('NgJsHbDecorators.set' +
+                                if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                                    consoleLike.group('NgJsHbDecorators.set' +
                                         '(actualValue === value)\n' +
                                         'NOT recording action, BUT may process : ' + JsHbPlaybackActionType.SetField + '. value: ');
-                                    console.debug(value);
-                                    console.groupEnd();
+                                    consoleLike.debug(value);
+                                    consoleLike.groupEnd();
                                 }
                             }
                         }
@@ -212,12 +214,12 @@ export namespace NgJsHbDecorators {
                     }
                 } else {
                     oldSet.call(this, value);
-                    if (JsHbLogLevel.Trace >= session.jsHbManager.jsHbConfig.logLevel) {
-                        console.group('NgJsHbDecorators.set' +
+                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                        consoleLike.group('NgJsHbDecorators.set' +
                             '!(propertyOptions.persistent && genericNode.gType !== LazyRef && genericNode.gType !== LazyRefPrpMarker). Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
-                        console.debug(target);
-                        console.debug(value);
-                        console.groupEnd();
+                        consoleLike.debug(target);
+                        consoleLike.debug(value);
+                        consoleLike.groupEnd();
                     }
                 }
             };
