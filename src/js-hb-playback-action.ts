@@ -8,61 +8,61 @@ export enum JsHbPlaybackActionType {
 }
 
 export class JsHbPlaybackAction {
-    private _ownerSignatureStr: String;
-    private _ownerCreationId: Number;
-    private _ownerCreationRefId: Number;
-    private _settedSignatureStr: String;
-    private _settedCreationRefId: Number;
-    private _ownerJavaClass: String;
+    private _ownerSignatureStr: string;
+    private _ownerCreationId: number;
+    private _ownerCreationRefId: number;
+    private _settedSignatureStr: string;
+    private _settedCreationRefId: number;
+    private _ownerJavaClass: string;
     private _actionType: JsHbPlaybackActionType;
-    private _fieldName: String;
+    private _fieldName: string;
     private _simpleSettedValue: any;
 
     /**
      * Getter ownerSignatureStr
-     * @return {String}
+     * @return {string}
      */
-	public get ownerSignatureStr(): String {
+	public get ownerSignatureStr(): string {
 		return this._ownerSignatureStr;
 	}
 
     /**
      * Getter ownerCreationId
-     * @return {Number}
+     * @return {number}
      */
-	public get ownerCreationId(): Number {
+	public get ownerCreationId(): number {
 		return this._ownerCreationId;
 	}
 
     /**
      * Getter ownerCreationRefId
-     * @return {Number}
+     * @return {number}
      */
-	public get ownerCreationRefId(): Number {
+	public get ownerCreationRefId(): number {
 		return this._ownerCreationRefId;
 	}
 
     /**
      * Getter settedSignatureStr
-     * @return {String}
+     * @return {string}
      */
-	public get settedSignatureStr(): String {
+	public get settedSignatureStr(): string {
 		return this._settedSignatureStr;
 	}
 
     /**
      * Getter settedCreationRefId
-     * @return {Number}
+     * @return {number}
      */
-	public get settedCreationRefId(): Number {
+	public get settedCreationRefId(): number {
 		return this._settedCreationRefId;
 	}
 
     /**
      * Getter ownerJavaClass
-     * @return {String}
+     * @return {string}
      */
-	public get ownerJavaClass(): String {
+	public get ownerJavaClass(): string {
 		return this._ownerJavaClass;
 	}
 
@@ -76,57 +76,57 @@ export class JsHbPlaybackAction {
 
     /**
      * Getter fieldName
-     * @return {String}
+     * @return {string}
      */
-	public get fieldName(): String {
+	public get fieldName(): string {
 		return this._fieldName;
 	}
 
     /**
      * Setter ownerSignatureStr
-     * @param {String} value
+     * @param {string} value
      */
-	public set ownerSignatureStr(value: String) {
+	public set ownerSignatureStr(value: string) {
 		this._ownerSignatureStr = value;
 	}
 
     /**
      * Setter ownerCreationId
-     * @param {Number} value
+     * @param {number} value
      */
-	public set ownerCreationId(value: Number) {
+	public set ownerCreationId(value: number) {
 		this._ownerCreationId = value;
 	}
 
     /**
      * Setter ownerCreationRefId
-     * @param {Number} value
+     * @param {number} value
      */
-	public set ownerCreationRefId(value: Number) {
+	public set ownerCreationRefId(value: number) {
 		this._ownerCreationRefId = value;
 	}
 
     /**
      * Setter settedSignatureStr
-     * @param {String} value
+     * @param {string} value
      */
-	public set settedSignatureStr(value: String) {
+	public set settedSignatureStr(value: string) {
 		this._settedSignatureStr = value;
 	}
 
     /**
      * Setter settedCreationRefId
-     * @param {Number} value
+     * @param {number} value
      */
-	public set settedCreationRefId(value: Number) {
+	public set settedCreationRefId(value: number) {
 		this._settedCreationRefId = value;
 	}
 
     /**
      * Setter ownerJavaClass
-     * @param {String} value
+     * @param {string} value
      */
-	public set ownerJavaClass(value: String) {
+	public set ownerJavaClass(value: string) {
 		this._ownerJavaClass = value;
 	}
 
@@ -140,9 +140,9 @@ export class JsHbPlaybackAction {
 
     /**
      * Setter fieldName
-     * @param {String} value
+     * @param {string} value
      */
-	public set fieldName(value: String) {
+	public set fieldName(value: string) {
 		this._fieldName = value;
 	}
 

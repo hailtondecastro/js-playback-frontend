@@ -16,7 +16,7 @@
             "taskName": "build",
             "args": [
                 //"build.out.txt"
-                "npm run build"
+                "npm run build-fast"
             ],
             "isBuildCommand": true,
             "problemMatcher": [

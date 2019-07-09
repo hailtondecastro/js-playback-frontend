@@ -1,30 +1,30 @@
 import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { JsHbLogLevel } from './js-hb-config';
+import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 
 export class JsHbSetCreator<T> {
 
     constructor(private _session: IJsHbSession,
         private _refererObj: any,
         private _refererKey: string) {
-            if (!_session) {
-                throw new Error('_session can not be null');
-            }
-            if (!_refererObj) {
-                throw new Error('_refererObj can not be null');
-            }
-            if (!_session) {
-                throw new Error('_session can not be null');
-            }
-            if (JsHbLogLevel.Debug >= _session.jsHbManager.jsHbConfig.logLevel) {
-                console.group('JsHbSetCreator.constructor()');
-                console.debug(_session as any as string); console.debug(_refererObj as any as string); console.debug(_refererKey as any as string);
-                console.groupEnd();
-            }
+        if (!_session) {
+            throw new Error('_session can not be null');
         }
+        if (!_refererObj) {
+            throw new Error('_refererObj can not be null');
+        }
+        if (!_session) {
+            throw new Error('_session can not be null');
+        }
+        if (JsHbLogLevel.Debug >= _session.jsHbManager.jsHbConfig.logLevel) {
+            console.group('JsHbSetCreator.constructor()');
+            console.debug(_session as any as string); console.debug(_refererObj as any as string); console.debug(_refererKey as any as string);
+            console.groupEnd();
+        }
+    }
 
     public createByProxy(): Set<T> {
-
         let getFunction: (target: Set<T>, p: PropertyKey, receiver: any) => any = (target: Set<T>, p: PropertyKey, receiver: any) => {
             if (p) {
                 if (JsHbLogLevel.Trace >= this.session.jsHbManager.jsHbConfig.logLevel) {
@@ -79,24 +79,24 @@ export class JsHbSetCreator<T> {
     }
 
     add(value: T): void {
-        if (this.session.isRecording()) {
+        if (this.session.isRecording() && !this.session.isOnRestoreEntireStateFromLiteral()) {
             //gravando o playback
             let action: JsHbPlaybackAction = new JsHbPlaybackAction();
             action.fieldName = this.refererKey;
             action.actionType = JsHbPlaybackActionType.CollectionAdd;
-            if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                action.ownerSignatureStr = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-            } else if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                action.ownerCreationRefId = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+            if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+            } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
             } else {
                 throw new Error('The proprerty \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner');
             }
 
             if (value != null) {
-                if (_.has(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    action.settedSignatureStr = _.get(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                } else if (_.has(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                    action.settedCreationRefId = _.get(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                    action.settedSignatureStr = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                } else if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                    action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                 } else {
                     throw new Error('The proprerty \'' + this.refererKey + ' de \'' + this.refererObj.constructor.name + '\'.  value not managed owner: \'' + value.constructor.name + '\'');
                 }
@@ -106,24 +106,24 @@ export class JsHbSetCreator<T> {
     }
 
     delete(value: T): void {
-        if (this.session.isRecording()) {
+        if (this.session.isRecording() && !this.session.isOnRestoreEntireStateFromLiteral()) {
             //gravando o playback
             let action: JsHbPlaybackAction = new JsHbPlaybackAction();
             action.fieldName = this.refererKey;
             action.actionType = JsHbPlaybackActionType.CollectionRemove;
-            if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                action.ownerSignatureStr = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-            } else if (_.has(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                action.ownerCreationRefId = _.get(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+            if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                action.ownerSignatureStr = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+            } else if (lodashHas(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
             } else {
                 throw new Error('The proprerty \'' + this.refererKey + ' de \'' + this.refererObj.constructor + '\' has a not managed owner');
             }
 
             if (value != null) {
-                if (_.has(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
-                    action.settedSignatureStr = _.get(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
-                } else if (_.has(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                    action.settedCreationRefId = _.get(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName)) {
+                    action.settedSignatureStr = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbSignatureName) as string;
+                } else if (lodashHas(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
+                    action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
                 } else {
                     throw new Error('The proprerty \'' + this.refererKey + ' de \'' + this.refererObj.constructor + '\'. not managed value: \'' + value.constructor.name + '\'');
                 }
@@ -132,8 +132,6 @@ export class JsHbSetCreator<T> {
             this.session.addPlaybackAction(action);
         }
     }
-
-
 
     /**
      * Getter session
@@ -150,7 +148,6 @@ export class JsHbSetCreator<T> {
     public set session(value: IJsHbSession) {
         this._session = value;
     }
-
 
     /**
      * Getter refererObj
@@ -183,5 +180,4 @@ export class JsHbSetCreator<T> {
     public set refererKey(value: string) {
         this._refererKey = value;
     }
-
 }

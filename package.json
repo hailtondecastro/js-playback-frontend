@@ -5,28 +5,31 @@
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "clear-all": "node build-utils/clear-all",
-    "prepare-dist-folder": "node build-utils/prepare-dist-folder",
-    "build": "npm run clear-all && npm run prepare-dist-folder && tsc",
-    "build-dist": "npm run clear-all && npm run prepare-dist-folder && tsc --p tsconfig-dist.json --extendedDiagnostics && node build-utils/embed-source-contents",
-    "build-dist-fast": "tsc --p tsconfig-dist.json --extendedDiagnostics && node build-utils/embed-source-contents"
+    "build": "npm run clear-all && npm run build:prepare-dist-folder && tsc --p tsconfig-dist.json --extendedDiagnostics && npm run build:embed-source-contents",
+    "build-fast": "tsc --p tsconfig-dist.json --extendedDiagnostics && npm run build:embed-source-contents",
+    "clear-all": "node ./build-utils/clear-all -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true",
+    "build:embed-source-contents": "node ./build-utils/embed-source-contents -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true",
+    "build:prepare-dist-folder": "node ./build-utils/prepare-dist-folder -baseDistFolder ../../local_modules_dist/ng-js-hb-supersync -verbose true"
   },
   "devDependencies": {
-    "@types/lodash": "0.0.28",
+    "@types/lodash": "^4.14.117",
+    "@types/rx": "^4.1.1",
     "fs": "0.0.1-security",
     "fs-extra": "^7.0.0",
     "glob": "^7.1.3",
     "mkdirp": "^0.5.1",
     "replace-in-file": "^3.4.2",
     "source-map": "^0.7.3",
-    "typescript": "^2.9.2"
+    "typescript": "~2.7.2"
   },
   "dependencies": {
-    "@angular/core": "4.1.2",
-    "@types/node": "10.9.3",
-    "lodash": "4.12.0",
+    "@angular/common": "^6.0.6",
+    "@angular/core": "^6.1.10",
+    "@types/node": "^10.3.5",
+    "lodash": "^4.17.5",
     "reflect-metadata": "^0.1.9",
-    "rxjs": "5.0.2"
+    "rxjs": "^6.2.1",
+    "rxjs-compat": "^6.3.3"
   },
   "repository": {
     "type": "",

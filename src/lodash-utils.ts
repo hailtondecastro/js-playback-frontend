@@ -1,6 +1,7 @@
 import { MergeWithCustomizer } from 'lodash';
 import { Type } from '@angular/core';
 import { GenericNode, GenericTokenizer } from './generic-tokenizer';
+import { mergeWith as lodashMergeWith } from 'lodash';
 
 export namespace LodashUtils {
 	export function mergeWithCustomizerPropertyReplection(): MergeWithCustomizer {
@@ -15,7 +16,7 @@ export namespace LodashUtils {
 						for (let index = 0; index < srcValue.length; index++) {
 							let arrType: Type<any> = <Type<any>>prpGenType.gParams[0];
 							let correctSrcValueArrItem = new arrType();
-							_.mergeWith(correctSrcValueArrItem, srcValue[index], mergeWithCustomizerPropertyReplection());
+							lodashMergeWith(correctSrcValueArrItem, srcValue[index], mergeWithCustomizerPropertyReplection());
 							correctSrcValueArr.push(correctSrcValueArrItem);
 						}
 						correctSrcValue = correctSrcValueArr;
@@ -25,7 +26,7 @@ export namespace LodashUtils {
 					}
 				} else {
 					correctSrcValue = new prpType();
-					_.mergeWith(correctSrcValue, srcValue, mergeWithCustomizerPropertyReplection());
+					lodashMergeWith(correctSrcValue, srcValue, mergeWithCustomizerPropertyReplection());
 				}
 			} else {
 				//nada

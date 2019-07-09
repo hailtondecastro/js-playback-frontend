@@ -1,28 +1,59 @@
-var fs = require('fs-extra');
 var path = require('path');
+var buildHelperCommons = require('./build-helper-commons');
+var includeCwdOnModulePath = require('./include-cwd-on-module-path');
+
+var nodeModuleName = path.basename(module.filename);
+
+//console.log('[' + nodeModuleName + ']: process.cwd(): ' + process.cwd());
+//NAO mude aqui
+function preRequires() {
+    try {
+        buildHelperCommons.loadDashArgs();
+        includeCwdOnModulePath(module, buildHelperCommons.argsMap['verbose']);
+    } catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
+}
+//NAO mude aqui
+preRequires();
+
+var fs = require('fs-extra');
 var glob = require("glob");
 
 function main() {
     try {
+        console.log('[' + nodeModuleName + ']: INICIO');
+        var baseDistFolder = buildHelperCommons.argsMap['baseDistFolder'];
+        if (!path.isAbsolute(baseDistFolder)) {
+            baseDistFolder = path.resolve(process.cwd(), baseDistFolder);
+        }
+
+        if (!fs.existsSync(baseDistFolder)) {
+            console.log('[' + nodeModuleName + '] Create '+baseDistFolder+' folder');
+            fs.mkdirpSync(baseDistFolder)
+        } else {
+            
+        }
         // if (!fs.existsSync('../../local_modules_dist/ng-js-hb-supersync/ts_src')) {
         //     console.log('clear-all.js: Create ../../local_modules_dist/ng-js-hb-supersync/ts_src folder');
         //     fs.mkdirpSync('../../local_modules_dist/ng-js-hb-supersync/ts_src')
         // }
 
-        // console.log('prepare-dist-folder.js: Copy contents to dist/ts_src');
+        // console.log('[' + nodeModuleName + '] Copy contents to dist/ts_src');
         // fs.copySync('src', '../../local_modules_dist/ng-js-hb-supersync/ts_src/src');
 
-        // console.log('prepare-dist-folder.js: Copy *.ts to ../../local_modules_dist/ng-js-hb-supersync/ts_src');
+        // console.log('[' + nodeModuleName + '] Copy *.ts to ../../local_modules_dist/ng-js-hb-supersync/ts_src');
         // var tsArr = glob.sync('*.ts');
         // for (let index = 0; index < tsArr.length; index++) {
         //     const tsItem = tsArr[index];
         //     fs.copyFileSync(tsItem, '../../local_modules_dist/ng-js-hb-supersync/ts_src/' + tsItem);
         // }
 
-        console.log('prepare-dist-folder.js: Copy package.json to ../../local_modules_dist/ng-js-hb-supersync/');
-        fs.copyFileSync('package.json', '../../local_modules_dist/ng-js-hb-supersync/package.json');
-        console.log('prepare-dist-folder.js: Copy README.md to ../../local_modules_dist/ng-js-hb-supersync/');
-        fs.copyFileSync('README.md', '../../local_modules_dist/ng-js-hb-supersync/README.md');
+        console.log('[' + nodeModuleName + '] Copy package.json to ' + baseDistFolder);
+        fs.copyFileSync('package.json', path.resolve(baseDistFolder, 'package.json'));
+        console.log('[' + nodeModuleName + '] Copy README.md to ' + baseDistFolder);
+        fs.copyFileSync('README.md', path.resolve(baseDistFolder, 'README.md'));
 
         process.exit(0);
     } catch (err) {
