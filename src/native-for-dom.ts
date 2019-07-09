@@ -7,6 +7,7 @@ import * as memStreams from 'memory-streams';
 import { NgJsHbDecorators } from "./js-hb-decorators";
 import { CacheHandler } from "./js-hb-config";
 import { map, flatMap } from "rxjs/operators";
+import { flatMapJustOnceRxOpr } from "./rxjs-util";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 
@@ -19,7 +20,7 @@ export namespace JsHbForDom {
                         map((cache) => {
                             return from(cache.keys())
                                 .pipe(
-                                    flatMap((requests) => {
+                                    flatMapJustOnceRxOpr((requests) => {
                                         const obsArr: Observable<boolean>[] = [];
                                         for (const req of requests) {
                                             obsArr.push(from(cache.delete(req)));
@@ -38,17 +39,17 @@ export namespace JsHbForDom {
             getFromCache: (cacheKey) => {
                 return from(caches.open('jshb_cachestorage'))
                     .pipe(
-                        flatMap((cache) => {
+                        flatMapJustOnceRxOpr((cache) => {
                             return from(cache.match(cacheKey));
                         })
                     )
                     .pipe(
-                        flatMap((response) => {
+                        flatMapJustOnceRxOpr((response) => {
                             return from(response.blob());
                         })
                     )
                     .pipe(
-                        flatMap((blob) => {
+                        flatMapJustOnceRxOpr((blob) => {
                             return of(toStream(blob));
                         })
                     );

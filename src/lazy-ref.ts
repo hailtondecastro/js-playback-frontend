@@ -17,6 +17,7 @@ import { JsHbManagerDefault } from './js-hb-manager';
 import { request } from 'http';
 import { FieldEtc } from './field-etc';
 import { ResponseLike } from './js-hb-http-lazy-observable-gen';
+import { flatMapJustOnceRxOpr } from './rxjs-util';
 
 export class StringStreamMarker {
 }
@@ -400,20 +401,15 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     public setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        const isPipedCallbackDone = { value: false, result: null as Observable<void>};
         let result$ = this.onLazyLoadingCallbackTemplate(() => {
-            if (!isPipedCallbackDone.value) {
-                isPipedCallbackDone.value = true;
-                isPipedCallbackDone.result = thisLocal.setLazyObjNoNext(lazyLoadedObj)
-                    .pipe(thisLocal.mapKeepAllFlagsRxOpr(() => {}))
-                    .pipe(
-                        thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                            lazyLoadedObj,
-                            () => {}
-                        )
-                    );
-            }
-            return isPipedCallbackDone.result;
+            return thisLocal.setLazyObjNoNext(lazyLoadedObj)
+                .pipe(thisLocal.mapKeepAllFlagsRxOpr(() => {}))
+                .pipe(
+                    thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                        lazyLoadedObj,
+                        () => {}
+                    )
+                );
         });
 
         const isSynchronouslyDone = { value: false, result: null as void};
@@ -432,22 +428,17 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     public setLazyObjNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        const isPipedCallbackDone = { value: false, result: null as Observable<void>};
         let result$ = this.onNoNextCallbackTemplate(() => {
-            if (!isPipedCallbackDone.value) {
-                isPipedCallbackDone.value = true;
-                isPipedCallbackDone.result = thisLocal.setLazyObj(lazyLoadedObj)
-                    .pipe(
-                        thisLocal.mapKeepAllFlagsRxOpr( () => {} )
+            return thisLocal.setLazyObj(lazyLoadedObj)
+                .pipe(
+                    thisLocal.mapKeepAllFlagsRxOpr( () => {} )
+                )
+                .pipe(
+                    thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
+                        lazyLoadedObj,
+                        () => {}
                     )
-                    .pipe(
-                        thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                            lazyLoadedObj,
-                            () => {}
-                        )
-                    );
-            } 
-            return isPipedCallbackDone.result;
+                );
         });
 
         const isSynchronouslyDone = { value: false, result: null as void};
@@ -900,7 +891,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     thisLocal.respObs
                         .pipe(thisLocal.session.logAllSourceStackRxOpr())
                         .pipe(
-                            flatMap(thisLocal.createFlatMapCallback())
+                            flatMapJustOnceRxOpr(thisLocal.createFlatMapCallback())
                         );
                 //assim marcaremos que ja ouve inscricao no Observable de response, e nao faremos duas idas ao servidor.
                 thisLocal.respObs = null;
@@ -1038,16 +1029,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 }
                 thisLocalNextOnAsync.value = true;
                 let getFromCache$ = this.session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(this.attachRefId);
-                const isPipedCallbackDone = { value: false, result: null as Observable<L>};
                 let fromDirectRaw$: Observable<L> =
                     getFromCache$
                         .pipe(
-                            flatMap((stream) => {
-                                if (!isPipedCallbackDone.value) {
-                                    isPipedCallbackDone.value = true;
-                                    isPipedCallbackDone.result = fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
-                                } 
-                                return isPipedCallbackDone.result;
+                            flatMapJustOnceRxOpr((stream) => {
+                                return fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
                             })
                         );
                 fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
@@ -1183,7 +1169,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     let processJsHbResultEntityArrayInternal$ = this.session.processJsHbResultEntityArrayInternal(collTypeParam, lazyLoadedColl, literalJsHbResult.result);
                     lazyLoadedObj$ = processJsHbResultEntityArrayInternal$
                         .pipe(
-                            flatMap(() => {
+                            flatMapJustOnceRxOpr(() => {
                                 return this.setLazyObjOnLazyLoadingNoNext(lazyLoadedColl)
                                     .pipe(thisLocal.mapKeepAllFlagsRxOpr( () => {} ))
                                     .pipe(
@@ -1224,29 +1210,19 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     }
                     thisLocal.attachRefId = this.session.jsHbManager.jsHbConfig.cacheStoragePrefix + this.session.nextMultiPurposeInstanceId().toString();
                     let putOnCache$ = this.session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(thisLocal.attachRefId, responselike.body as Stream);
-                    const isPipedCallbackDone = { value: false, result: null as Observable<Stream>};
                     let getFromCache$ = 
                         putOnCache$.pipe(
-                            flatMap( () => {
-                                if (!isPipedCallbackDone.value) {
-                                    isPipedCallbackDone.value = true;
-                                    isPipedCallbackDone.result = thisLocal.session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(thisLocal.attachRefId);
-                                }
-                                return isPipedCallbackDone.result;
+                            flatMapJustOnceRxOpr( () => {
+                                return thisLocal.session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(thisLocal.attachRefId);
                             })
                         );
 
-                    const isPipedCallbackDoneB = { value: false, result: null as Observable<L>};
                     let fromDirectRaw$ = 
                         getFromCache$
                             .pipe(thisLocal.session.logAllSourceStackRxOpr())
                             .pipe(
-                                flatMap( (cacheStream) => {
-                                    if (!isPipedCallbackDoneB.value) {
-                                        isPipedCallbackDoneB.value = true;
-                                        isPipedCallbackDoneB.result = fieldEtc.fieldProcessorCaller.callFromDirectRaw(cacheStream, fieldEtc.fieldInfo);
-                                    }
-                                    return isPipedCallbackDoneB.result;
+                                flatMapJustOnceRxOpr( (cacheStream) => {
+                                    return fieldEtc.fieldProcessorCaller.callFromDirectRaw(cacheStream, fieldEtc.fieldInfo);
                                 })
                             );
                     
@@ -1279,12 +1255,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                     //         )
                     //         .pipe();
 
-                    const isPipedCallbackDoneC = { value: false, result: null as L};
-                    const isPipedCallbackDoneD = { value: false, result: null as Observable<void>};
                     lazyLoadedObj$ = 
                         fromDirectRaw$
                             .pipe(
-                                flatMap((fromStreamValue) => {
+                                flatMapJustOnceRxOpr((fromStreamValue) => {
                                     return of(fromStreamValue)
                                         .pipe(thisLocal.session.logAllSourceStackRxOpr())
                                         .pipe(
@@ -1298,7 +1272,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                                                         backendMetadatasRefererObj,
                                                         fieldEtc,
                                                         null);
-                                                    return thisLocal.setLazyObjOnLazyLoadingNoNext(fromStreamValue);
+                                                    return thisLocal.setLazyObjOnLazyLoadingNoNext(fromStreamValueB);
                                                 }
                                             )
                                         )
@@ -1348,28 +1322,23 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                         console.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has "IFieldProcessor.fromLiteralValue".');
                     }
                     
-                    const isPipedCallbackDone = { value: false, result: null as Observable<L>};
                     const fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(responselike.body, fieldEtc.fieldInfo);
                     lazyLoadedObj$ =
                         fromLiteralValue$.pipe(
-                            flatMap((fromLiteralValue) => {
-                                if (!isPipedCallbackDone.value) {
-                                    if (JsHbLogLevel.Trace >= thisLocal.session.jsHbManager.jsHbConfig.logLevel) {
-                                        console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
-                                    }
-                                    isPipedCallbackDone.value = true;
-                                    thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
-                                        backendMetadatasRefererObj,
-                                        fieldEtc,
-                                        literalJsHbResult);
-                                    isPipedCallbackDone.result = thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
-                                        .pipe(
-                                            map( () => {
-                                                return fromLiteralValue;
-                                            })
-                                        );                                    
+                            flatMapJustOnceRxOpr((fromLiteralValue) => {
+                                if (JsHbLogLevel.Trace >= thisLocal.session.jsHbManager.jsHbConfig.logLevel) {
+                                    console.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
                                 }
-                                return isPipedCallbackDone.result;
+                                thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
+                                    backendMetadatasRefererObj,
+                                    fieldEtc,
+                                    literalJsHbResult);
+                                return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
+                                    .pipe(
+                                        map( () => {
+                                            return fromLiteralValue;
+                                        })
+                                    );                             
                             })
                         );
                 } else {
@@ -1770,14 +1739,17 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
 
     private createFlatMapCallback(): (response: ResponseLike<L>) => Observable<L> {
         const thisLocal = this;
-        const isPipedCallbackDone = { value: false, result: null as Observable<L>};
+        // const isPipedCallbackDone = { value: false, result: null as Observable<L>};
         return (response) => {
-            if (!isPipedCallbackDone.value) {
-                isPipedCallbackDone.value = true;
-                isPipedCallbackDone.result = this.processResponseOnLazyLoading(response);
-                console.debug('calling flatMapCallback()()'); console.debug('this.next()\n' + thisLocal);
-            }
-            return isPipedCallbackDone.result;
+            // if (!isPipedCallbackDone.value) {
+            //     isPipedCallbackDone.value = true;
+            //     isPipedCallbackDone.result = this.processResponseOnLazyLoading(response);
+            //     console.debug('calling flatMapCallback()()'); console.debug('this.next()\n' + thisLocal);
+            // }
+            // return isPipedCallbackDone.result;
+
+            console.debug('calling flatMapCallback()()'); console.debug('this.next()\n' + thisLocal);
+            return this.processResponseOnLazyLoading(response);
         };
     }
     

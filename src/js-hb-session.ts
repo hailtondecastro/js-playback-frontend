@@ -19,6 +19,7 @@ import { IFieldProcessor } from './field-processor';
 import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
+import { flatMapJustOnceRxOpr, mapJustOnceRxOpr } from './rxjs-util';
 
 export interface JsHbEntityRef {
     iAmAJsHbEntityRef: boolean;
@@ -925,7 +926,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                     //resolvedSettedValue$ = 
                     resolvedSettedValue$ = thisLocal.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId)
                         .pipe(
-                            flatMap((stream) => {
+                            flatMapJustOnceRxOpr((stream) => {
                                 return fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
                             })
                         );
@@ -1725,7 +1726,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         const thisLocal = this;
         let result$ = this.getLastRecordedPlayback()
             .pipe(
-                flatMap((playback) => {
+                flatMapJustOnceRxOpr((playback) => {
                     const idAndStreamObsArr: Observable<{attachRefId: String, stream: Stream}>[] = [];
                     if (playback && playback.actions){
                         for (const actionItem of playback.actions) {
@@ -1733,7 +1734,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                                 let idAndStream$: Observable<{attachRefId: String, stream: Stream}> = 
                                     thisLocal.jsHbManager.jsHbConfig.cacheHandler.getFromCache(actionItem.attachRefId)
                                         .pipe(
-                                            map((streamValue) => {
+                                            mapJustOnceRxOpr((streamValue) => {
                                                 return {
                                                     attachRefId: actionItem.attachRefId,
                                                     stream: streamValue
@@ -1781,7 +1782,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         const thisLocal = this;
         let result$ = this.getLastRecordedPlayback()
             .pipe(
-                flatMap((playback) => {
+                flatMapJustOnceRxOpr((playback) => {
                     return thisLocal.getLastRecordedStreams()
                         .pipe(
                             map((streamsMap) => {
@@ -1812,7 +1813,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         const thisLocal = this;
         let result$ = this.getLastRecordedPlaybackAsLiteral()
             .pipe(
-                flatMap((playbackLiteral) => {
+                flatMapJustOnceRxOpr((playbackLiteral) => {
                     return this.getLastRecordedStreams()
                         .pipe(
                             map((streamsMap) => {
@@ -2177,7 +2178,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                 } else {
                     setLazyObjOnLazyLoading$ = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
                         .pipe(
-                            flatMap((resultEntity) => {
+                            flatMapJustOnceRxOpr((resultEntity) => {
                                 return this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
                             })
                         );
@@ -2187,7 +2188,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                 if (!isValueByFieldProcessor.value && genericNode.gType !== LazyRefPrpMarker) {
                     setLazyObjOnLazyLoading$ = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
                         .pipe(
-                            flatMap((resultEntity) => {
+                            flatMapJustOnceRxOpr((resultEntity) => {
                                 return this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
                             })
                         );
