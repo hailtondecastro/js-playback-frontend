@@ -3,7 +3,6 @@ import { LazyRef, LazyRefPrpMarker, StringStreamMarker, StringStream } from './l
 import { IJsHbSession } from './js-hb-session';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { get as lodashGet, has } from 'lodash';
-import { Type } from '@angular/core';
 import { JsHbLogLevel, FieldInfo, JsHbLogger } from './js-hb-config';
 import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
 import { IFieldProcessor, IFieldProcessorEvents } from './field-processor';
@@ -15,6 +14,7 @@ import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
 import { ReadLine } from 'readline';
 import * as readline from 'readline';
+import { TypeLike } from './typeslike';
 
 export namespace NgJsHbDecorators {
     /**
@@ -264,7 +264,7 @@ export namespace NgJsHbDecorators {
         return function<T> (target: T): T | void {
             Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, options, target);
             Reflect.defineMetadata(
-                mountContructorByJavaClassMetadataKey(options, target as any as Type<any>),
+                mountContructorByJavaClassMetadataKey(options, target as any as TypeLike<any>),
                 target,
                 Function);
         }
@@ -273,7 +273,7 @@ export namespace NgJsHbDecorators {
     /**
      * Internal use only! It is no a decorator!
      */
-    export function mountContructorByJavaClassMetadataKey(options: clazzOptions, entityType: Type<any>): string {
+    export function mountContructorByJavaClassMetadataKey(options: clazzOptions, entityType: TypeLike<any>): string {
         return JsHbContants.JSHB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +

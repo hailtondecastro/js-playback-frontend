@@ -1,10 +1,10 @@
-import { Type } from "@angular/core";
 import { GenericNode } from "./generic-tokenizer";
 import { NgJsHbDecorators } from "./js-hb-decorators";
 import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
 import { FieldInfo } from "./js-hb-config";
 import { Observable } from "rxjs";
 import { Stream } from "stream";
+import { TypeLike } from './typeslike';
 
 export interface IFieldProcessorCaller<P> {
     callFromLiteralValue?(value: any, info: FieldInfo): Observable<P>;
@@ -14,10 +14,10 @@ export interface IFieldProcessorCaller<P> {
 }
 
 export interface FieldEtc<P, GP> {
-    prpType: Type<P>,
+    prpType: TypeLike<P>,
     prpGenType: GenericNode,
-    lazyLoadedObjType: Type<P>,
-    lazyRefGenericParam: Type<GP>,
+    lazyLoadedObjType: TypeLike<P>,
+    lazyRefGenericParam: TypeLike<GP>,
     propertyOptions: NgJsHbDecorators.PropertyOptions<P>,
     fieldProcessorCaller: IFieldProcessorCaller<P>,
     fieldInfo: FieldInfo

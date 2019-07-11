@@ -1,7 +1,6 @@
 import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction } from 'rxjs';
 import { PartialObserver } from 'rxjs/Observer';
 import { GenericNode, GenericTokenizer } from './generic-tokenizer';
-import { Type } from '@angular/core';
 import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
 import { IJsHbSession, OriginalLiteralValueEntry } from './js-hb-session';
 import { JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
@@ -15,8 +14,9 @@ import { Stream, Readable } from 'stream';
 import { JsHbManagerDefault } from './js-hb-manager';
 import { request } from 'http';
 import { FieldEtc } from './field-etc';
-import { ResponseLike } from './js-hb-http-lazy-observable-gen';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
+import { TypeLike } from './typeslike';
+import { HttpResponseLike } from './typeslike';
 
 export class StringStreamMarker {
 }
@@ -214,11 +214,11 @@ export class LazyRef<L extends object, I> extends Subject<L> {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-    public get respObs(): Observable<ResponseLike<Object>> {
+    public get respObs(): Observable<HttpResponseLike<Object>> {
         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-    public set respObs(value: Observable<ResponseLike<Object>>) {
+    public set respObs(value: Observable<HttpResponseLike<Object>>) {
         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
@@ -283,7 +283,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     private _lazyLoadedObj: L;
     private _genericNode: GenericNode;
     private _signatureStr: string;
-    private _respObs: Observable<ResponseLike<Object>>;
+    private _respObs: Observable<HttpResponseLike<Object>>;
     private _refererObj: any;
     private _refererKey: string;
     private _session: IJsHbSession;
@@ -854,11 +854,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
                 if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is collection: ' + fieldEtc.lazyLoadedObjType.name);
                 }
-                let collTypeParam: Type<any> =  null;
+                let collTypeParam: TypeLike<any> =  null;
                 if ((<GenericNode>this.genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
                     collTypeParam = (<GenericNode>(<GenericNode>this.genericNode.gParams[0]).gParams[0]).gType;
                 } else {
-                    collTypeParam = <Type<any>>(<GenericNode>this.genericNode.gParams[0]).gParams[0];
+                    collTypeParam = <TypeLike<any>>(<GenericNode>this.genericNode.gParams[0]).gParams[0];
                 }
                 if (thisLocal.consoleLikeProcResp.enabledFor(JsHbLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is collection of: ' + collTypeParam.name);
@@ -1280,10 +1280,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     public set signatureStr(value: string) {
         this._signatureStr = value;
     }
-    public get respObs(): Observable<ResponseLike<Object>> {
+    public get respObs(): Observable<HttpResponseLike<Object>> {
         return this._respObs;
     }
-    public set respObs(value: Observable<ResponseLike<Object>>) {
+    public set respObs(value: Observable<HttpResponseLike<Object>>) {
         this._respObs = value;
     }
 
@@ -1293,7 +1293,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRef<L, I> {
     public get fieldProcessorEvents(): IFieldProcessorEvents<L> {
         return this._fieldProcessorEvents;
     }
-    private createFlatMapCallback(): (response: ResponseLike<L>) => Observable<L> {
+    private createFlatMapCallback(): (response: HttpResponseLike<L>) => Observable<L> {
         const thisLocal = this;
         return (response) => {
             return this.processResponseOnLazyLoading(response);

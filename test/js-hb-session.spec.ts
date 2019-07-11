@@ -15,12 +15,10 @@ import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
 import { JsHbForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
-import { ResponseLike } from '../src/js-hb-http-lazy-observable-gen';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
 import { StringStream } from '../src/lazy-ref';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
-
-
+import { HttpResponseLike } from '../src/typeslike';
 
 {
     describe('JsHbManagerDefault', () => {
@@ -409,13 +407,13 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 jsHbConfig, 
                 {
                     generateHttpObservable: (signature, info) => {
-                        let responseResult: ResponseLike<Object> = {
+                        let responseResult: HttpResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
                     generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: ResponseLike<Stream> = {
+                        let responseResult: HttpResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -565,13 +563,13 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 jsHbConfig, 
                 {
                     generateHttpObservable: (signature, info) => {
-                        let responseResult: ResponseLike<Object> = {
+                        let responseResult: HttpResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
                     generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: ResponseLike<Stream> = {
+                        let responseResult: HttpResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -723,13 +721,13 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 jsHbConfig, 
                 {
                     generateHttpObservable: (signature, info) => {
-                        let responseResult: ResponseLike<Object> = {
+                        let responseResult: HttpResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
                     generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: ResponseLike<Stream> = {
+                        let responseResult: HttpResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -821,13 +819,13 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
                 jsHbConfig, 
                 {
                     generateHttpObservable: (signature, info) => {
-                        let responseResult: ResponseLike<Object> = {
+                        let responseResult: HttpResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
                     generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: ResponseLike<Stream> = {
+                        let responseResult: HttpResponseLike<Stream> = {
                             body: null
                         }
                         if (info.fieldName === 'blobLazyA') {

@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>org.jsplayback</groupId>
-	<artifactId>js-playback-frontend</artifactId>
+	<artifactId>json-playback-recorder-ts</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 

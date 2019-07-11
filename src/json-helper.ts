@@ -1,6 +1,6 @@
-import { Type } from '@angular/core';
 import { MergeWithCustomizer } from 'lodash';
 import { has as lodashHas, mergeWith as lodashMergeWith } from 'lodash';
+import { TypeLike } from './typeslike';
 
 
 /**
@@ -85,11 +85,11 @@ export class JSONHelper {
         }
     }
 
-    private static createCollection(collType: Type<any>): any {
+    private static createCollection(collType: TypeLike<any>): any {
         return new collType();
     }
 
-    private static isCollection(typeTested: Type<any>): any {
+    private static isCollection(typeTested: TypeLike<any>): any {
         return (typeTested === Array)
                 || (typeTested === Set);
     }

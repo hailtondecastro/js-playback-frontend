@@ -1,9 +1,9 @@
-import { Type } from '@angular/core';
 import "reflect-metadata";
+import { TypeLike } from './typeslike';
 
 export class GenericNode {
-    gType: Type<any>;
-    gParams: Array<Type<any> | GenericNode>;
+    gType: TypeLike<any>;
+    gParams: Array<TypeLike<any> | GenericNode>;
     gParent: GenericNode;
     public toString(): string {
         let returnStr = this.gType.name + '<';
@@ -64,7 +64,7 @@ export class GenericTokenizer {
         return new GenericTokenizer();
     }
 
-    public tp(type: Type<any>): GenericTokenizer {
+    public tp(type: TypeLike<any>): GenericTokenizer {
         if ((this.lastToken == null)
             || (this.lastToken == GenericTokenEnum.Comma)
             || (this.lastToken == GenericTokenEnum.Lt)) {
@@ -89,10 +89,10 @@ export class GenericTokenizer {
         }
         let gParamNew: GenericNode = null;
         if (this.currNode.gParams.length > 0) {
-            let gParamActual: Type<any> | GenericNode = this.currNode.gParams.pop();
-            if (gParamActual instanceof Type) {
+            let gParamActual: TypeLike<any> | GenericNode = this.currNode.gParams.pop();
+            if (gParamActual instanceof TypeLike) {
                 gParamNew = new GenericNode();
-                gParamNew.gType = <Type<any>>gParamActual;
+                gParamNew.gType = <TypeLike<any>>gParamActual;
                 gParamNew.gParent = this.currNode;
                 gParamNew.gParams = [];
                 this.currNode.gParams.push(gParamNew);

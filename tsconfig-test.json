@@ -9,7 +9,7 @@
     "emitDecoratorMetadata": true,
     "module": "commonjs",
     "moduleResolution": "node",
-    "outDir": "./dist",
+    "outDir": "./dist-test",
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "inlineSourceMap": false,
@@ -22,7 +22,8 @@
     "skipLibCheck": true,
     "target": "es5",
     "resolveJsonModule": true,
-    "esModuleInterop": true  
+    "esModuleInterop": true ,
+    "rootDirs": []
   },
   "exclude": [
     "node_modules",
@@ -32,11 +33,10 @@
     "ts_src",
     "dist/**",
     "dist-dev/**",
-    "dist-test/**",
-    "test/**/*.*"
+    "dist-test/**"
   ],
   "angularCompilerOptions": {
-    "genDir": "dist",
+    "genDir": "dist-test",
     "skipTemplateCodegen": true
   }
 }

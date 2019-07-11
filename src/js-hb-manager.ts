@@ -1,5 +1,4 @@
 import { IJsHbManager } from './js-hb-manager';
-import { Injectable, Injector, Type } from '@angular/core';
 import { IJsHbConfig, JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
 import { IJsHbSession, JsHbSessionDefault } from './js-hb-session';
 import { JsHbContants } from './js-hb-constants';
@@ -9,6 +8,7 @@ import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { NgJsHbDecorators } from './js-hb-decorators';
 import { LazyRef, LazyRefPrpMarker } from './lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
+import { TypeLike } from './typeslike';
 
 /**
  * Contract.
@@ -95,12 +95,12 @@ export class JsHbManagerDefault implements IJsHbManager{
 		}
 
 		if (!fielEtcCacheMap.get(owner).has(fieldName)) {
-			let prpType: Type<any> = Reflect.getMetadata('design:type', owner, fieldName);
+			let prpType: TypeLike<any> = Reflect.getMetadata('design:type', owner, fieldName);
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
-			let lazyLoadedObjType: Type<any> = null;
+			let lazyLoadedObjType: TypeLike<any> = null;
 			let propertyOptions: NgJsHbDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
-			let lazyRefGenericParam: Type<any> = null;
+			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
 				fieldProcessor = propertyOptions.fieldProcessorResolver();
@@ -112,7 +112,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 				if (prpGenType.gParams[0] instanceof GenericNode) {
 					lazyLoadedObjType = (<GenericNode>prpGenType.gParams[0]).gType;
 				} else {
-					lazyLoadedObjType = <Type<any>>prpGenType.gParams[0];
+					lazyLoadedObjType = <TypeLike<any>>prpGenType.gParams[0];
 				}
 
 				if (prpGenType.gType === LazyRef || prpGenType.gType === LazyRefPrpMarker) {
@@ -120,7 +120,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 						if (prpGenType.gParams[0] instanceof GenericNode) {
 							lazyRefGenericParam = (prpGenType.gParams[0] as GenericNode).gType;
 						} else {
-							lazyRefGenericParam = (prpGenType.gParams[0] as Type<any>);
+							lazyRefGenericParam = (prpGenType.gParams[0] as TypeLike<any>);
 						}
 					}
 					if (prpGenType.gType === LazyRefPrpMarker) {
@@ -136,7 +136,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 			let info: FieldInfo = {
 				fieldName: fieldName,
 				fieldType: prpType,
-				ownerType: owner.constructor as Type<any>,
+				ownerType: owner.constructor as TypeLike<any>,
 				ownerValue: owner
 			}
 	

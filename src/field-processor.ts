@@ -1,9 +1,7 @@
 import { GenericNode } from "./generic-tokenizer";
-import { Type } from "@angular/core";
 import { FieldInfo } from "./js-hb-config";
 import { Stream } from "stream";
 import { Observable } from "rxjs";
-import { ResponseLike } from "./js-hb-http-lazy-observable-gen";
 
 export interface IFieldProcessor<L> {
     fromLiteralValue?(value: any, info: FieldInfo): Observable<L>;

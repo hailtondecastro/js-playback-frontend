@@ -8,7 +8,7 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Test",
+            "name": "Launch Test dist-dev",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
@@ -22,11 +22,74 @@
                 //"/master-a-detail-a-test-sync/",
                 //"/poc-observable-just-once-pipe-test/",
                 //"/poc-observable-each-pipe-test/",
-                "dist_dev/**/**.spec.js"
+                "dist-dev/**/**.spec.js"
             ],
             "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/dist_dev/**/*.js"
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },{
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Test dist-test",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "--timeout",
+                //"2000",
+                "600000",
+                "--grep",
+                //"/.*/",
+                "/master-lazy-prp-over-sized-test-async/",
+                //"/master-a-test-async/",
+                //"/master-a-test-sync/",
+                //"/master-a-detail-a-test-sync/",
+                //"/poc-observable-just-once-pipe-test/",
+                //"/poc-observable-each-pipe-test/",
+                "dist-test/**/**.spec.js"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-test/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-folder-content",
+            "program": "${workspaceFolder}/build-utils/mv-folder-content",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/typeslike/dev",
+                "-relativeSourceFolder",
+                ".",
+                "-relativeTargetFolder",
+                "..",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-file",
+            "program": "${workspaceFolder}/build-utils/mv-file",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/src",
+                "-relativeSourceFile",
+                "typeslike-dist.d.ts",
+                "-relativeTargetFile",
+                "./foo/bar/typeslike.d.ts",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
             ]
         }
     ]

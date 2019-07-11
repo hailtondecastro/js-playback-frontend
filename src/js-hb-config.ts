@@ -1,15 +1,15 @@
 import {Buffer} from 'buffer';
-import { Type } from "@angular/core";
 import { IFieldProcessor } from "./field-processor";
 import { Stream } from "stream";
 import { Observable } from 'rxjs';
 import { NgJsHbDecorators } from './js-hb-decorators';
+import { TypeLike } from './typeslike';
 
-interface TypeProcessorEntry<T, TM> {type: Type<TM>, processor: IFieldProcessor<T>}
+interface TypeProcessorEntry<T, TM> {type: TypeLike<TM>, processor: IFieldProcessor<T>}
 
 export interface FieldInfo {
-	ownerType: Type<any>,
-	fieldType: Type<any>,
+	ownerType: TypeLike<any>,
+	fieldType: TypeLike<any>,
 	ownerValue: any,
     fieldName: string
 }
@@ -51,7 +51,7 @@ export interface IJsHbConfig {
      */
     configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig;
     configAttachPrefix(attachPrefix: string): IJsHbConfig;
-    getTypeProcessor<L,LM>(type: Type<LM>): IFieldProcessor<L>;
+    getTypeProcessor<L,LM>(type: TypeLike<LM>): IFieldProcessor<L>;
 }
 
 export enum JsHbLogger {
@@ -189,7 +189,7 @@ export class JsHbConfigDefault implements IJsHbConfig {
     private _lazyRefNotificationTimeMeasurement: number = 5000;
     private _lazyRefNotificationCountMeasurement: number = 30;
     //private _logLevel: JsHbLogLevel = JsHbLogLevel.Warn;
-    private _fieldProcessorEntryMap: Map<Type<any>, IFieldProcessor<any>> = new Map();
+    private _fieldProcessorEntryMap: Map<TypeLike<any>, IFieldProcessor<any>> = new Map();
     private _cacheHandler: CacheHandler;
 
 	public get cacheHandler(): CacheHandler {
@@ -256,7 +256,7 @@ export class JsHbConfigDefault implements IJsHbConfig {
         this._fieldProcessorEntryMap;
         return this;
     }
-    public getTypeProcessor<L, LM>(type: Type<LM>): IFieldProcessor<L> {
+    public getTypeProcessor<L, LM>(type: TypeLike<LM>): IFieldProcessor<L> {
         if (this._fieldProcessorEntryMap.get(type)) {
             return this._fieldProcessorEntryMap.get(type);
         } else {

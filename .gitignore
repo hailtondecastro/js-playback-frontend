@@ -6,4 +6,5 @@
 /test.out.txt
 **/.jazzignore
 /dist/**/*
-/dist_dev/**/*
+/dist-dev/**/*
+/dist-test/**/*

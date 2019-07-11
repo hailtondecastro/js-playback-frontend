@@ -9,9 +9,9 @@ var nodeModuleName = path.basename(module.filename);
 function preRequires() {
     try {
         buildHelperCommons.loadDashArgs();
-        includeCwdOnModulePath(module, buildHelperCommons.argsMap['verbose']);
+        // includeCwdOnModulePath(module, buildHelperCommons.argsMap['verbose']);
     } catch (err) {
-        console.error(err);
+        console.error('[' + nodeModuleName + ']:' + err);
         process.exit(1);
     }
 }

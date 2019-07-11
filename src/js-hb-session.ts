@@ -1,7 +1,6 @@
 import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { LazyRef,  LazyRefDefault, LazyRefPrpMarker} from './lazy-ref';
 import { IJsHbManager, JsHbManagerDefault } from './js-hb-manager';
-import { Type } from '@angular/core';
 import { catchError, map, flatMap, delay, finalize, mapTo } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
 import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe, PartialObserver, ObservableInput } from 'rxjs';
@@ -20,6 +19,7 @@ import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
+import { TypeLike } from './typeslike';
 
 export interface JsHbEntityRef {
     iAmAJsHbEntityRef: boolean;
@@ -61,29 +61,29 @@ export interface IJsHbSession {
      * Body format: { result: any }.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the L instance.  
      * it call {@link #storeOriginalLiteralEntry)} for a future {@link this#restoreEntireStateFromLiteral}.  
-     * @param entityType - Type<L>
+     * @param entityType - TypeLike<L>
      * @param literalJsHbResult a literal object with format { result: any }
      */
-    processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<L>;
+    processJsHbResultEntity<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<L>;
     /**
      * Process the response body literal for each object getted from backend.  
      * Body format: \{ result: Array<any> \}.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the L instance.  
      * It call {@link this#storeOriginalLiteralEntry} for a future {@link this#restoreEntireStateFromLiteral}.  
      *
-     * @param entityType - Type<L>
+     * @param entityType - TypeLike<L>
      * @param literalJsHbResult - \{result: any\}
      * @returns Array<L>
      */
-    processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<Array<L>>;
+    processJsHbResultEntityArray<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<Array<L>>;
     /**
      * Generate a managed instance for type T.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the T instance.
      * 
-     * @param entityType - \{Type<T>\} 
+     * @param entityType - \{TypeLike<T>\} 
      * @returns T
      */
-    newEntityInstance<T extends object>(entityType: Type<T>): Observable<T>;
+    newEntityInstance<T extends object>(entityType: TypeLike<T>): Observable<T>;
     /**
      * Start recording for all modifications on entity objects returned.  
      * See: {@link this#getLastRecordedPlayback}  
@@ -190,11 +190,11 @@ export interface IJsHbSession {
     /**
      * Framework internal use.
      */
-    processJsHbResultEntityInternal<L>(entityType: Type<L>, literalResultField: any): Observable<L>;
+    processJsHbResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L>;
     /**
      * Framework internal use. Used exclusively in lazy load.
      */
-    processJsHbResultEntityArrayInternal<L>(entityType: Type<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void>;
+    processJsHbResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void>;
     /**
      * Clear/release all data for the session including cached e modifications recorded.
      */
@@ -204,9 +204,9 @@ export interface IJsHbSession {
      */
     createApropriatedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string, refMap?: Map<Number, any>): LazyRef<L, I>;
     /** Framework internal use.  Collection utility. */
-    createCollection(collType: Type<any>, refererObj: any, refererKey: string): any;
+    createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any;
     /** Framework internal use.  Collection utility. */
-    isCollection(typeTested: Type<any>): any;
+    isCollection(typeTested: TypeLike<any>): any;
     /** Framework internal use.  Collection utility. */
     addOnCollection(collection: any, element: any): void;
     /** Framework internal use.  Collection utility. */
@@ -489,7 +489,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                 if (originalLiteralValueEntry.method === 'processJsHbResultEntity'
                         || originalLiteralValueEntry.method === 'processJsHbResultEntityArray'
                         || originalLiteralValueEntry.method === 'newEntityInstance') {
-                    let jsType: Type<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
+                    let jsType: TypeLike<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
                     if (!jsType) {
                         throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'NgJsHbDecorators.clazz\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                     }
@@ -1046,7 +1046,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         this._jsHbManager = value;
     }
 
-    public processJsHbResultEntity<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<L> {
+    public processJsHbResultEntity<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<L> {
         const thisLocal = this;
         let result$: Observable<L>;
 
@@ -1102,7 +1102,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    public processJsHbResultEntityArray<L>(entityType: Type<L>, literalJsHbResult: {result: any}): Observable<Array<L>> {
+    public processJsHbResultEntityArray<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<Array<L>> {
         const thisLocal = this;
         if (!literalJsHbResult.result) {
             throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
@@ -1151,7 +1151,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private newEntityInstanceWithCreationId<T extends object>(entityType: Type<T>, creationId: number): Observable<T> {
+    private newEntityInstanceWithCreationId<T extends object>(entityType: TypeLike<T>, creationId: number): Observable<T> {
         const thisLocal = this;
         if (!this.isOnRestoreEntireStateFromLiteral() && !this.isRecording()){
             throw new Error('Invalid operation. It is not recording. is this Error correct?!');
@@ -1175,12 +1175,12 @@ export class JsHbSessionDefault implements IJsHbSession {
                     thisLocal.consoleLike.debug('GenericNode found but it is not a LazyRef. Property key \'' + keyItem + '\' of ' + entityType.name);
                 }
             } else {
-                let lazyRefGenericParam: Type<any> = null;
+                let lazyRefGenericParam: TypeLike<any> = null;
                 if (prpGenType.gParams.length > 0) {
                     if (prpGenType.gParams[0] instanceof GenericNode) {
                         lazyRefGenericParam = (prpGenType.gParams[0] as GenericNode).gType;
                     } else {
-                        lazyRefGenericParam = (prpGenType.gParams[0] as Type<any>);
+                        lazyRefGenericParam = (prpGenType.gParams[0] as TypeLike<any>);
                     }
 
                     if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
@@ -1288,7 +1288,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    public newEntityInstance<T extends object>(entityType: Type<T>): Observable<T> {
+    public newEntityInstance<T extends object>(entityType: TypeLike<T>): Observable<T> {
         const thisLocal = this;
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording.');
@@ -1666,7 +1666,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private validatingMetaFieldsExistence(entityType: Type<any>): void {
+    private validatingMetaFieldsExistence(entityType: TypeLike<any>): void {
         const camposControleArr = [
             this.jsHbManager.jsHbConfig.jsHbCreationIdName,
             this.jsHbManager.jsHbConfig.jsHbMetadatasName,
@@ -1680,7 +1680,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    public processJsHbResultEntityArrayInternal<L>(entityType: Type<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void> {
+    public processJsHbResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void> {
         let thisLocal = this;
         let refMap: Map<Number, any> = new Map();
 
@@ -1714,7 +1714,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    public processJsHbResultEntityInternal<L>(entityType: Type<L>, literalResultField: any): Observable<L> {
+    public processJsHbResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L> {
         let refMap: Map<Number, any> = new Map();
         let result$ = this.processJsHbResultEntityPriv(entityType, literalResultField, refMap);
 
@@ -1731,7 +1731,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    private processJsHbResultEntityPriv<L>(entityType: Type<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
+    private processJsHbResultEntityPriv<L>(entityType: TypeLike<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
         const thisLocal = this;
         if (!literalResultField) {
             throw new Error('literalResultField can not be null');
@@ -1821,22 +1821,22 @@ export class JsHbSessionDefault implements IJsHbSession {
             if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('LazyRef.lazyLoadedObj is not setted yet');
             }
-            let lazyLoadedObjType: Type<any> = null;
+            let lazyLoadedObjType: TypeLike<any> = null;
             if (genericNode.gParams[0] instanceof GenericNode) {
                 lazyLoadedObjType = (<GenericNode>genericNode.gParams[0]).gType;
             } else {
-                lazyLoadedObjType = <Type<any>>genericNode.gParams[0];
+                lazyLoadedObjType = <TypeLike<any>>genericNode.gParams[0];
             }
             
             if (this.isCollection(lazyLoadedObjType)) {
                 if (!(genericNode.gParams[0] instanceof GenericNode) || (<GenericNode>genericNode.gParams[0]).gParams.length <=0) {
                     throw new Error('LazyRef is not correctly defined: \'' + refererKey + '\' on ' + refererObj.constructor);
                 }
-                let collTypeParam: Type<any> =  null;
+                let collTypeParam: TypeLike<any> =  null;
                 if ((<GenericNode>genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
                     collTypeParam = (<GenericNode>(<GenericNode>genericNode.gParams[0]).gParams[0]).gType;
                 } else {
-                    collTypeParam = <Type<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
+                    collTypeParam = <TypeLike<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
                 }
                 const lazyCollection = this.createCollection(lazyLoadedObjType, refererObj, refererKey);
                 
@@ -1988,7 +1988,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                 propertyOptions: propertyOptions,
                 literalLazyObj: literalLazyObj,
                 ownerType: refererObj.constructor,
-                lazyFieldType: genericNode.gParams[0] as Type<any>,
+                lazyFieldType: genericNode.gParams[0] as TypeLike<any>,
                 fieldName: refererKey
             }
             
@@ -2137,11 +2137,11 @@ export class JsHbSessionDefault implements IJsHbSession {
 
         let jsHbHibernateIdLiteral: any = bMd.$hibernateId$;
         if (jsHbHibernateIdLiteral instanceof Object && !(jsHbHibernateIdLiteral instanceof Date)) {
-            let hbIdType: Type<any> = null;
+            let hbIdType: TypeLike<any> = null;
             if (genericNode.gParams[1] instanceof GenericNode) {
                 hbIdType = (<GenericNode>genericNode.gParams[1]).gType;
             } else {
-                hbIdType = <Type<any>>genericNode.gParams[1];
+                hbIdType = <TypeLike<any>>genericNode.gParams[1];
             }
             if (hbIdType) {
                 if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
@@ -2256,7 +2256,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         return resultOpr;
     }
 
-    public createCollection(collType: Type<any>, refererObj: any, refererKey: string): any {
+    public createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any {
         if (collType === Set) {
             return new JsHbSetCreator(this, refererObj, refererKey).createByProxy();
         } else {
@@ -2264,7 +2264,7 @@ export class JsHbSessionDefault implements IJsHbSession {
         }
     }
 
-    public isCollection(typeTested: Type<any>): any {
+    public isCollection(typeTested: TypeLike<any>): any {
         return (typeTested === Array)
                 || (typeTested === Set);
     }
@@ -2396,7 +2396,7 @@ export class JsHbSessionDefault implements IJsHbSession {
                         let processJsHbResultEntityPrivObsArr: Observable<any>[] = [];
                         thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
                             for (let index = 0; index < srcValue.length; index++) { 
-                                let arrItemType: Type<any> = <Type<any>>fieldEtc.prpGenType.gParams[0];
+                                let arrItemType: TypeLike<any> = <TypeLike<any>>fieldEtc.prpGenType.gParams[0];
                                 let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(arrItemType, srcValue[index], refMap);
                                 processJsHbResultEntityPrivObsArr.push(processJsHbResultEntityPriv$);
 
