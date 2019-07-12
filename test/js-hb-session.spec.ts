@@ -1,24 +1,26 @@
 import {HttpResponse, HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';
-import { IJsHbSession } from '../src/js-hb-session';
-import { JsHbManagerDefault, IJsHbManager } from '../src/js-hb-manager';
-import { JsHbConfigDefault, IJsHbConfig, JsHbLogLevel, JsHbLogger } from '../src/js-hb-config';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
 import resultMasterLiteral from './master-a-test.json';
 import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
 import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import { MasterAEnt } from './entities/master-a-ent';
-import { NgJsHbDecorators } from '../src/js-hb-decorators';
-import { JsHbContants } from '../src/js-hb-constants';
 import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
 import { JsHbForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
-import { StringStream } from '../src/lazy-ref';
-import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/rxjs-util';
 import { HttpResponseLike } from '../src/typeslike';
+import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
+import { ISession } from '../src/api/session.js';
+import { JsHbConfigDefault } from '../src/implementation/js-hb-config.js';
+import { IConfig, JsHbLogLevel, RecorderLogger } from '../src/api/config.js';
+import { JsonPlaybackDecorators } from '../src/api/decorators';
+import { JsHbContants } from '../src/implementation/js-hb-constants.js';
+import { StringStream } from '../src/implementation/js-hb-lazy-ref.js';
+import { IManager } from '../src/api/manager.js';
+import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
 
 {
     describe('JsHbManagerDefault', () => {
@@ -317,9 +319,9 @@ import { HttpResponseLike } from '../src/typeslike';
         it('master-a-test-async', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: IJsHbSession;
-            let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: ISession;
+            let config: IConfig = new JsHbConfigDefault()
+                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
                 
@@ -330,14 +332,14 @@ import { HttpResponseLike } from '../src/typeslike';
                 asyncCount++;
             }
 
-            let propertyOptionsString: NgJsHbDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: NgJsHbDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: NgJsHbDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -403,8 +405,8 @@ import { HttpResponseLike } from '../src/typeslike';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IJsHbManager = new JsHbManagerDefault(
-                jsHbConfig, 
+            let jsHbManager: IManager = new JsHbManagerDefault(
+                config, 
                 {
                     generateHttpObservable: (signature, info) => {
                         let responseResult: HttpResponseLike<Object> = {
@@ -420,8 +422,8 @@ import { HttpResponseLike } from '../src/typeslike';
                     }
                 });
 
-            let propertyOptions: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -473,9 +475,9 @@ import { HttpResponseLike } from '../src/typeslike';
         it('master-a-test-sync', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: IJsHbSession;
-            let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: ISession;
+            let config: IConfig = new JsHbConfigDefault()
+                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
                 
@@ -486,14 +488,14 @@ import { HttpResponseLike } from '../src/typeslike';
                 asyncCount++;
             }
 
-            let propertyOptionsString: NgJsHbDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: NgJsHbDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: NgJsHbDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -559,8 +561,8 @@ import { HttpResponseLike } from '../src/typeslike';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IJsHbManager = new JsHbManagerDefault(
-                jsHbConfig, 
+            let jsHbManager: IManager = new JsHbManagerDefault(
+                config, 
                 {
                     generateHttpObservable: (signature, info) => {
                         let responseResult: HttpResponseLike<Object> = {
@@ -576,8 +578,8 @@ import { HttpResponseLike } from '../src/typeslike';
                     }
                 });
 
-            let propertyOptions: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -631,9 +633,9 @@ import { HttpResponseLike } from '../src/typeslike';
         it('master-a-detail-a-test-sync', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: IJsHbSession;
-            let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: ISession;
+            let config: IConfig = new JsHbConfigDefault()
+                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
                 
@@ -644,14 +646,14 @@ import { HttpResponseLike } from '../src/typeslike';
                 asyncCount++;
             }
 
-            let propertyOptionsString: NgJsHbDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: NgJsHbDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: NgJsHbDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -717,8 +719,8 @@ import { HttpResponseLike } from '../src/typeslike';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IJsHbManager = new JsHbManagerDefault(
-                jsHbConfig, 
+            let jsHbManager: IManager = new JsHbManagerDefault(
+                config, 
                 {
                     generateHttpObservable: (signature, info) => {
                         let responseResult: HttpResponseLike<Object> = {
@@ -734,8 +736,8 @@ import { HttpResponseLike } from '../src/typeslike';
                     }
                 });
 
-            let propertyOptions: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -802,9 +804,9 @@ import { HttpResponseLike } from '../src/typeslike';
         it('master-lazy-prp-over-sized-test-async', (done) => {
             let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: IJsHbSession;
-            let jsHbConfig: IJsHbConfig = new JsHbConfigDefault()
-                .configLogLevel(JsHbLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: ISession;
+            let config: IConfig = new JsHbConfigDefault()
+                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
 
@@ -815,8 +817,8 @@ import { HttpResponseLike } from '../src/typeslike';
                 asyncCount++;
             }
 
-            let jsHbManager: IJsHbManager = new JsHbManagerDefault(
-                jsHbConfig, 
+            let jsHbManager: IManager = new JsHbManagerDefault(
+                config, 
                 {
                     generateHttpObservable: (signature, info) => {
                         let responseResult: HttpResponseLike<Object> = {
@@ -850,14 +852,14 @@ import { HttpResponseLike } from '../src/typeslike';
                     }
                 });
 
-            let propertyOptionsString: NgJsHbDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: NgJsHbDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: NgJsHbDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: NgJsHbDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -958,7 +960,7 @@ import { HttpResponseLike } from '../src/typeslike';
                             }
                         );
             
-                        jsHbSession.jsHbManager.jsHbConfig.cacheHandler.clearCache();
+                        jsHbSession.jsHbManager.config.cacheHandler.clearCache();
                     }
                 }
             );

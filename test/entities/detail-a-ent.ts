@@ -1,11 +1,11 @@
 import { MasterBEnt, MasterBCompId } from './master-b-ent';
 import { MasterAEnt } from './master-a-ent';
-import { LazyRefMTO, LazyRef } from '../../src/lazy-ref';
-import { NgJsHbDecorators } from '../../src/js-hb-decorators';
-import { GenericTokenizer, GenericNodeNotNow } from '../../src/generic-tokenizer';
+import { LazyRefMTO, LazyRef } from '../../src/api/lazy-ref';
 import { Stream } from 'stream';
+import { JsonPlaybackDecorators } from '../../src/api/decorators';
+import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 
-@NgJsHbDecorators.clazz({javaClass: 'br.gov.serpro.webanalise.jsHbSuperSync.entities.DetailACompComp'})
+@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.DetailACompComp'})
 export class DetailACompComp {
     private _masterB: LazyRefMTO<MasterBEnt, MasterBCompId>;
 
@@ -13,7 +13,7 @@ export class DetailACompComp {
      * Getter masterB
      * @return {LazyRefMTO<MasterBEnt, MasterBCompId>}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
 	public get masterB(): LazyRefMTO<MasterBEnt, MasterBCompId> {
 		return this._masterB;
@@ -29,7 +29,7 @@ export class DetailACompComp {
 
 }
 
-@NgJsHbDecorators.clazz({javaClass: 'br.gov.serpro.webanalise.jsHbSuperSync.entities.DetailAComp'})
+@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.DetailAComp'})
 export class DetailAComp {
     private _masterB: LazyRefMTO<MasterBEnt, MasterBCompId>;
     private _detailACompComp: DetailACompComp;
@@ -39,7 +39,7 @@ export class DetailAComp {
     private _blobA: Stream;
     private _blobB: Stream;
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
 	public get masterB(): LazyRefMTO<MasterBEnt, MasterBCompId> {
 		return this._masterB;
@@ -49,7 +49,7 @@ export class DetailAComp {
 		this._masterB = value;
 	}
     
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get detailACompComp(): DetailACompComp {
 		return this._detailACompComp;
 	}
@@ -58,7 +58,7 @@ export class DetailAComp {
 		this._detailACompComp = value;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get subIdB(): number {
 		return this._subIdB;
 	}
@@ -67,7 +67,7 @@ export class DetailAComp {
 		this._subIdB = value;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharA(): string {
 		return this._vcharA;
 	}
@@ -76,7 +76,7 @@ export class DetailAComp {
 		this._vcharA = value;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharB(): string {
 		return this._vcharB;
 	}
@@ -85,7 +85,7 @@ export class DetailAComp {
 		this._vcharB = value;
     }
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get blobA(): Stream {
 		return this._blobA;
      }
@@ -94,7 +94,7 @@ export class DetailAComp {
 		this._blobA = value;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get blobB(): Stream {
 		return this._blobB;
 	}
@@ -105,7 +105,7 @@ export class DetailAComp {
 
 }
 
-@NgJsHbDecorators.clazz({javaClass: 'br.gov.serpro.webanalise.jsHbSuperSync.entities.DetailACompId'})
+@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.DetailACompId'})
 export class DetailACompId {
     private _masterA: LazyRefMTO<MasterAEnt, number>;
     private _subId: number;
@@ -115,7 +115,7 @@ export class DetailACompId {
      * Getter masterA
      * @return {LazyRefMTO<MasterAEnt, number>}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterAEnt).comma().tp(Number).gt().tree))
 	public get masterA(): LazyRefMTO<MasterAEnt, number> {
 		return this._masterA;
@@ -133,7 +133,7 @@ export class DetailACompId {
      * Getter subId
      * @return {number}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get subId(): number {
 		return this._subId;
 	}
@@ -148,7 +148,7 @@ export class DetailACompId {
     
 }
 
-@NgJsHbDecorators.clazz({javaClass: 'br.gov.serpro.webanalise.jsHbSuperSync.entities.DetailAEnt'})
+@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.DetailAEnt'})
 export class DetailAEnt {
     private _compId: DetailACompId;
     private _vcharA: string;
@@ -160,8 +160,8 @@ export class DetailAEnt {
      * Getter compId
      * @return {DetailACompId}
      */
-	@NgJsHbDecorators.property()
-	@NgJsHbDecorators.hibernateId()
+	@JsonPlaybackDecorators.property()
+	@JsonPlaybackDecorators.playerObjectId()
 	public get compId(): DetailACompId {
 		return this._compId;
 	}
@@ -178,7 +178,7 @@ export class DetailAEnt {
      * Getter vcharA
      * @return {string}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharA(): string {
 		return this._vcharA;
 	}
@@ -195,7 +195,7 @@ export class DetailAEnt {
      * Getter vcharB
      * @return {string}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharB(): string {
 		return this._vcharB;
 	}
@@ -212,7 +212,7 @@ export class DetailAEnt {
      * Getter hbVersion
      * @return {number}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get hbVersion(): number {
 		return this._hbVersion;
 	}
@@ -229,7 +229,7 @@ export class DetailAEnt {
      * Getter detailAComp
      * @return {DetailAComp}
      */
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get detailAComp(): DetailAComp {
 		return this._detailAComp;
 	}

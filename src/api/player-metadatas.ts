@@ -1,12 +1,12 @@
-export interface JsHbBackendMetadatas {
-    $iAmJsHbBackendMetadatas$: true;
+export interface PlayerMetadatas {
+    $iAmPlayerMetadatas$: true;
     $id$?: number;
 	$idRef$?: number;
 	$signature$?: string;
 	$isLazyUninitialized$?: boolean;
     $isComponent$?: boolean;
-    $isComponentHibernateId$?: boolean;
+    $isComponentPlayerObjectId$?: boolean;
 	$isAssociative$?: boolean;
 	$isLazyProperty$?: boolean;
-	$hibernateId$?: any;
+	$playerObjectId$?: any;
 }

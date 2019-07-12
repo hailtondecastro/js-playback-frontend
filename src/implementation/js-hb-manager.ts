@@ -1,14 +1,17 @@
 import { IJsHbManager } from './js-hb-manager';
-import { IJsHbConfig, JsHbLogLevel, FieldInfo, ConsoleLike, JsHbLogger } from './js-hb-config';
-import { IJsHbSession, JsHbSessionDefault } from './js-hb-session';
+import { IJsHbConfig, JsHbLogLevel, FieldInfo, ConsoleLike } from './js-hb-config';
+import { JsHbSessionDefault } from './js-hb-session';
 import { JsHbContants } from './js-hb-constants';
-import { IJsHbHttpLazyObservableGen } from './js-hb-http-lazy-observable-gen';
-import { IFieldProcessor } from './field-processor';
-import { GenericNode, GenericTokenizer } from './generic-tokenizer';
-import { NgJsHbDecorators } from './js-hb-decorators';
-import { LazyRef, LazyRefPrpMarker } from './lazy-ref';
+import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
-import { TypeLike } from './typeslike';
+import { TypeLike } from '../typeslike';
+import { ISession } from '../api/session';
+import { IConfig, RecorderLogger } from '../api/config';
+import { IJsHbHttpLazyObservableGen } from '../api/js-hb-http-lazy-observable-gen';
+import { GenericNode } from '../api/generic-tokenizer';
+import { IFieldProcessor } from '../api/field-processor';
+import { GenericTokenizer } from '../api/generic-tokenizer';
+import { JsonPlaybackDecorators } from '../api/decorators';
 
 /**
  * Contract.
@@ -17,11 +20,11 @@ export interface IJsHbManager {
 	/**
 	 * Configuration.
 	 */
-	jsHbConfig: IJsHbConfig;
+	config: IConfig;
 	/**
 	 * Creates a new session.
 	 */
-	createSession(): IJsHbSession;
+	createSession(): ISession;
 	/**
 	 * Adapter for your application.
 	 */
@@ -42,7 +45,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 		if (!this._jsHbConfig) {
 			throw new Error('_jsHbConfig can not be null');
 		}
-		thisLocal.consoleLike = this.jsHbConfig.getConsole(JsHbLogger.JsHbManagerDefault);
+		thisLocal.consoleLike = this.config.getConsole(RecorderLogger.JsHbManagerDefault);
 
 		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
 			thisLocal.consoleLike.group('JsHbManagerDefault.constructor()');
@@ -51,7 +54,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 		}
 	}	
 	
-	public createSession(): IJsHbSession {
+	public createSession(): ISession {
 		const thisLocal = this;
 		let result = new JsHbSessionDefault(this);
 		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
@@ -70,14 +73,14 @@ export class JsHbManagerDefault implements IJsHbManager{
 		this._httpLazyObservableGen = value;
 	}
 
-	public get jsHbConfig(): IJsHbConfig {
+	public get config(): IJsHbConfig {
 		return this._jsHbConfig;
 	}
 
-	public set jsHbConfig(value: IJsHbConfig) {
+	public set config(value: IJsHbConfig) {
 		const thisLocal = this;
 		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-			thisLocal.consoleLike.group('JsHbManagerDefault.jsHbConfig() set: ' + value);
+			thisLocal.consoleLike.group('JsHbManagerDefault.config() set: ' + value);
 			thisLocal.consoleLike.debug(value as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
@@ -88,7 +91,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 			fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>,
 			owner: any,
 			fieldName: string,
-			jsHbConfig: IJsHbConfig): 
+			config: IJsHbConfig): 
 			FieldEtc<P, GP> {
 		if (!fielEtcCacheMap.has(owner)) {
 			fielEtcCacheMap.set(owner, new Map());
@@ -98,14 +101,14 @@ export class JsHbManagerDefault implements IJsHbManager{
 			let prpType: TypeLike<any> = Reflect.getMetadata('design:type', owner, fieldName);
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
-			let propertyOptions: NgJsHbDecorators.PropertyOptions<any> = 
-				Reflect.getMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
+			let propertyOptions: JsonPlaybackDecorators.PropertyOptions<any> = 
+				Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
 			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
 				fieldProcessor = propertyOptions.fieldProcessorResolver();
 			} else {
-				fieldProcessor = jsHbConfig.getTypeProcessor(prpType);
+				fieldProcessor = config.getTypeProcessor(prpType);
 			}
 
 			if (prpGenType) {
@@ -127,7 +130,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 						if (propertyOptions.fieldProcessorResolver) {
 							fieldProcessor = propertyOptions.fieldProcessorResolver();
 						} else {
-							fieldProcessor = jsHbConfig.getTypeProcessor(lazyRefGenericParam);
+							fieldProcessor = config.getTypeProcessor(lazyRefGenericParam);
 						}
 					}
 				}

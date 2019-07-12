@@ -8,6 +8,9 @@ export interface HttpResponseLike<T> {
 	headers?: HttpHeadersLike;
 }
 
-export declare const TypeLike: FunctionConstructor;
+export const TypeLike = Type;
+export function isType(v: any): v is TypeLike<any> {
+	return typeof v === 'function';
+  }
 export interface TypeLike<T> extends Type<T> {
 }

@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { TypeLike } from './typeslike';
+import { TypeLike } from '../typeslike';
 
 export class GenericNode {
     gType: TypeLike<any>;

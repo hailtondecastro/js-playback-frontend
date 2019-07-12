@@ -1,15 +1,14 @@
-import { CacheHandler } from "../src/js-hb-config";
 import { from, Observable, of, interval, Subject } from "rxjs";
 import { map, flatMap, timeout, delay, finalize } from "rxjs/operators";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 import * as memStreams from 'memory-streams';
 import { Readable, Stream } from "stream";
-import { IFieldProcessor } from "../src/field-processor";
 import getStream from 'get-stream';
-import { StringStream } from "../src/lazy-ref";
-import { StringStreamMarker } from "../src/lazy-ref";
 import streamToObservable from 'stream-to-observable';
+import { CacheHandler } from "../src/implementation/js-hb-config";
+import { IFieldProcessor } from "../src/api/field-processor";
+import { StringStream, StringStreamMarker } from "../src/api/lazy-ref";
 
 export namespace JsHbForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();

@@ -1,4 +1,4 @@
-import { TapeAction } from './tape-action';
+import { TapeAction } from "./implementation/tape-action";
 
 export class Tape {
     private _actions: Array<TapeAction> = new Array<TapeAction>();

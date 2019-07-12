@@ -1,7 +1,7 @@
 import { GenericNode } from "./generic-tokenizer";
-import { FieldInfo } from "./js-hb-config";
 import { Stream } from "stream";
 import { Observable } from "rxjs";
+import { FieldInfo } from "./config";
 
 export interface IFieldProcessor<L> {
     fromLiteralValue?(value: any, info: FieldInfo): Observable<L>;

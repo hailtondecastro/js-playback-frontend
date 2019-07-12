@@ -13,7 +13,7 @@ export class TapeAction {
     private _ownerCreationRefId: number;
     private _settedSignatureStr: string;
     private _settedCreationRefId: number;
-    private _ownerPlayerType: string;
+    private _ownerJavaClass: string;
     private _actionType: TapeActionType;
     private _fieldName: string;
     private _simpleSettedValue: any;
@@ -78,11 +78,11 @@ export class TapeAction {
 	}
 
     /**
-     * Getter ownerPlayerType
+     * Getter ownerJavaClass
      * @return {string}
      */
-	public get ownerPlayerType(): string {
-		return this._ownerPlayerType;
+	public get ownerJavaClass(): string {
+		return this._ownerJavaClass;
 	}
 
     /**
@@ -142,11 +142,11 @@ export class TapeAction {
 	}
 
     /**
-     * Setter ownerPlayerType
+     * Setter ownerJavaClass
      * @param {string} value
      */
-	public set ownerPlayerType(value: string) {
-		this._ownerPlayerType = value;
+	public set ownerJavaClass(value: string) {
+		this._ownerJavaClass = value;
 	}
 
     /**

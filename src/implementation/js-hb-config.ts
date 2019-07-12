@@ -1,9 +1,10 @@
-import {Buffer} from 'buffer';
-import { IFieldProcessor } from "./field-processor";
 import { Stream } from "stream";
 import { Observable } from 'rxjs';
 import { NgJsHbDecorators } from './js-hb-decorators';
-import { TypeLike } from './typeslike';
+import { TypeLike } from '../typeslike';
+import { IFieldProcessor } from "../api/field-processor";
+import { JsonPlaybackDecorators } from "../api/decorators";
+import { RecorderLogger } from "../api/config";
 
 interface TypeProcessorEntry<T, TM> {type: TypeLike<TM>, processor: IFieldProcessor<T>}
 
@@ -38,8 +39,8 @@ export interface IJsHbConfig {
     configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): IJsHbConfig;
     configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IJsHbConfig;
     configCacheHandler(cacheHandler: CacheHandler): IJsHbConfig;
-    configLogLevel(logger: JsHbLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig;
-    getConsole(logger: JsHbLogger): ConsoleLike;
+    configLogLevel(logger: RecorderLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig;
+    getConsole(logger: RecorderLogger): ConsoleLike;
     /**
      * Default: "jsHbAttachPrefix_"
      * @param attachPrefix 
@@ -52,20 +53,6 @@ export interface IJsHbConfig {
     configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig;
     configAttachPrefix(attachPrefix: string): IJsHbConfig;
     getTypeProcessor<L,LM>(type: TypeLike<LM>): IFieldProcessor<L>;
-}
-
-export enum JsHbLogger {
-    All = 'All',
-    JsHbManagerDefault = 'JsHbManagerDefault',
-    JsHbSessionDefault = 'JsHbSessionDefault',
-    JsHbSessionDefaultLogRxOpr = 'JsHbSessionDefault.logRxOpr',
-    JsHbSessionDefaultMergeWithCustomizerPropertyReplection = 'JsHbSessionDefault.mergeWithCustomizerPropertyReplection',
-    JsHbSessionDefaultRestoreState = 'JsHbSessionDefault.restoreEntireStateFromLiteral',
-    NgJsHbDecorators = 'NgJsHbDecorators',
-    LazyRef = 'LazyRef',
-    LazyRefSubscribe = 'LazyRef.subscribe',
-    LazyRefBaseProcessResponse = 'LazyRefBase.processResponse',
-    JsHbSetCreator = 'JsHbSetCreator'
 }
 
 export enum JsHbLogLevel {
@@ -90,7 +77,7 @@ export interface ConsoleLike {
 }
 
 class ConsoleLikeBase implements ConsoleLike {
-    constructor(private logger: JsHbLogger, private level: JsHbLogLevel) {}
+    constructor(private logger: RecorderLogger, private level: JsHbLogLevel) {}
 
     group(...label: any[]): void {
         let labelNew = [...label];
@@ -127,7 +114,7 @@ class ConsoleLikeBase implements ConsoleLike {
 
 export class JsHbConfigDefault implements IJsHbConfig {
     constructor() {
-        this.configAddFieldProcessors( NgJsHbDecorators.TypeProcessorEntries);
+        this.configAddFieldProcessors( JsonPlaybackDecorators.TypeProcessorEntries);
         this.configCacheHandler(
             {
                 clearCache: () => {
@@ -145,8 +132,8 @@ export class JsHbConfigDefault implements IJsHbConfig {
             });
     }
 
-    private _logLevelMap: Map<JsHbLogger, ConsoleLike> = new Map();
-    configLogLevel(logger: JsHbLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig {
+    private _logLevelMap: Map<RecorderLogger, ConsoleLike> = new Map();
+    configLogLevel(logger: RecorderLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig {
         if (!consoleLike) {
             consoleLike = new ConsoleLikeBase(logger, level);
         }
@@ -154,10 +141,10 @@ export class JsHbConfigDefault implements IJsHbConfig {
 
         return this;
     }
-    getConsole(logger: JsHbLogger): ConsoleLike {
+    getConsole(logger: RecorderLogger): ConsoleLike {
         if (!this._logLevelMap.has(logger)) {
-            if (this._logLevelMap.has(JsHbLogger.All)) {
-                let consoleAll = this._logLevelMap.get(JsHbLogger.All);
+            if (this._logLevelMap.has(RecorderLogger.All)) {
+                let consoleAll = this._logLevelMap.get(RecorderLogger.All);
                 this._logLevelMap.set(logger, new ConsoleLikeBase(logger, consoleAll.getLevel()));
             } else {
                 this._logLevelMap.set(logger, new ConsoleLikeBase(logger, JsHbLogLevel.Error));

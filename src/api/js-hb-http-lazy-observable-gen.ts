@@ -1,14 +1,13 @@
-import { Observable } from 'rxjs/Observable';
-import { GenericNode } from './generic-tokenizer';
-import { NgJsHbDecorators } from './js-hb-decorators';
-import { Stream } from 'stream';
-import { HttpHeadersLike } from './typeslike';
-import { TypeLike } from './typeslike';
-import { HttpResponseLike } from './typeslike';
+import { Observable } from "rxjs";
+import { HttpResponseLike } from "../typeslike";
+import { Stream } from "stream";
+import { TypeLike } from "../typeslike";
+import { GenericNode } from "./generic-tokenizer";
+import { JsonPlaybackDecorators } from "./decorators";
 
 export interface LazyInfo<L> {
 	gNode: GenericNode
-	propertyOptions: NgJsHbDecorators.PropertyOptions<L>,
+	propertyOptions: JsonPlaybackDecorators.PropertyOptions<L>,
 	literalLazyObj: any,
 	ownerType: TypeLike<any>,
 	lazyFieldType: TypeLike<any>,

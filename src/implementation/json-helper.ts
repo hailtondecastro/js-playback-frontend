@@ -1,6 +1,6 @@
 import { MergeWithCustomizer } from 'lodash';
 import { has as lodashHas, mergeWith as lodashMergeWith } from 'lodash';
-import { TypeLike } from './typeslike';
+import { TypeLike } from '../typeslike';
 
 
 /**

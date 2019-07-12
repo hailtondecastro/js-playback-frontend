@@ -1,20 +1,21 @@
 import { JsHbContants } from './js-hb-constants';
-import { LazyRef, LazyRefPrpMarker, StringStreamMarker, StringStream } from './lazy-ref';
-import { IJsHbSession } from './js-hb-session';
-import { JsHbPlaybackAction, JsHbPlaybackActionType } from './js-hb-playback-action';
+import { TapeAction, TapeActionType } from './tape-action';
 import { get as lodashGet, has } from 'lodash';
-import { JsHbLogLevel, FieldInfo, JsHbLogger } from './js-hb-config';
-import { JsHbBackendMetadatas } from './js-hb-backend-metadatas';
-import { IFieldProcessor, IFieldProcessorEvents } from './field-processor';
+import { JsHbLogLevel } from './js-hb-config';
 import { Stream, Readable } from 'stream';
 import { Observable, of, from } from 'rxjs';
-import { GenericNode, GenericTokenizer } from './generic-tokenizer';
 import { JsHbManagerDefault } from './js-hb-manager';
 import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
 import { ReadLine } from 'readline';
 import * as readline from 'readline';
-import { TypeLike } from './typeslike';
+import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
+import { ISession } from '../api/session';
+import { IJsHbSessionImplementor } from './js-hb-session';
+import { TypeLike } from '../typeslike-dev';
+import { LazyRef, StringStream, StringStreamMarker } from '../api/lazy-ref';
+import { JsonPlaybackDecorators } from '../api/decorators';
+import { RecorderLogger } from '../api/config';
 
 export namespace NgJsHbDecorators {
     /**
@@ -30,13 +31,13 @@ export namespace NgJsHbDecorators {
     }
     /**
      * Decorator for get property.  
-     * \@NgJsHbDecorators.property() is equivalent to \@NgJsHbDecorators.property({persistent: true})
+     * \@JsonPlayback.property() is equivalent to \@JsonPlayback.property({persistent: true})
      * 
      * Examplo:
      * ```ts
        ...
        private _myField: string;
-       @NgJsHbDecorators.property()
+       @JsonPlayback.property()
        public get myField(): string {
          return this._myField;
        }
@@ -68,27 +69,27 @@ export namespace NgJsHbDecorators {
         }
 
         let returnFunc: MethodDecorator = function<Z> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<Z>) {
-            Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
+            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                let session: IJsHbSession = lodashGet(this, JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSession;
-                const consoleLike = session.jsHbManager.jsHbConfig.getConsole(JsHbLogger.NgJsHbDecorators)
-                let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.jsHbConfig);
+                let session: IJsHbSessionImplementor = lodashGet(this, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSessionImplementor;
+                const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.JsonPlaybackDecorators)
+                let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
                 if (fieldEtc.propertyOptions.persistent) {
                     if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                        consoleLike.group('NgJsHbDecorators.set' +
+                        consoleLike.group('JsonPlayback.set' +
                             'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
                         consoleLike.debug(target);
                         consoleLike.debug(value);
                         consoleLike.groupEnd();
                     }
-                    let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSHB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
                         if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
-                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSHB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
+                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
                             let actualValue = lodashGet(this, propertyKey);
                             if (actualValue !== value) {
@@ -97,24 +98,24 @@ export namespace NgJsHbDecorators {
                                         throw new Error('Invalid operation. It is not recording. is this Error correct?!');
                                     }
                                     if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                                        consoleLike.group('NgJsHbDecorators.set' +
+                                        consoleLike.group('JsonPlayback.set' +
                                             '(actualValue !== value) && !isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()\n' +
-                                            'Recording action: ' + JsHbPlaybackActionType.SetField + '. actual and new value: ');
+                                            'Recording action: ' + TapeActionType.SetField + '. actual and new value: ');
                                         consoleLike.debug(actualValue);
                                         consoleLike.debug(value);
                                         consoleLike.groupEnd();
                                     }
-                                    //do the JsHbPlaybackAction log here
-                                    const action: JsHbPlaybackAction = new JsHbPlaybackAction();
+                                    //do the TapeAction log here
+                                    const action: TapeAction = new TapeAction();
                                     action.fieldName = propertyKey.toString();
-                                    action.actionType = JsHbPlaybackActionType.SetField;
+                                    action.actionType = TapeActionType.SetField;
                                     let allMD = session.resolveMetadatas({object: this});
                                     let bMd = allMD.objectMd;
 
                                     if (bMd.$signature$) {
                                         action.ownerSignatureStr = bMd.$signature$;
-                                    } else if (has(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                                        action.ownerCreationRefId = lodashGet(this, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                                    } else if (has(this, session.jsHbManager.config.jsHbCreationIdName)) {
+                                        action.ownerCreationRefId = lodashGet(this, session.jsHbManager.config.jsHbCreationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
                                         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + target.constructor + '\' has a not managed owner');
                                     }
@@ -125,8 +126,8 @@ export namespace NgJsHbDecorators {
 
                                         if (bMdValue.$signature$) {
                                             action.settedSignatureStr = bMdValue.$signature$;
-                                        } else if (has(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName)) {
-                                            action.settedCreationRefId = lodashGet(value, session.jsHbManager.jsHbConfig.jsHbCreationIdName) as number;
+                                        } else if (has(value, session.jsHbManager.config.jsHbCreationIdName)) {
+                                            action.settedCreationRefId = lodashGet(value, session.jsHbManager.config.jsHbCreationIdName) as number;
                                         } else {
                                             if (value instanceof Object && !(value instanceof Date)) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
@@ -138,18 +139,18 @@ export namespace NgJsHbDecorators {
                                     }
 
                                     if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                                        action.attachRefId = session.jsHbManager.jsHbConfig.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
+                                        action.attachRefId = session.jsHbManager.config.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
                                         if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
                                             let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
                                             toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObsRxOpr());
                                             toDirectRaw$.subscribe((stream) => {
                                                 if (stream) {
-                                                    let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, stream)
+                                                    let putOnCache$ = session.jsHbManager.config.cacheHandler.putOnCache(action.attachRefId, stream)
                                                     putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                                     putOnCache$.subscribe(() => {
-                                                        session.addPlaybackAction(action);
+                                                        session.addTapeAction(action);
                                                     });
-                                                    let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
+                                                    let getFromCache$ = session.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId);
                                                     getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
                                                     getFromCache$.subscribe((stream) => {
                                                         oldSet.call(this, stream);
@@ -160,19 +161,19 @@ export namespace NgJsHbDecorators {
                                                     }
                                                     action.simpleSettedValue = null;
                                                     action.attachRefId = null;
-                                                    session.addPlaybackAction(action);
+                                                    session.addTapeAction(action);
                                                 }
                                             });
                                         } else {
                                             if (!((value as any as Stream).addListener && (value as any as Stream).pipe)) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
                                             } else {
-                                                let putOnCache$ = session.jsHbManager.jsHbConfig.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
+                                                let putOnCache$ = session.jsHbManager.config.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
                                                 putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                                 putOnCache$.subscribe(() => {
-                                                    session.addPlaybackAction(action);
+                                                    session.addTapeAction(action);
                                                 });
-                                                let getFromCache$ = session.jsHbManager.jsHbConfig.cacheHandler.getFromCache(action.attachRefId);
+                                                let getFromCache$ = session.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId);
                                                 getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
                                                 getFromCache$.subscribe((stream) => {
                                                     oldSet.call(this, stream);
@@ -188,19 +189,19 @@ export namespace NgJsHbDecorators {
                                             {
                                                 next: (processedValue) => {
                                                     action.simpleSettedValue = processedValue;
-                                                    session.addPlaybackAction(action);
+                                                    session.addTapeAction(action);
                                                 }
                                             }
                                         );
                                     } else {
-                                        session.addPlaybackAction(action);
+                                        session.addTapeAction(action);
                                     }
                                 }
                             } else {
                                 if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                                    consoleLike.group('NgJsHbDecorators.set' +
+                                    consoleLike.group('JsonPlayback.set' +
                                         '(actualValue === value)\n' +
-                                        'NOT recording action, BUT may process : ' + JsHbPlaybackActionType.SetField + '. value: ');
+                                        'NOT recording action, BUT may process : ' + TapeActionType.SetField + '. value: ');
                                     consoleLike.debug(value);
                                     consoleLike.groupEnd();
                                 }
@@ -215,7 +216,7 @@ export namespace NgJsHbDecorators {
                 } else {
                     oldSet.call(this, value);
                     if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                        consoleLike.group('NgJsHbDecorators.set' +
+                        consoleLike.group('JsonPlayback.set' +
                             '!(propertyOptions.persistent && genericNode.gType !== LazyRef && genericNode.gType !== LazyRefPrpMarker). Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
                         consoleLike.debug(target);
                         consoleLike.debug(value);
@@ -228,26 +229,12 @@ export namespace NgJsHbDecorators {
         return returnFunc;
     }
 
-    export function hibernateId<T>(): MethodDecorator {
+    export function playerObjectId<T>(): MethodDecorator {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
-            let hibernateIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
-            Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_HIBERNATE_ID_TYPE, hibernateIdType, target);
+            let playerObjectIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
+            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, playerObjectIdType, target);
         };
-    }
-
-    /**
-     * Used with {@link NgJsHbDecorators#clazz}.
-     */
-    export interface clazzOptions {
-        /**
-         * Mapped java entity class.
-         */
-        javaClass: string;
-        /**
-         * Use it if you have more than one typescript classes mapping the same java entity class.
-         */
-        disambiguationId?: string;
-    }
+    }  
 
     /**
      * Decorator for persistent entity.
@@ -255,14 +242,14 @@ export namespace NgJsHbDecorators {
      * Sample:
      * ```ts
      * ...
-     * @NgJsHbDecorators.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
+     * @JsonPlayback.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
      * export class MyPersistentEntityJs {
      * ...
      * ```
      */
-    export function clazz<T>(options: clazzOptions): ClassDecorator {
+    export function clazz<T>(options: JsonPlaybackDecorators.clazzOptions): ClassDecorator {
         return function<T> (target: T): T | void {
-            Reflect.defineMetadata(JsHbContants.JSHB_REFLECT_METADATA_JAVA_CLASS, options, target);
+            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, options, target);
             Reflect.defineMetadata(
                 mountContructorByJavaClassMetadataKey(options, target as any as TypeLike<any>),
                 target,
@@ -273,8 +260,8 @@ export namespace NgJsHbDecorators {
     /**
      * Internal use only! It is no a decorator!
      */
-    export function mountContructorByJavaClassMetadataKey(options: clazzOptions, entityType: TypeLike<any>): string {
-        return JsHbContants.JSHB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
+    export function mountContructorByJavaClassMetadataKey(options: JsonPlaybackDecorators.clazzOptions, entityType: TypeLike<any>): string {
+        return JsHbContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +
             ':' + options.javaClass;
@@ -354,24 +341,4 @@ export namespace NgJsHbDecorators {
                 }
             }
     };
-
-    export const TypeProcessorEntries = 
-    [ 
-        {
-            type: Buffer,
-            processor: NgJsHbDecorators.BufferProcessor
-        },
-        {                
-            type: String,
-            processor: NgJsHbDecorators.StringProcessor
-        },
-        {                
-            type: Stream,
-            processor: NgJsHbDecorators.StreamProcessor
-        },
-        {
-            type: StringStreamMarker,
-            processor: NgJsHbDecorators.StringStreamProcessor
-        }
-    ];
 }

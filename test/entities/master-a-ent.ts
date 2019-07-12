@@ -1,12 +1,11 @@
 import { DetailAEnt } from './detail-a-ent';
-import { LazyRefPrp, StringStreamMarker, LazyRefPrpMarker, StringStream } from '../../src/lazy-ref';
-import { NgJsHbDecorators } from '../../src/js-hb-decorators';
-import { LazyRefOTM, LazyRef } from '../../src/lazy-ref';
-import { GenericTokenizer, GenericNodeNotNow } from '../../src/generic-tokenizer';
+import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker } from '../../src/api/lazy-ref';
+import { JsonPlaybackDecorators } from '../../src/api/decorators';
+import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { Stream } from 'stream';
 import { ReadLine } from 'readline';
 
-@NgJsHbDecorators.clazz({javaClass: 'br.gov.serpro.webanalise.jsHbSuperSync.entities.MasterAEnt'})
+@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
 export class MasterAEnt {
     private _id: number;
     private _vcharA: string;
@@ -22,71 +21,71 @@ export class MasterAEnt {
     private _clobLazyA: LazyRefPrp<StringStream>;
     private _clobLazyB: LazyRefPrp<StringStream>;
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get id(): number {
 		return this._id;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharA(): string {
 		return this._vcharA;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get vcharB(): string {
 		return this._vcharB;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get dateA(): Date {
 		return this._dateA;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get datetimeA(): Date {
 		return this._datetimeA;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get blobA(): Buffer {
 		return this._blobA;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get blobB(): Buffer {
 		return this._blobB;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	public get hbVersion(): number {
 		return this._hbVersion;
 	}
 
-	@NgJsHbDecorators.property()
+	@JsonPlaybackDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyA(): LazyRefPrp<Stream> {
 		return this._blobLazyA;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
+	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyB(): LazyRefPrp<Stream> {
 		return this._blobLazyB;
 	}
 
-	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyA(): LazyRefPrp<StringStream> {
 		return this._clobLazyA;
     }
     
-	@NgJsHbDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyB(): LazyRefPrp<StringStream> {
 		return this._clobLazyB;

@@ -1,10 +1,9 @@
-import { GenericNode } from "./generic-tokenizer";
-import { NgJsHbDecorators } from "./js-hb-decorators";
-import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
 import { FieldInfo } from "./js-hb-config";
 import { Observable } from "rxjs";
 import { Stream } from "stream";
-import { TypeLike } from './typeslike';
+import { TypeLike } from '../typeslike';
+import { GenericNode } from "../api/generic-tokenizer";
+import { JsonPlaybackDecorators } from "../api/decorators";
 
 export interface IFieldProcessorCaller<P> {
     callFromLiteralValue?(value: any, info: FieldInfo): Observable<P>;
@@ -18,7 +17,7 @@ export interface FieldEtc<P, GP> {
     prpGenType: GenericNode,
     lazyLoadedObjType: TypeLike<P>,
     lazyRefGenericParam: TypeLike<GP>,
-    propertyOptions: NgJsHbDecorators.PropertyOptions<P>,
+    propertyOptions: JsonPlaybackDecorators.PropertyOptions<P>,
     fieldProcessorCaller: IFieldProcessorCaller<P>,
     fieldInfo: FieldInfo
 }
