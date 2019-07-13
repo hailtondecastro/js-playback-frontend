@@ -1,11 +1,11 @@
 import { DetailAEnt } from './detail-a-ent';
 import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker } from '../../src/api/lazy-ref';
-import { JsonPlaybackDecorators } from '../../src/api/decorators';
+import { RecorderDecorators } from '../../src/api/decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { Stream } from 'stream';
 import { ReadLine } from 'readline';
 
-@JsonPlaybackDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
+@RecorderDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
 export class MasterAEnt {
     private _id: number;
     private _vcharA: string;
@@ -21,71 +21,71 @@ export class MasterAEnt {
     private _clobLazyA: LazyRefPrp<StringStream>;
     private _clobLazyB: LazyRefPrp<StringStream>;
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get id(): number {
 		return this._id;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get vcharA(): string {
 		return this._vcharA;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get vcharB(): string {
 		return this._vcharB;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get dateA(): Date {
 		return this._dateA;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get datetimeA(): Date {
 		return this._datetimeA;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get blobA(): Buffer {
 		return this._blobA;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get blobB(): Buffer {
 		return this._blobB;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get hbVersion(): number {
 		return this._hbVersion;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
 
-	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyA(): LazyRefPrp<Stream> {
 		return this._blobLazyA;
 	}
 
-	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
+	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
 	public get blobLazyB(): LazyRefPrp<Stream> {
 		return this._blobLazyB;
 	}
 
-	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyA(): LazyRefPrp<StringStream> {
 		return this._clobLazyA;
     }
     
-	@JsonPlaybackDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
+	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
 	public get clobLazyB(): LazyRefPrp<StringStream> {
 		return this._clobLazyB;

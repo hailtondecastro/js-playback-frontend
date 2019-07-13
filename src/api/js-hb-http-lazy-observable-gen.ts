@@ -3,11 +3,11 @@ import { HttpResponseLike } from "../typeslike";
 import { Stream } from "stream";
 import { TypeLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
-import { JsonPlaybackDecorators } from "./decorators";
+import { RecorderDecorators } from "./decorators";
 
 export interface LazyInfo<L> {
 	gNode: GenericNode
-	propertyOptions: JsonPlaybackDecorators.PropertyOptions<L>,
+	propertyOptions: RecorderDecorators.PropertyOptions<L>,
 	literalLazyObj: any,
 	ownerType: TypeLike<any>,
 	lazyFieldType: TypeLike<any>,

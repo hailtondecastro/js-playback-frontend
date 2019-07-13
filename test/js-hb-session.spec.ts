@@ -16,7 +16,7 @@ import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rx
 import { IRecorderSession } from '../src/api/session.js';
 import { ConfigDefault } from '../src/implementation/js-hb-config.js';
 import { IConfig, RecorderLogLevel, RecorderLogger } from '../src/api/config.js';
-import { JsonPlaybackDecorators } from '../src/api/decorators';
+import { RecorderDecorators } from '../src/api/decorators';
 import { RecorderContants } from '../src/implementation/js-hb-constants.js';
 import { StringStream } from '../src/implementation/js-hb-lazy-ref.js';
 import { IRecorderManager } from '../src/api/manager.js';
@@ -332,13 +332,13 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                 asyncCount++;
             }
 
-            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -422,7 +422,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                     }
                 });
 
-            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -488,13 +488,13 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                 asyncCount++;
             }
 
-            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -578,7 +578,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                     }
                 });
 
-            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -646,13 +646,13 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                 asyncCount++;
             }
 
-            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -736,7 +736,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                     }
                 });
 
-            let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
@@ -852,13 +852,13 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                     }
                 });
 
-            let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-            let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-            let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-            let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {

@@ -2,7 +2,7 @@ import { Observable } from "rxjs";
 import { Stream } from "stream";
 import { TypeLike } from '../typeslike';
 import { GenericNode } from "../api/generic-tokenizer";
-import { JsonPlaybackDecorators } from "../api/decorators";
+import { RecorderDecorators } from "../api/decorators";
 import { FieldInfo } from "../api/config";
 
 export interface IFieldProcessorCaller<P> {
@@ -17,7 +17,7 @@ export interface FieldEtc<P, GP> {
     prpGenType: GenericNode,
     lazyLoadedObjType: TypeLike<P>,
     lazyRefGenericParam: TypeLike<GP>,
-    propertyOptions: JsonPlaybackDecorators.PropertyOptions<P>,
+    propertyOptions: RecorderDecorators.PropertyOptions<P>,
     fieldProcessorCaller: IFieldProcessorCaller<P>,
     fieldInfo: FieldInfo
 }

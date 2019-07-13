@@ -1,6 +1,6 @@
 import { TypeLike } from '../typeslike';
 import { IFieldProcessor } from "../api/field-processor";
-import { JsonPlaybackDecorators } from "../api/decorators";
+import { RecorderDecorators } from "../api/decorators";
 import { RecorderLogger, ConsoleLike, RecorderLogLevel, CacheHandler, TypeProcessorEntry, IConfig } from "../api/config";
 
 export class ConsoleLikeBase implements ConsoleLike {
@@ -41,7 +41,7 @@ export class ConsoleLikeBase implements ConsoleLike {
 
 export class ConfigDefault implements IConfig {
     constructor() {
-        this.configAddFieldProcessors( JsonPlaybackDecorators.TypeProcessorEntries);
+        this.configAddFieldProcessors( RecorderDecorators.TypeProcessorEntries);
         this.configCacheHandler(
             {
                 clearCache: () => {

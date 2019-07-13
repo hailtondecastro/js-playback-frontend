@@ -1,7 +1,7 @@
 import { TapeAction, TapeActionType } from './tape-action';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 import { RecorderContants } from './js-hb-constants';
-import { RecorderDecorators } from './js-hb-decorators';
+import { RecorderDecoratorsInternal } from './js-hb-decorators';
 import { IRecorderSession } from '../api/session';
 import { IRecorderSessionImplementor } from './js-hb-session';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/config';
@@ -83,7 +83,7 @@ export class SetCreator<T> {
     }
 
     add(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecorators.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
@@ -124,7 +124,7 @@ export class SetCreator<T> {
     }
 
     delete(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecorators.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }

@@ -9,7 +9,7 @@ import { IHttpResponseLazyObservableGen } from '../api/js-hb-http-lazy-observabl
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
-import { JsonPlaybackDecorators } from '../api/decorators';
+import { RecorderDecorators } from '../api/decorators';
 import { IRecorderManager } from '../api/manager';
 
 export class RecorderManagerDefault implements IRecorderManager {
@@ -82,7 +82,7 @@ export class RecorderManagerDefault implements IRecorderManager {
 			let prpType: TypeLike<any> = Reflect.getMetadata('design:type', owner, fieldName);
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
-			let propertyOptions: JsonPlaybackDecorators.PropertyOptions<any> = 
+			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
 			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};

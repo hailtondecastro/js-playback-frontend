@@ -1,17 +1,17 @@
 import { DetailAEnt } from './detail-a-ent';
-import { JsonPlaybackDecorators } from '../../src/api/decorators';
+import { RecorderDecorators } from '../../src/api/decorators';
 import { GenericNodeNotNow } from '../../src/api/generic-tokenizer';
 import { GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { LazyRef, LazyRefOTM } from '../../src/api/lazy-ref';
 
-@JsonPlaybackDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
+@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
 export class MasterBCompComp {
 
     /**
      * Getter detailAEntCol
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
@@ -27,7 +27,7 @@ export class MasterBCompComp {
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
 }
 
-@JsonPlaybackDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBComp' })
+@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBComp' })
 export class MasterBComp {
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
     private _masterBCompComp: MasterBCompComp;
@@ -36,7 +36,7 @@ export class MasterBComp {
      * Getter detailAEntCol
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
@@ -54,7 +54,7 @@ export class MasterBComp {
      * Getter masterBCompComp
      * @return {MasterBCompComp}
      */
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get masterBCompComp(): MasterBCompComp {
 		return this._masterBCompComp;
 	}
@@ -69,7 +69,7 @@ export class MasterBComp {
 
 }
 
-@JsonPlaybackDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompId' })
+@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompId' })
 export class MasterBCompId {
     private _idA: number;
     private _idB: number;
@@ -79,7 +79,7 @@ export class MasterBCompId {
      * Getter idA
      * @return {number}
      */
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get idA(): number {
 		return this._idA;
 	}
@@ -96,7 +96,7 @@ export class MasterBCompId {
      * Getter idB
      * @return {number}
      */
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get idB(): number {
 		return this._idB;
 	}
@@ -111,7 +111,7 @@ export class MasterBCompId {
     
 }
 
-@JsonPlaybackDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBEnt' })
+@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBEnt' })
 export class MasterBEnt {
     private _compId: MasterBCompId;
     private _vcharA: string;
@@ -124,7 +124,7 @@ export class MasterBEnt {
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
     private _masterBComp: MasterBComp;
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get compId(): MasterBCompId {
 		return this._compId;
 	}
@@ -133,7 +133,7 @@ export class MasterBEnt {
 		this._compId = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get vcharA(): string {
 		return this._vcharA;
 	}
@@ -142,7 +142,7 @@ export class MasterBEnt {
 		this._vcharA = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get vcharB(): string {
 		return this._vcharB;
 	}
@@ -151,7 +151,7 @@ export class MasterBEnt {
 		this._vcharB = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get dateA(): Date {
 		return this._dateA;
 	}
@@ -160,7 +160,7 @@ export class MasterBEnt {
 		this._dateA = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get datetimeA(): Date {
 		return this._datetimeA;
 	}
@@ -169,7 +169,7 @@ export class MasterBEnt {
 		this._datetimeA = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get blobA(): Buffer {
 		return this._blobA;
 	}
@@ -178,7 +178,7 @@ export class MasterBEnt {
 		this._blobA = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get blobB(): Buffer {
 		return this._blobB;
 	}
@@ -187,7 +187,7 @@ export class MasterBEnt {
 		this._blobB = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get hbVersion(): number {
 		return this._hbVersion;
 	}
@@ -196,7 +196,7 @@ export class MasterBEnt {
 		this._hbVersion = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
@@ -206,7 +206,7 @@ export class MasterBEnt {
 		this._detailAEntCol = value;
 	}
 
-	@JsonPlaybackDecorators.property()
+	@RecorderDecorators.property()
 	public get masterBComp(): MasterBComp {
 		return this._masterBComp;
 	}
