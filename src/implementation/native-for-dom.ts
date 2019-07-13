@@ -1,12 +1,12 @@
 
 import { of, from, Observable, combineLatest } from "rxjs";
-import { CacheHandler } from "./js-hb-config";
 import { map } from "rxjs/operators";
 import { flatMapJustOnceRxOpr } from "./rxjs-util";
+import { CacheHandler } from "../api/config";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 
-export namespace JsHbForDom {
+export namespace RecorderForDom {
     export const CacheHandlerDefault: CacheHandler = 
         {
             clearCache: () => {

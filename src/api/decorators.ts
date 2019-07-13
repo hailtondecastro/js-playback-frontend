@@ -1,9 +1,9 @@
-import { NgJsHbDecorators } from "../implementation/js-hb-decorators";
+import { RecorderDecoratorsInternal } from "../implementation/js-hb-decorators";
 import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
 import { Stream } from "stream";
 import { StringStreamMarker } from "./lazy-ref";
 
-export namespace JsonPlaybackDecorators {
+export namespace RecorderDecorators {
     /**
      * L: In case of LazyRef this is first type parameter of LazyRef.
      */
@@ -40,11 +40,11 @@ export namespace JsonPlaybackDecorators {
         if (arguments.length > 0) {
             options = arguments[0];
         }
-        return NgJsHbDecorators.property(options);
+        return RecorderDecoratorsInternal.property(options);
     }
 
     export function playerObjectId<T>(): MethodDecorator {
-        return NgJsHbDecorators.playerObjectId();
+        return RecorderDecoratorsInternal.playerObjectId();
     }
 
     /**
@@ -73,31 +73,31 @@ export namespace JsonPlaybackDecorators {
      * ```
      */
     export function clazz<T>(options: clazzOptions): ClassDecorator {
-        return NgJsHbDecorators.clazz(options);
+        return RecorderDecoratorsInternal.clazz(options);
     }
 
-    export const BufferProcessor = NgJsHbDecorators.BufferProcessor;
-    export const StringProcessor = NgJsHbDecorators.StringProcessor;
-    export const StreamProcessor = NgJsHbDecorators.StreamProcessor;
-    export const StringStreamProcessor = NgJsHbDecorators.StringStreamProcessor;
+    export const BufferProcessor = RecorderDecoratorsInternal.BufferProcessor;
+    export const StringProcessor = RecorderDecoratorsInternal.StringProcessor;
+    export const StreamProcessor = RecorderDecoratorsInternal.StreamProcessor;
+    export const StringStreamProcessor = RecorderDecoratorsInternal.StringStreamProcessor;
 
     export const TypeProcessorEntries = 
     [ 
         {
             type: Buffer,
-            processor: NgJsHbDecorators.BufferProcessor
+            processor: RecorderDecoratorsInternal.BufferProcessor
         },
         {                
             type: String,
-            processor: NgJsHbDecorators.StringProcessor
+            processor: RecorderDecoratorsInternal.StringProcessor
         },
         {                
             type: Stream,
-            processor: NgJsHbDecorators.StreamProcessor
+            processor: RecorderDecoratorsInternal.StreamProcessor
         },
         {
             type: StringStreamMarker,
-            processor: NgJsHbDecorators.StringStreamProcessor
+            processor: RecorderDecoratorsInternal.StringStreamProcessor
         }
     ];
 }

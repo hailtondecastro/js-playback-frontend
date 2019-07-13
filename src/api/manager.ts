@@ -1,11 +1,11 @@
-import { IConfig, ConsoleLike, JsHbLogLevel, RecorderLogger } from "./config";
-import { ISession } from "./session";
-import { IJsHbHttpLazyObservableGen } from "./js-hb-http-lazy-observable-gen";
+import { IConfig, ConsoleLike, RecorderLogLevel, RecorderLogger } from "./config";
+import { IRecorderSession } from "./session";
+import { IHttpResponseLazyObservableGen } from "./js-hb-http-lazy-observable-gen";
 
 /**
  * Contract.
  */
-export interface IManager {
+export interface IRecorderManager {
 	/**
 	 * Configuration.
 	 */
@@ -13,9 +13,9 @@ export interface IManager {
 	/**
 	 * Creates a new session.
 	 */
-	createSession(): ISession;
+	createSession(): IRecorderSession;
 	/**
 	 * Adapter for your application.
 	 */
-	httpLazyObservableGen: IJsHbHttpLazyObservableGen;
+	httpLazyObservableGen: IHttpResponseLazyObservableGen;
 }

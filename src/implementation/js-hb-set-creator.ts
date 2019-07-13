@@ -1,16 +1,15 @@
 import { TapeAction, TapeActionType } from './tape-action';
-import { JsHbLogLevel, ConsoleLike } from './js-hb-config';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
-import { JsHbContants } from './js-hb-constants';
-import { NgJsHbDecorators } from './js-hb-decorators';
-import { ISession } from '../api/session';
-import { IJsHbSessionImplementor } from './js-hb-session';
-import { RecorderLogger } from '../api/config';
+import { RecorderContants } from './js-hb-constants';
+import { RecorderDecorators } from './js-hb-decorators';
+import { IRecorderSession } from '../api/session';
+import { IRecorderSessionImplementor } from './js-hb-session';
+import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/config';
 
-export class JsHbSetCreator<T> {
+export class SetCreator<T> {
 
     private consoleLike: ConsoleLike;
-    constructor(private _session: IJsHbSessionImplementor,
+    constructor(private _session: IRecorderSessionImplementor,
             private _refererObj: any,
             private _refererKey: string) {
         const thisLocal = this;
@@ -23,9 +22,9 @@ export class JsHbSetCreator<T> {
         if (!_session) {
             throw new Error('_session can not be null');
         }
-        thisLocal.consoleLike = _session.jsHbManager.config.getConsole(RecorderLogger.JsHbSetCreator);
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-            thisLocal.consoleLike.group('JsHbSetCreator.constructor()');
+        thisLocal.consoleLike = _session.jsHbManager.config.getConsole(RecorderLogger.SetCreator);
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+            thisLocal.consoleLike.group('SetCreator.constructor()');
             thisLocal.consoleLike.debug(_session as any as string); thisLocal.consoleLike.debug(_refererObj as any as string); thisLocal.consoleLike.debug(_refererKey as any as string);
             thisLocal.consoleLike.groupEnd();
         }
@@ -35,8 +34,8 @@ export class JsHbSetCreator<T> {
         const thisLocal = this;
         let getFunction: (target: Set<T>, p: PropertyKey, receiver: any) => any = (target: Set<T>, p: PropertyKey, receiver: any) => {
             if (p) {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                    thisLocal.consoleLike.group('JsHbSetCreator => getFunction. Intercepting:');
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('SetCreator => getFunction. Intercepting:');
                     thisLocal.consoleLike.debug(target);
                     thisLocal.consoleLike.debug(p);
                     //thisLocal.consoleLike.debug(receiver);
@@ -84,12 +83,12 @@ export class JsHbSetCreator<T> {
     }
 
     add(targetSet: Set<T>, value: T): void {
-        let propertyOptions: NgJsHbDecorators.PropertyOptions<T> = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecorators.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -125,12 +124,12 @@ export class JsHbSetCreator<T> {
     }
 
     delete(targetSet: Set<T>, value: T): void {
-        let propertyOptions: NgJsHbDecorators.PropertyOptions<T> = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecorators.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -167,17 +166,17 @@ export class JsHbSetCreator<T> {
 
     /**
      * Getter session
-     * @return {IJsHbSession}
+     * @return {IRecorderSession}
      */
-    public get session(): IJsHbSessionImplementor {
+    public get session(): IRecorderSessionImplementor {
         return this._session;
     }
 
     /**
      * Setter session
-     * @param {IJsHbSession} value
+     * @param {IRecorderSession} value
      */
-    public set session(value: IJsHbSessionImplementor) {
+    public set session(value: IRecorderSessionImplementor) {
         this._session = value;
     }
 

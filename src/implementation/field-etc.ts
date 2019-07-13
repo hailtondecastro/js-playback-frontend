@@ -1,9 +1,9 @@
-import { FieldInfo } from "./js-hb-config";
 import { Observable } from "rxjs";
 import { Stream } from "stream";
 import { TypeLike } from '../typeslike';
 import { GenericNode } from "../api/generic-tokenizer";
 import { JsonPlaybackDecorators } from "../api/decorators";
+import { FieldInfo } from "../api/config";
 
 export interface IFieldProcessorCaller<P> {
     callFromLiteralValue?(value: any, info: FieldInfo): Observable<P>;

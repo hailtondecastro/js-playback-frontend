@@ -1,43 +1,24 @@
-import { IJsHbManager } from './js-hb-manager';
-import { IJsHbConfig, JsHbLogLevel, FieldInfo, ConsoleLike } from './js-hb-config';
-import { JsHbSessionDefault } from './js-hb-session';
-import { JsHbContants } from './js-hb-constants';
+import { IConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/config';
+import { RecorderSessionDefault } from './js-hb-session';
+import { RecorderContants } from './js-hb-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { TypeLike } from '../typeslike';
-import { ISession } from '../api/session';
-import { IConfig, RecorderLogger } from '../api/config';
-import { IJsHbHttpLazyObservableGen } from '../api/js-hb-http-lazy-observable-gen';
+import { IRecorderSession } from '../api/session';
+import { IHttpResponseLazyObservableGen } from '../api/js-hb-http-lazy-observable-gen';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
 import { JsonPlaybackDecorators } from '../api/decorators';
+import { IRecorderManager } from '../api/manager';
 
-/**
- * Contract.
- */
-export interface IJsHbManager {
-	/**
-	 * Configuration.
-	 */
-	config: IConfig;
-	/**
-	 * Creates a new session.
-	 */
-	createSession(): ISession;
-	/**
-	 * Adapter for your application.
-	 */
-	httpLazyObservableGen: IJsHbHttpLazyObservableGen;
-}
-
-export class JsHbManagerDefault implements IJsHbManager{
+export class RecorderManagerDefault implements IRecorderManager {
 	private consoleLike: ConsoleLike;
 	private consoleLikeLogRxOpr: ConsoleLike;
 	private consoleLikeMerge: ConsoleLike;
     constructor(
-			private _jsHbConfig: IJsHbConfig,
-			private _httpLazyObservableGen: IJsHbHttpLazyObservableGen) {
+			private _jsHbConfig: IConfig,
+			private _httpLazyObservableGen: IHttpResponseLazyObservableGen) {
 		const thisLocal = this;
 		if (!this._httpLazyObservableGen) {
 			throw new Error('_httpLazyObservableGen can not be null');
@@ -45,42 +26,42 @@ export class JsHbManagerDefault implements IJsHbManager{
 		if (!this._jsHbConfig) {
 			throw new Error('_jsHbConfig can not be null');
 		}
-		thisLocal.consoleLike = this.config.getConsole(RecorderLogger.JsHbManagerDefault);
+		thisLocal.consoleLike = this.config.getConsole(RecorderLogger.RecorderManagerDefault);
 
-		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-			thisLocal.consoleLike.group('JsHbManagerDefault.constructor()');
+		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
+			thisLocal.consoleLike.group('RecorderManagerDefault.constructor()');
 			thisLocal.consoleLike.debug(this._httpLazyObservableGen as any); thisLocal.consoleLike.debug(this._jsHbConfig as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
 	}	
 	
-	public createSession(): ISession {
+	public createSession(): IRecorderSession {
 		const thisLocal = this;
-		let result = new JsHbSessionDefault(this);
-		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-			thisLocal.consoleLike.group('JsHbManagerDefault.createSession():');
+		let result = new RecorderSessionDefault(this);
+		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
+			thisLocal.consoleLike.group('RecorderManagerDefault.createSession():');
 			thisLocal.consoleLike.debug(result as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
 		return result;
 	}
 
-	public get httpLazyObservableGen(): IJsHbHttpLazyObservableGen {
+	public get httpLazyObservableGen(): IHttpResponseLazyObservableGen {
 		return this._httpLazyObservableGen;
 	}
 
-	public set httpLazyObservableProvider(value: IJsHbHttpLazyObservableGen) {
+	public set httpLazyObservableProvider(value: IHttpResponseLazyObservableGen) {
 		this._httpLazyObservableGen = value;
 	}
 
-	public get config(): IJsHbConfig {
+	public get config(): IConfig {
 		return this._jsHbConfig;
 	}
 
-	public set config(value: IJsHbConfig) {
+	public set config(value: IConfig) {
 		const thisLocal = this;
-		if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-			thisLocal.consoleLike.group('JsHbManagerDefault.config() set: ' + value);
+		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
+			thisLocal.consoleLike.group('RecorderManagerDefault.config() set: ' + value);
 			thisLocal.consoleLike.debug(value as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
@@ -91,7 +72,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 			fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>,
 			owner: any,
 			fieldName: string,
-			config: IJsHbConfig): 
+			config: IConfig): 
 			FieldEtc<P, GP> {
 		if (!fielEtcCacheMap.has(owner)) {
 			fielEtcCacheMap.set(owner, new Map());
@@ -102,7 +83,7 @@ export class JsHbManagerDefault implements IJsHbManager{
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
 			let propertyOptions: JsonPlaybackDecorators.PropertyOptions<any> = 
-				Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
+				Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
 			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {

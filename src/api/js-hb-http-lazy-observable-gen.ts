@@ -14,7 +14,7 @@ export interface LazyInfo<L> {
 	fieldName: string
 }
 
-export interface IJsHbHttpLazyObservableGen {
+export interface IHttpResponseLazyObservableGen {
 	generateHttpObservable(signatureStr: string, info: LazyInfo<any>): Observable<HttpResponseLike<Object>>;
 	generateHttpObservableForDirectRaw(signatureStr: string, info: LazyInfo<any>): Observable<HttpResponseLike<Stream | any>>;
 }

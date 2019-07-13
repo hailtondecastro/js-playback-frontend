@@ -1,83 +1,10 @@
-import { Stream } from "stream";
-import { Observable } from 'rxjs';
-import { NgJsHbDecorators } from './js-hb-decorators';
 import { TypeLike } from '../typeslike';
 import { IFieldProcessor } from "../api/field-processor";
 import { JsonPlaybackDecorators } from "../api/decorators";
-import { RecorderLogger } from "../api/config";
+import { RecorderLogger, ConsoleLike, RecorderLogLevel, CacheHandler, TypeProcessorEntry, IConfig } from "../api/config";
 
-interface TypeProcessorEntry<T, TM> {type: TypeLike<TM>, processor: IFieldProcessor<T>}
-
-export interface FieldInfo {
-	ownerType: TypeLike<any>,
-	fieldType: TypeLike<any>,
-	ownerValue: any,
-    fieldName: string
-}
-
-export interface CacheHandler {
-    getFromCache(cacheKey: string): Observable<Stream>;
-    removeFromCache(cacheKey: string): Observable<void>;
-    putOnCache(cacheKey: string, stream: Stream): Observable<void>;
-    clearCache(): Observable<void>;
-}
-
-export interface IJsHbConfig {
-    jsHbCreationIdName: string;
-    jsHbMetadatasName: string;
-    //logLevel: JsHbLogLevel;
-    maxLazyRefNotificationPerSecond: number;
-    lazyRefNotificationTimeMeasurement: number;
-    lazyRefNotificationCountMeasurement: number;
-    attachPrefix: string;
-    cacheStoragePrefix: string;
-    cacheHandler: CacheHandler;
-    configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig;  
-    configJsHbMetadatasName(jsHbMetadatasName: string): IJsHbConfig;
-    configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IJsHbConfig;
-    configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IJsHbConfig;
-    configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): IJsHbConfig;
-    configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IJsHbConfig;
-    configCacheHandler(cacheHandler: CacheHandler): IJsHbConfig;
-    configLogLevel(logger: RecorderLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig;
-    getConsole(logger: RecorderLogger): ConsoleLike;
-    /**
-     * Default: "jsHbAttachPrefix_"
-     * @param attachPrefix 
-     */
-    configAttachPrefix(attachPrefix: string): IJsHbConfig;
-    /**
-     * Default: "jsCacheStoragePrefix_"
-     * @param cacheStoragePrefix 
-     */
-    configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig;
-    configAttachPrefix(attachPrefix: string): IJsHbConfig;
-    getTypeProcessor<L,LM>(type: TypeLike<LM>): IFieldProcessor<L>;
-}
-
-export enum JsHbLogLevel {
-    Off = 9999,
-    Trace = 50,
-    Debug = 100,
-    Info = 150,
-    Warn = 200,
-    Error = 250
-}
-
-export interface ConsoleLike {
-    group(...label: any[]): void;
-    groupEnd(): void;
-    error(message?: any, ...optionalParams: any[]): void;
-    warn(message?: any, ...optionalParams: any[]): void;
-    log(message?: any, ...optionalParams: any[]): void;
-    debug(message?: any, ...optionalParams: any[]): void;
-    info(message?: any, ...optionalParams: any[]): void;
-    enabledFor(level: JsHbLogLevel): boolean;
-    getLevel(): JsHbLogLevel;
-}
-
-class ConsoleLikeBase implements ConsoleLike {
-    constructor(private logger: RecorderLogger, private level: JsHbLogLevel) {}
+export class ConsoleLikeBase implements ConsoleLike {
+    constructor(private logger: RecorderLogger, private level: RecorderLogLevel) {}
 
     group(...label: any[]): void {
         let labelNew = [...label];
@@ -104,15 +31,15 @@ class ConsoleLikeBase implements ConsoleLike {
     info(message?: any, ...optionalParams: any[]): void {
         console.info('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
     }
-    enabledFor(level: JsHbLogLevel): boolean {
+    enabledFor(level: RecorderLogLevel): boolean {
         return level >= this.level;
     }
-    getLevel(): JsHbLogLevel {
+    getLevel(): RecorderLogLevel {
         return this.level;
     }
 }
 
-export class JsHbConfigDefault implements IJsHbConfig {
+export class ConfigDefault implements IConfig {
     constructor() {
         this.configAddFieldProcessors( JsonPlaybackDecorators.TypeProcessorEntries);
         this.configCacheHandler(
@@ -133,7 +60,7 @@ export class JsHbConfigDefault implements IJsHbConfig {
     }
 
     private _logLevelMap: Map<RecorderLogger, ConsoleLike> = new Map();
-    configLogLevel(logger: RecorderLogger, level: JsHbLogLevel, consoleLike?: ConsoleLike): IJsHbConfig {
+    configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): IConfig {
         if (!consoleLike) {
             consoleLike = new ConsoleLikeBase(logger, level);
         }
@@ -147,7 +74,7 @@ export class JsHbConfigDefault implements IJsHbConfig {
                 let consoleAll = this._logLevelMap.get(RecorderLogger.All);
                 this._logLevelMap.set(logger, new ConsoleLikeBase(logger, consoleAll.getLevel()));
             } else {
-                this._logLevelMap.set(logger, new ConsoleLikeBase(logger, JsHbLogLevel.Error));
+                this._logLevelMap.set(logger, new ConsoleLikeBase(logger, RecorderLogLevel.Error));
             }
         }
         return this._logLevelMap.get(logger);
@@ -155,11 +82,11 @@ export class JsHbConfigDefault implements IJsHbConfig {
 
     private _attachPrefix: string;
     private _cacheStoragePrefix: string = 'jsCacheStoragePrefix_';
-    configAttachPrefix(attachPrefix: string): IJsHbConfig {
+    configAttachPrefix(attachPrefix: string): IConfig {
         this._attachPrefix = attachPrefix;
         return this;
     }
-    configCacheStoragePrefix(cacheStoragePrefix: string): IJsHbConfig {
+    configCacheStoragePrefix(cacheStoragePrefix: string): IConfig {
         this._cacheStoragePrefix = cacheStoragePrefix;
         return this;
     }
@@ -183,18 +110,18 @@ export class JsHbConfigDefault implements IJsHbConfig {
 		return this._cacheHandler;
 	}
 
-	configCacheHandler(value: CacheHandler): IJsHbConfig {
+	configCacheHandler(value: CacheHandler): IConfig {
         this._cacheHandler = value;
         return this;
     }
     
-    public configJsHbCreationIdName(jsHbCreationIdName: string): IJsHbConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
-    public configJsHbMetadatasName(jsHbMetadatasName: string): IJsHbConfig { this.jsHbMetadatasName = jsHbMetadatasName; return this; }
+    public configCreationIdName(jsHbCreationIdName: string): IConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
+    public configMetadatasName(jsHbMetadatasName: string): IConfig { this.jsHbMetadatasName = jsHbMetadatasName; return this; }
 
-    //public configLogLevel(logLevel: JsHbLogLevel): IJsHbConfig { this.logLevel = logLevel; return this; }
-    public configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IJsHbConfig { this.maxLazyRefNotificationPerSecond = maxLazyRefNotificationPerSecond; return this; }
-    public configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IJsHbConfig { this.lazyRefNotificationTimeMeasurement = lazyRefNotificationTimeMeasurement; return this; }
-    public configLazyRefNotificationCountMeasurement(value: number ): IJsHbConfig { this._lazyRefNotificationCountMeasurement = value; return this;	}
+    //public configLogLevel(logLevel: JsHbLogLevel): IConfig { this.logLevel = logLevel; return this; }
+    public configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IConfig { this.maxLazyRefNotificationPerSecond = maxLazyRefNotificationPerSecond; return this; }
+    public configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IConfig { this.lazyRefNotificationTimeMeasurement = lazyRefNotificationTimeMeasurement; return this; }
+    public configLazyRefNotificationCountMeasurement(value: number ): IConfig { this._lazyRefNotificationCountMeasurement = value; return this;	}
 
 	public get jsHbCreationIdName(): string {
 		return this._jsHbCreationIdName;
@@ -236,7 +163,7 @@ export class JsHbConfigDefault implements IJsHbConfig {
 	public set lazyRefNotificationCountMeasurement(value: number ) {
 		this._lazyRefNotificationCountMeasurement = value;
     }
-    public configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IJsHbConfig {
+    public configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IConfig {
         for (const entry of entries) {
             this._fieldProcessorEntryMap.set(entry.type, entry.processor);
         }

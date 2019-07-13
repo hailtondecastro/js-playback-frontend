@@ -1,45 +1,36 @@
 import { LazyRef, LazyRefPrpMarker} from '../api/lazy-ref';
-import { IJsHbManager, JsHbManagerDefault } from './js-hb-manager';
+import { RecorderManagerDefault } from './js-hb-manager';
 import { catchError, map, flatMap, delay, finalize, mapTo } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
 import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe, PartialObserver, ObservableInput } from 'rxjs';
-import { JsHbContants } from './js-hb-constants';
+import { RecorderContants } from './js-hb-constants';
 import { Tape } from './tape';
 import { TapeAction, TapeActionType } from './tape-action';
-import { JsHbSetCreator } from './js-hb-set-creator';
+import { SetCreator } from './js-hb-set-creator';
 import { JSONHelper } from './json-helper';
-import { JsHbLogLevel, ConsoleLike } from './js-hb-config';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
-import { OriginalLiteralValueEntry, ISession, JsHbEntityRef } from '../api/session';
+import { OriginalLiteralValueEntry, IRecorderSession, EntityRef, SessionState } from '../api/session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
-import { IManager } from '../api/manager';
+import { IRecorderManager } from '../api/manager';
 import { GenericNode } from '../api/generic-tokenizer';
 import { GenericTokenizer } from '../api/generic-tokenizer';
 import { LazyInfo } from '../api/js-hb-http-lazy-observable-gen';
 import { LazyRefImplementor, LazyRefDefault } from './js-hb-lazy-ref';
-import { JsonPlaybackDecorators } from '../api/decorators';
-import { NgJsHbDecorators } from './js-hb-decorators';
-import { RecorderLogger } from '../api/config';
-
-interface JsHbSessionState {
-    sessionId: string;
-    nextCreationId: number;
-    originalLiteralValueEntries: Array<OriginalLiteralValueEntry>
-    latestPlaybackArrAsLiteral: Array<any>;
-    currentTapeAsLiteral?: any;
-}
+import { RecorderDecorators } from '../api/decorators';
+import { RecorderDecoratorsInternal } from './js-hb-decorators';
+import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/config';
 
 declare type prptype = any;
 
 /**
  * Contract
  */
-export interface IJsHbSessionImplementor extends ISession {
+export interface IRecorderSessionImplementor extends IRecorderSession {
     /** Framework internal use. */
     isOnRestoreEntireStateFromLiteral(): boolean;
     /** Framework internal use. */
@@ -63,17 +54,17 @@ export interface IJsHbSessionImplementor extends ISession {
         tryOptions:
             {
                 realInstance: any,
-                literalJsHbResult: {result: any},
+                literalResult: {result: any},
                 lazySignature?: string
             }): void;
     /**
      * Framework internal use.
      */
-    processJsHbResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L>;
+    processResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L>;
     /**
      * Framework internal use. Used exclusively in lazy load.
      */
-    processJsHbResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void>;
+    processResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void>;
     /** Framework internal use.  Collection utility. */
     createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any;
     /** Framework internal use.  Collection utility. */
@@ -103,8 +94,8 @@ export interface IJsHbSessionImplementor extends ISession {
     doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
     /**
      * Framework internal use.  
-     * This put the JsHbBackendMetadatas's on options.refMap by JsHbBackendMetadatas#$id$  
-     * and resolves JsHbBackendMetadatas's by JsHbBackendMetadatas#$idRef$ if it exists.
+     * This put the PlayerMetadatas's on options.refMap by PlayerMetadatas#$id$  
+     * and resolves PlayerMetadatas's by PlayerMetadatas#$idRef$ if it exists.
      */
     resolveMetadatas(
         options: 
@@ -126,7 +117,7 @@ export interface IJsHbSessionImplementor extends ISession {
             };
 }
 
-export class JsHbSessionDefault implements IJsHbSessionImplementor {
+export class RecorderSessionDefault implements IRecorderSessionImplementor {
     private _objectsBySignature: Map<string, any> = null;
     private _objectsByCreationId: Map<number, any> = null;
     private _lazyrefsByEntityMap: Map<object, Set<LazyRefImplementor<any, any>>> = null;
@@ -155,7 +146,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     logRxOpr<T>(id: string): OperatorFunction<T, T> {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-            if (thisLocal.consoleLikeLogRxOpr.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLikeLogRxOpr.enabledFor(RecorderLogLevel.Trace)) {
                 (source as any).logAllSourceStackRxOprId = 'source observable ' + this.nextMultiPurposeInstanceId();
                 try {
                     throw new Error('logRxOpr(). "Issuer" Stack for id "'+id+'"\n');
@@ -166,7 +157,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             const result$ = source
                 .pipe(
                     map((value) => {
-                        if (thisLocal.consoleLikeLogRxOpr.enabledFor(JsHbLogLevel.Trace)) {
+                        if (thisLocal.consoleLikeLogRxOpr.enabledFor(RecorderLogLevel.Trace)) {
                             (source as any).logAllSourceStackRxOprId = 'source observable ' + this.nextMultiPurposeInstanceId();
                             try {
                                 throw new Error('logRxOpr(). "Project" Stack for id "'+id+'"\n');
@@ -209,7 +200,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             result$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
                 .pipe(
                     map((value)=>{
-                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
                             thisLocal.consoleLike.debug('generateAsyncTasksWaiting -> map: ' + value);
                         }
                     })
@@ -235,19 +226,19 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         return result$;
     }
 
-    constructor(private _jsHbManager: IManager) {
+    constructor(private _jsHbManager: IRecorderManager) {
         const thisLocal = this;
 		if (!_jsHbManager) {
 			throw new Error('_jsHbManager can not be null');
         }
 
-        thisLocal.consoleLike = _jsHbManager.config.getConsole(RecorderLogger.JsHbSessionDefault);
-		thisLocal.consoleLikeMerge = _jsHbManager.config.getConsole(RecorderLogger.JsHbSessionDefaultMergeWithCustomizerPropertyReplection);
-        thisLocal.consoleLikeLogRxOpr = _jsHbManager.config.getConsole(RecorderLogger.JsHbSessionDefaultLogRxOpr);
-        thisLocal.consoleLikeRestoreState = _jsHbManager.config.getConsole(RecorderLogger.JsHbSessionDefaultRestoreState);
+        thisLocal.consoleLike = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefault);
+		thisLocal.consoleLikeMerge = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultMergeWithCustomizerPropertyReplection);
+        thisLocal.consoleLikeLogRxOpr = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultLogRxOpr);
+        thisLocal.consoleLikeRestoreState = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultRestoreState);
         
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-            thisLocal.consoleLike.group('JsHbSessionDefault.constructor');
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
+            thisLocal.consoleLike.group('RecorderSessionDefault.constructor');
 			thisLocal.consoleLike.debug(_jsHbManager as any as string);
             thisLocal.consoleLike.groupEnd();
 		}
@@ -266,7 +257,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         let createAsyncTasksWaiting$ = this.createAsyncTasksWaiting()
             .pipe(
                 map(() => {
-                    let jsHbSessionState: JsHbSessionState = {
+                    let jsHbSessionState: SessionState = {
                         sessionId: this._sessionId,
                         nextCreationId: thisLocal._nextCreationId,
                         latestPlaybackArrAsLiteral: [],
@@ -309,7 +300,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         const thisLocal = this;
         let restoreEntireStateCallbackTemplate$ = this.restoreEntireStateCallbackTemplate(() => {
             let lazyRefProcessResponseArr: Observable<any>[] = [];
-            let literalStateLocal: JsHbSessionState = literalState;
+            let literalStateLocal: SessionState = literalState;
             thisLocal._nextCreationId = literalStateLocal.nextCreationId;
             thisLocal._originalLiteralValueEntries = literalStateLocal.originalLiteralValueEntries;
             if (literalStateLocal.currentTapeAsLiteral) {
@@ -328,17 +319,17 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         ' manipulation. Initial length ' +originalLiteralValueEntriesLengthInitial+
                         ' is differrent of actual ' + thisLocal._originalLiteralValueEntries.length);
                 }
-                if (originalLiteralValueEntry.method === 'processJsHbResultEntity'
-                        || originalLiteralValueEntry.method === 'processJsHbResultEntityArray'
+                if (originalLiteralValueEntry.method === 'processResultEntity'
+                        || originalLiteralValueEntry.method === 'processResultEntityArray'
                         || originalLiteralValueEntry.method === 'newEntityInstance') {
                     let jsType: TypeLike<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
                     if (!jsType) {
                         throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'JsonPlayback.clazz\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                     }
-                    if (originalLiteralValueEntry.method === 'processJsHbResultEntity') {
-                        lazyRefProcessResponseArr.push(thisLocal.processJsHbResultEntity(jsType, originalLiteralValueEntry.literalJsHbResult));
-                    } else if (originalLiteralValueEntry.method === 'processJsHbResultEntityArray') {
-                        lazyRefProcessResponseArr.push(thisLocal.processJsHbResultEntityArray(jsType, originalLiteralValueEntry.literalJsHbResult));
+                    if (originalLiteralValueEntry.method === 'processResultEntity') {
+                        lazyRefProcessResponseArr.push(thisLocal.processResultEntity(jsType, originalLiteralValueEntry.literalResult));
+                    } else if (originalLiteralValueEntry.method === 'processResultEntityArray') {
+                        lazyRefProcessResponseArr.push(thisLocal.processResultEntityArray(jsType, originalLiteralValueEntry.literalResult));
                     } else if (originalLiteralValueEntry.method === 'newEntityInstance') {
                         lazyRefProcessResponseArr.push(thisLocal.newEntityInstanceWithCreationId(jsType, originalLiteralValueEntry.ref.creationId));
                     } else {
@@ -347,8 +338,8 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 } else if (originalLiteralValueEntry.method === 'lazyRef') {
                     originalLiteralValueEntry.ownerSignatureStr
                     if (originalLiteralValueEntry.ownerSignatureStr) {
-                        if (thisLocal.consoleLikeRestoreState.enabledFor(JsHbLogLevel.Trace)) {
-                            thisLocal.consoleLikeRestoreState.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a hibernate component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                        if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a hibernate component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                         }
                         let ownerEnt = this._objectsBySignature.get(originalLiteralValueEntry.ownerSignatureStr);
                         if (!ownerEnt) {
@@ -362,14 +353,14 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                             throw new Error(originalLiteralValueEntry.ownerFieldName + ' is not a LazyRef for ' + ownerEnt);    
                         }
                         lazyRefProcessResponseArr.push(
-                            lazyRef.processResponse({ body: originalLiteralValueEntry.literalJsHbResult })
+                            lazyRef.processResponse({ body: originalLiteralValueEntry.literalResult })
                         );
                     } else {
-                        if (thisLocal.consoleLikeRestoreState.enabledFor(JsHbLogLevel.Trace)) {
-                            thisLocal.consoleLikeRestoreState.debug('JsHbSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
+                        if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
                                 'No owner entity for original literal value entry, the owner must be a\n'+
                                 'hibernate component. Doing nothing, in any next literal value entry\n'+
-                                'there will exist an action with type \'processJsHbResultEntity\' that will\n'+
+                                'there will exist an action with type \'processResultEntity\' that will\n'+
                                 'put the entity on cache. Entry:\n' +
                                 JSON.stringify(originalLiteralValueEntry, null, 2));
                         }
@@ -417,26 +408,26 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
 
     private lazyLoadTemplateCallback<T>(lazyLoadedObj: any, originalCb: () => T|void): T|void {
         try {
-            lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
             return originalCb();
         } finally {
-            lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
         }
     }
 
     private createKeepAllFlagsTemplateCallback<T>(lazyLoadedObj: any): (originalCb: () => T|void) => T|void {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         return (originalCb: () => T) => {
-            const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
             const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
-            lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
             thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
             try {
                 return originalCb();
             } finally {
-                lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                 thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
             }
         }
@@ -453,7 +444,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             project: (value: T, index?: number) => R,
             thisArg?: any): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as R};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -461,12 +452,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -476,7 +467,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -502,7 +493,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             project: (value: T, index?: number) => ObservableInput<R>,
             concurrent?: number): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -510,12 +501,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -527,7 +518,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -559,7 +550,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     }
 
     /**
-     * Based on '[TapeAction.java].resolveOwnerValue(IJsHbManager, HashMap<Long, Object>)'
+     * Based on '[TapeAction.java].resolveOwnerValue(IRecorderManager, HashMap<Long, Object>)'
      * @param action 
      */
     private actionResolveOwnerValue(action: TapeAction): any {
@@ -575,7 +566,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     }
 
     /**
-     * Based on '[TapeAction.java].resolveJavaPropertyName(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * Based on '[TapeAction.java].resolveJavaPropertyName(ObjectMapper, IRecorderManager, HashMap<Long, Object>)'
      * @param action 
      */
     private actionResolveFieldName(action: TapeAction): any {
@@ -583,7 +574,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     }
 
     /**
-     * Based on '[TapeAction.java].resolveColletion(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * Based on '[TapeAction.java].resolveColletion(ObjectMapper, IRecorderManager, HashMap<Long, Object>)'
      * @param action 
      */
     private actionResolveColletion(action: TapeAction): any {
@@ -603,7 +594,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
 
 
     /**
-     * Based on '[TapeAction.java].resolveSettedValue(ObjectMapper, IJsHbManager, HashMap<Long, Object>)'
+     * Based on '[TapeAction.java].resolveSettedValue(ObjectMapper, IRecorderManager, HashMap<Long, Object>)'
      * @param action 
      */
     private actionResolveSettedValue<P, GP>(action: TapeAction, fieldEtc: FieldEtc<P, GP>): Observable<P> {
@@ -667,7 +658,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                     let resolvedOwnerValue: any = thisLocal.actionResolveOwnerValue(action);
                     let resolvedFieldName: string = thisLocal.actionResolveFieldName(action);
                     let resolvedCollection: any = thisLocal.actionResolveColletion(action);
-                    let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc(
+                    let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(
                         thisLocal.fielEtcCacheMap,
                         resolvedOwnerValue, resolvedFieldName,
                         thisLocal.jsHbManager.config);
@@ -836,18 +827,18 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             throw new Error('realEntity can not be null');
         }
         let allMD = this.resolveMetadatas({ object: realEntity });
-        let jsHbEntityRefReturn: JsHbEntityRef;
+        let jsHbEntityRefReturn: EntityRef;
         let bMd: PlayerMetadatas = allMD.objectMd;
 
         if (bMd.$signature$) {
             jsHbEntityRefReturn = {
                 signatureStr: bMd.$signature$,
-                iAmAJsHbEntityRef: true
+                iAmAnEntityRef: true
             }
         } else if (lodashHas(realEntity, this.jsHbManager.config.jsHbCreationIdName)) {
             jsHbEntityRefReturn = {
                 creationId: lodashGet(realEntity, this.jsHbManager.config.jsHbCreationIdName),
-                iAmAJsHbEntityRef: true
+                iAmAnEntityRef: true
             }
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + realEntity.constructor + '\'');
@@ -856,10 +847,10 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     }
 
     public getEntityInstanceFromLiteralRef<T>(literalRef: any): T {
-        let jsHbEntityRef: JsHbEntityRef = literalRef;
-        if (jsHbEntityRef.iAmAJsHbEntityRef && jsHbEntityRef.signatureStr) {
+        let jsHbEntityRef: EntityRef = literalRef;
+        if (jsHbEntityRef.iAmAnEntityRef && jsHbEntityRef.signatureStr) {
             return this._objectsBySignature.get(jsHbEntityRef.signatureStr);
-        } else if (jsHbEntityRef.iAmAJsHbEntityRef && jsHbEntityRef.creationId) {
+        } else if (jsHbEntityRef.iAmAnEntityRef && jsHbEntityRef.creationId) {
             return this._objectsByCreationId.get(jsHbEntityRef.creationId);
         } else {
             throw new Error('Invalid operation. Not managed entity. literalRef: \'' + literalRef + '\'');
@@ -868,62 +859,62 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
 
     /**
      * Getter jsHbManager
-     * @return {IJsHbManager}
+     * @return {IRecorderManager}
      */
-    public get jsHbManager(): IManager {
+    public get jsHbManager(): IRecorderManager {
         return this._jsHbManager;
     }
 
     /**
      * Setter jsHbManager
-     * @param {IJsHbManager} value
+     * @param {IRecorderManager} value
      */
-    public set jsHbManager(value: IJsHbManager) {
+    public set jsHbManager(value: IRecorderManager) {
         const thisLocal = this;
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
-            thisLocal.consoleLike.group('JsHbSessionDefault.jsHbManager set');
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
+            thisLocal.consoleLike.group('RecorderSessionDefault.jsHbManager set');
 			thisLocal.consoleLike.debug(value as any as string);
             thisLocal.consoleLike.groupEnd();
 		}
         this._jsHbManager = value;
     }
 
-    public processJsHbResultEntity<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<L> {
+    public processResultEntity<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<L> {
         const thisLocal = this;
         let result$: Observable<L>;
 
-        if (!literalJsHbResult.result) {
-            throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
+        if (!literalResult.result) {
+            throw new Error('literalResult.result existe' + JSON.stringify(literalResult));
         }
-        let clazzOptions: JsonPlaybackDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
         if (!clazzOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
         }
 
-        let allMD = this.resolveMetadatas({literalObject: literalJsHbResult.result});
+        let allMD = this.resolveMetadatas({literalObject: literalResult.result});
         let bMd = allMD.objectMd;
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             if (!bMd.$isComponent$) {
                 this.storeOriginalLiteralEntry(
                     {
-                        method: 'processJsHbResultEntity',
-                        reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
-                        literalJsHbResult: literalJsHbResult
+                        method: 'processResultEntity',
+                        reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                        literalResult: literalResult
                     });
             }
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntity<L>()');
-            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalJsHbResult);
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+            thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntity<L>()');
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalResult);
             thisLocal.consoleLike.groupEnd();
         }
         let refMap: Map<Number, any> = new Map<Number, any>();
-        result$ = this.processJsHbResultEntityPriv(entityType, literalJsHbResult.result, refMap);
+        result$ = this.processResultEntityPriv(entityType, literalResult.result, refMap);
         result$.pipe(
             map((resultL) => {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                    thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntity<L>() => result$.pipe(). resultL:');
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntity<L>() => result$.pipe(). resultL:');
                     thisLocal.consoleLike.debug(resultL);
                     thisLocal.consoleLike.groupEnd();
                 }
@@ -944,37 +935,37 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
     }
 
-    public processJsHbResultEntityArray<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<Array<L>> {
+    public processResultEntityArray<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<Array<L>> {
         const thisLocal = this;
-        if (!literalJsHbResult.result) {
-            throw new Error('literalJsHbResult.result existe' + JSON.stringify(literalJsHbResult));
+        if (!literalResult.result) {
+            throw new Error('literalResult.result existe' + JSON.stringify(literalResult));
         }
-        let clazzOptions: JsonPlaybackDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
         if (!clazzOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
         }
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             this.storeOriginalLiteralEntry(
                 {
-                    method: 'processJsHbResultEntityArray',
-                    reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
-                    literalJsHbResult: literalJsHbResult
+                    method: 'processResultEntityArray',
+                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    literalResult: literalResult
                 });
         }
 
         let resultObsArr: Observable<L>[] = [];
         let refMap: Map<Number, any> = new Map<Number, any>();
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntityArray<L>()');
-            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalJsHbResult);
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+            thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>()');
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalResult);
             thisLocal.consoleLike.groupEnd();
         }
-        for (let index = 0; index < literalJsHbResult.result.length; index++) {
-            const resultElement = literalJsHbResult.result[index];
-            resultObsArr.push(this.processJsHbResultEntityPriv(entityType, resultElement, refMap));
+        for (let index = 0; index < literalResult.result.length; index++) {
+            const resultElement = literalResult.result[index];
+            resultObsArr.push(this.processResultEntityPriv(entityType, resultElement, refMap));
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-            thisLocal.consoleLike.group('JsHbSessionDefault.processJsHbResultEntityArray<L>(). result:');
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+            thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>(). result:');
             thisLocal.consoleLike.debug(resultObsArr);
             thisLocal.consoleLike.groupEnd();
         }
@@ -1000,20 +991,20 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
         this.validatingMetaFieldsExistence(entityType);
         let entityObj = new entityType();
-        lodashSet(entityObj, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(entityObj));
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.debug('entityType: ' + entityType.name);
         }
         for (let index = 0; index < realKeys.length; index++) {
             const keyItem = realKeys[index];
             let prpGenType: GenericNode = GenericTokenizer.resolveNode(entityObj, keyItem);
             if (!prpGenType) {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.debug('GenericNode not found for property key \'' + keyItem + '\' of ' + entityType.name);
                 }
             } else if (prpGenType.gType !== LazyRef) {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.debug('GenericNode found but it is not a LazyRef. Property key \'' + keyItem + '\' of ' + entityType.name);
                 }
             } else {
@@ -1025,13 +1016,13 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         lazyRefGenericParam = (prpGenType.gParams[0] as TypeLike<any>);
                     }
 
-                    if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLike.debug('GenericNode found and it is a LazyRef, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                     }
 
                     let allMD = this.resolveMetadatas({refererObject: entityObj, key: keyItem});
                     if (this.isCollection(lazyRefGenericParam)) {
-                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
                         let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
@@ -1052,7 +1043,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         lazyRefSet.bMdPlayerObjectIdMetadata = allMD.playerObjectIdMd;
                         lodashSet(entityObj, keyItem, lazyRefSet);
                     } else {
-                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is not a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
                         let lazyRef: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
@@ -1071,12 +1062,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             }
         }
 
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.debug('isRecording, ');
         }
 
         this._objectsByCreationId.set(creationId, entityObj);
-        let clazzOptions: JsonPlaybackDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
+        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
         if (!clazzOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
         }
@@ -1084,16 +1075,16 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             this.storeOriginalLiteralEntry(
                 {
                     method: 'newEntityInstance',
-                    reflectFunctionMetadataTypeKey: NgJsHbDecorators.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
                     ref: {
                         creationId: creationId,
-                        iAmAJsHbEntityRef: true
+                        iAmAnEntityRef: true
                     }
                 });
         }
         
         lodashSet(entityObj, this.jsHbManager.config.jsHbCreationIdName, creationId);
-        lodashSet(entityObj, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             //recording tape
@@ -1101,7 +1092,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             action.fieldName = null;
             action.actionType = TapeActionType.Create;
             
-            let clazzOptions: JsonPlaybackDecorators.clazzOptions = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
+            let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
             if (!clazzOptions) {
                 throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
             }
@@ -1163,7 +1154,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         if (this.isRecording()) {
             throw new Error('I am already recording!');
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.debug('reseting this._currentTape, this._objectsCreationId and this._nextCreationId');
         }
         this._currentTape = new Tape();
@@ -1173,7 +1164,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     public stopRecording(): void {
         const thisLocal = this;
         if (this.isRecording()) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
                 thisLocal.consoleLike.debug('updating this.lastTape and resetting this.currentTape');
             }
             this._latestTape.push(this._currentTape);
@@ -1191,9 +1182,9 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: ISession = lodashGet(entity, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as ISession;
+        let session: IRecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor.name + '\' managed by another session.');
         }
@@ -1210,7 +1201,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.group('action: ');
             thisLocal.consoleLike.debug(action);
             thisLocal.consoleLike.groupEnd();
@@ -1226,9 +1217,9 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: ISession = lodashGet(entity, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as ISession;
+        let session: IRecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' managed by another session.');
         }
@@ -1244,7 +1235,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.debug('action: ' + action);
         }
         this.addTapeAction(action);
@@ -1262,7 +1253,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
 
     public clear(): void {
         const thisLocal = this;
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.debug('clearing: this.objectsBySignature, this.objectsCreationId, this.nextCreationId, this.currentTape, this.lastTape and this.objectsBySignature');
         }
         this._nextCreationId = null;
@@ -1421,7 +1412,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         if (!this.isRecording()) {
             throw new Error('The recording is not started!');
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.group('addTapeAction');
             thisLocal.consoleLike.debug(action as any as string);
             thisLocal.consoleLike.groupEnd();
@@ -1440,7 +1431,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             .pipe(
                 map((tape) => {
                     let resultLit =  thisLocal.getPlaybackAsLiteral(tape);
-                    if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+                    if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
                         thisLocal.consoleLike.group('getLastRecordedTapeAsLiteral');
                         thisLocal.consoleLike.debug(resultLit as any as string);
                         thisLocal.consoleLike.groupEnd();
@@ -1469,7 +1460,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     private getPlaybackAsLiteral(tape: Tape): any {
         const thisLocal = this;
         const literalReturn: any = JSONHelper.convertToLiteralObject(tape, true)
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.group('getPlaybackAsLiteral');
             thisLocal.consoleLike.debug(literalReturn as any as string);
             thisLocal.consoleLike.groupEnd();
@@ -1492,7 +1483,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             );
             playBackReturn.actions.push(action);
         }
-        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Debug)) {
+        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.group('getPlaybackFromLiteral');
             thisLocal.consoleLike.debug(playBackReturn as any as string);
             thisLocal.consoleLike.groupEnd();
@@ -1512,8 +1503,8 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         const camposControleArr = [
             this.jsHbManager.config.jsHbCreationIdName,
             this.jsHbManager.config.jsHbMetadatasName,
-            JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME,
-            JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME];
+            RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME,
+            RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME];
         for (let index = 0; index < camposControleArr.length; index++) {
             const internalKeyItem = camposControleArr[index];
             if (Object.keys(entityType.prototype).lastIndexOf(internalKeyItem.toString()) >= 0) {
@@ -1522,13 +1513,13 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
     }
 
-    public processJsHbResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void> {
+    public processResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void> {
         let thisLocal = this;
         let refMap: Map<Number, any> = new Map();
 
         let realItemObsArr: Observable<L>[] = []
         for (const literalItem of literalResultField) {                               
-            let realItem$: Observable<L> = this.processJsHbResultEntityPriv(entityType, literalItem, refMap);
+            let realItem$: Observable<L> = this.processResultEntityPriv(entityType, literalItem, refMap);
             realItemObsArr.push(realItem$);
         }
         let result$: Observable<void>;
@@ -1556,9 +1547,9 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
     }
 
-    public processJsHbResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L> {
+    public processResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L> {
         let refMap: Map<Number, any> = new Map();
-        let result$ = this.processJsHbResultEntityPriv(entityType, literalResultField, refMap);
+        let result$ = this.processResultEntityPriv(entityType, literalResultField, refMap);
 
         const isSynchronouslyDone = { value: false, result: null as L};
         result$.subscribe((result)=>{
@@ -1573,7 +1564,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
     }
 
-    private processJsHbResultEntityPriv<L>(entityType: TypeLike<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
+    private processResultEntityPriv<L>(entityType: TypeLike<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
         const thisLocal = this;
         if (!literalResultField) {
             throw new Error('literalResultField can not be null');
@@ -1589,12 +1580,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         }
         
         if (!entityValue) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
             }
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
-            lodashSet(entityValue as any, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+            lodashSet(entityValue as any, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
             this.removeNonUsedKeysFromLiteral(entityValue as any, literalResultField);
 
             if (bMd.$id$) {
@@ -1607,13 +1598,13 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 this.tryCacheInstanceBySignature(
                     {
                         realInstance: entityValue, 
-                        literalJsHbResult: literalResultField
+                        literalResult: literalResultField
                     }
                 );
                 lodashMergeWith(entityValue as any, literalResultField, this.mergeWithCustomizerPropertyReplection(refMap));
             });
         } else {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity already processed on this session. Found by signature: ' + bMd.$signature$);
             }
         }
@@ -1654,13 +1645,13 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         const isValueByFieldProcessor: {value: boolean} = { value: false };
 
         if (lr.lazyLoadedObj) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
                 thisLocal.consoleLike.debug(lr.lazyLoadedObj);
                 thisLocal.consoleLike.groupEnd();
             }
         } else {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('LazyRef.lazyLoadedObj is not setted yet');
             }
             let lazyLoadedObjType: TypeLike<any> = null;
@@ -1686,12 +1677,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                     setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoadingNoNext(lazyCollection)
                         .pipe(
                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
-                                let processJsHbResultEntityPrivObsArr: Observable<L>[] = [];
+                                let processResultEntityPrivObsArr: Observable<L>[] = [];
                                     for (const literalItem of literalLazyObj) {
-                                        let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(collTypeParam, literalItem, refMap)
-                                        processJsHbResultEntityPrivObsArr.push(processJsHbResultEntityPriv$);
+                                        let processResultEntityPriv$ = thisLocal.processResultEntityPriv(collTypeParam, literalItem, refMap)
+                                        processResultEntityPrivObsArr.push(processResultEntityPriv$);
                                     }
-                                    return combineFirstSerial(processJsHbResultEntityPrivObsArr)
+                                    return combineFirstSerial(processResultEntityPrivObsArr)
                                         .pipe(
                                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, (entityArr) => {
                                                 for (const entityItem of entityArr) {
@@ -1704,7 +1695,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         );
                 });
             } else {
-                let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.jsHbManager.config);
+                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.jsHbManager.config);
                 if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
                     if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                         isValueByFieldProcessor.value = true;
@@ -1721,19 +1712,19 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoading(literalLazyObj);
                     }
                 } else {
-                    setLazyObjOnLazyLoading$ = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
+                    setLazyObjOnLazyLoading$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
                         .pipe(
                             flatMapJustOnceRxOpr((resultEntity) => {
-                                return this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
+                                return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
                             })
                         );
                 }
 
                 if (!isValueByFieldProcessor.value && genericNode.gType !== LazyRefPrpMarker) {
-                    setLazyObjOnLazyLoading$ = this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
+                    setLazyObjOnLazyLoading$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
                         .pipe(
                             flatMapJustOnceRxOpr((resultEntity) => {
-                                return this.processJsHbResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
+                                return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
                             })
                         );
                 }
@@ -1783,16 +1774,16 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             tryOptions:
                 {
                     realInstance: any,
-                    literalJsHbResult: {result: any},
+                    literalResult: {result: any},
                     lazySignature?: string
                 }): void {
         if (!tryOptions){
             throw new Error('tryOptions nao pode ser nula');
         }
-        if (!tryOptions.literalJsHbResult){
-            throw new Error('tryOptions.literalJsHbResult nao pode ser nula');
+        if (!tryOptions.literalResult){
+            throw new Error('tryOptions.literalResult nao pode ser nula');
         }
-        let allMD = this.resolveMetadatas({literalObject: tryOptions.literalJsHbResult});
+        let allMD = this.resolveMetadatas({literalObject: tryOptions.literalResult});
         let bMd = allMD.objectMd;
         if (bMd.$signature$) {
             this._objectsBySignature.set(bMd.$signature$, tryOptions.realInstance);
@@ -1810,7 +1801,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             refererObj: any,
             refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
-        let propertyOptions: NgJsHbDecorators.PropertyOptions<L> = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
+        let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
             throw new Error('@JsonPlayback.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
         }
@@ -1819,7 +1810,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         let tryGetFromObjectsBySignature$ = this.tryGetFromObjectsBySignature(lr, literalLazyObj);
 
         if (lr.lazyLoadedObj) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
                 thisLocal.consoleLike.debug(lr.lazyLoadedObj);
                 thisLocal.consoleLike.groupEnd();
@@ -1986,28 +1977,28 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 hbIdType = <TypeLike<any>>genericNode.gParams[1];
             }
             if (hbIdType) {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.debug('There is a hbIdType on LazyRef. Is it many-to-one LazyRef?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
                 }
                 this.validatingMetaFieldsExistence(hbIdType);
-                result$ = this.processJsHbResultEntityPriv(hbIdType, jsHbPlayerObjectIdLiteral, refMap)
+                result$ = this.processResultEntityPriv(hbIdType, jsHbPlayerObjectIdLiteral, refMap)
                     .pipe(
                         map((hbId) => {
                             lr.hbId = hbId;
                         })
                     );
             } else {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.debug('Thre is no hbIdType on LazyRef. Is it a collection?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
                 }
             }
         } else if (jsHbPlayerObjectIdLiteral) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('The hibernate id is a simple type value: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
             }
             lr.hbId = jsHbPlayerObjectIdLiteral;
         } else {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('The hibernate id is null! Is it a collection?!: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
             }
         }
@@ -2044,7 +2035,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     private doSubriscribeObservableRxOpr<T>(observableFrom: 'internal' | 'provided', observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable jsHbTraceId: ' + (source as any).jsHbTraceId);
             }
 
@@ -2100,7 +2091,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
 
     public createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any {
         if (collType === Set) {
-            return new JsHbSetCreator(this, refererObj, refererKey).createByProxy();
+            return new SetCreator(this, refererObj, refererKey).createByProxy();
         } else {
             throw new Error('Collection not supported: ' + collType);
         }
@@ -2140,7 +2131,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
         let thisLocal = this;
         return function (value: any, srcValue: any, key?: string, object?: Object, source?: Object) {
             const keepAllFlagsTemplateCallback = thisLocal.createKeepAllFlagsTemplateCallback(object);
-            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function');
                 thisLocal.consoleLikeMerge.debug(refMap);
                 thisLocal.consoleLikeMerge.debug(value);
@@ -2156,14 +2147,14 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             let mdSrcValue = allMD.objectMd;
             let mdPlayerObjectId = allMD.playerObjectIdMd;
             let mdSrcValueFound = allMD.objectMdFound;
-            let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.jsHbManager.config);
+            let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.jsHbManager.config);
             if (mdPlayerObjectId.$isComponent$) {
-                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: bMdPlayerObjectId.isComponent. bMdSrcValue.$playerObjectId$:');
                     thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
-                fieldEtc.prpType = Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, object);
+                fieldEtc.prpType = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, object);
                 if (!fieldEtc.prpType) {
                     throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                 }
@@ -2177,7 +2168,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             const correctSrcValueRef = { value: srcValue };
             if (key === thisLocal.jsHbManager.config.jsHbMetadatasName) {
                 correctSrcValueRef.value = mdSource;
-                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.jsHbManager.config.jsHbMetadatasName). srcValue and mdSource:');
                     thisLocal.consoleLikeMerge.debug(srcValue);
                     thisLocal.consoleLikeMerge.debug(mdSource);
@@ -2187,7 +2178,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 Object.assign(correctSrcValueAsMetadata, mdSource);
                 if (mdPlayerObjectId.$isComponent$) {
                     correctSrcValueRef.value = new UndefinedForMergeAsync();
-                    let processJsHbResultEntityPrivHbId$ = thisLocal.processJsHbResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap)
+                    let processResultEntityPrivHbId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap)
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (hbIdValue) => {
                                 correctSrcValueAsMetadata.$playerObjectId$ = hbIdValue;
@@ -2196,7 +2187,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                                 return hbIdValue;
                             })
                         );
-                    processJsHbResultEntityPrivHbId$.subscribe((hbIdValue) => {
+                    processResultEntityPrivHbId$.subscribe((hbIdValue) => {
                         // nothing
                     });
                 } 
@@ -2209,7 +2200,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                             if (!correctSrcValueRef.value) {
                                 throw new Error('This should not happen 2');
                             }
-                            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
                                     ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
                                     ' Object resolved by mdSrcValue.$idRef$ field');
@@ -2226,7 +2217,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
                     if (thisLocal.isCollection(fieldEtc.prpGenType.gType)) {
-                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                 ' thisLocal.isCollection(prpGenType.gType) ');
                             thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType); thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType.gType);
@@ -2235,14 +2226,14 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         correctSrcValueRef.value = new UndefinedForMergeAsync();
                         let correctSrcValueColl = thisLocal.createCollection(fieldEtc.prpGenType.gType, object, key);
                         
-                        let processJsHbResultEntityPrivObsArr: Observable<any>[] = [];
+                        let processResultEntityPrivObsArr: Observable<any>[] = [];
                         thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
                             for (let index = 0; index < srcValue.length; index++) { 
                                 let arrItemType: TypeLike<any> = <TypeLike<any>>fieldEtc.prpGenType.gParams[0];
-                                let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(arrItemType, srcValue[index], refMap);
-                                processJsHbResultEntityPrivObsArr.push(processJsHbResultEntityPriv$);
+                                let processResultEntityPriv$ = thisLocal.processResultEntityPriv(arrItemType, srcValue[index], refMap);
+                                processResultEntityPrivObsArr.push(processResultEntityPriv$);
 
-                                combineFirstSerial(processJsHbResultEntityPrivObsArr)
+                                combineFirstSerial(processResultEntityPrivObsArr)
                                     .pipe(
                                         thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
                                             for (const entityItem of entityArr) {
@@ -2268,7 +2259,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                             let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
                                 .pipe(
                                     thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
-                                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                             thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                                 ' function => createNotLoadedLazyRef$.subscribe().'+
                                                 ' createNotLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, lazyRef)');
@@ -2283,7 +2274,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                             createNotLoadedLazyRef$.subscribe((lazyRef) => {
                                 //nothing
                             });
-                            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                     ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
                                     ' property \''+key+'\'.');
@@ -2295,7 +2286,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                             let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
                                 .pipe(
                                     thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
-                                        if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                             thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...)'+
                                                 ' mergeWithCustomizerPropertyReplection => function =>'+
                                                 ' createLoadedLazyRef$.subscribe(). createLoadedLazyRef,'+
@@ -2319,12 +2310,12 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         && !(srcValue instanceof Date)
                         && !fieldEtc.propertyOptions.lazyDirectRawRead) {
                     correctSrcValueRef.value = new UndefinedForMergeAsync();
-                    let processJsHbResultEntityPriv$ = thisLocal.processJsHbResultEntityPriv(fieldEtc.prpType, srcValue, refMap)
+                    let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, srcValue, refMap)
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValueSubs) => {
-                                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                     thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
-                                    ' function => processJsHbResultEntityPriv$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
+                                    ' function => processResultEntityPriv$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
                                     ' createLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, correctSrcValue)');
                                     thisLocal.consoleLikeMerge.debug(object);
                                     thisLocal.consoleLikeMerge.groupEnd();
@@ -2336,11 +2327,11 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                                 return correctSrcValueSubs;
                             })
                         );
-                    processJsHbResultEntityPriv$.subscribe((correctSrcValueSubs) => {
+                    processResultEntityPriv$.subscribe((correctSrcValueSubs) => {
                         //nothing
                     });
                 } else if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                             ' Transformation by "IFieldProcessor.fromLiteralValue" for property \''+key+'\'.');
                         thisLocal.consoleLikeMerge.debug(object);
@@ -2353,7 +2344,7 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         .pipe(thisLocal.addSubscribedObsRxOpr())
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (fromLiteralValue) => {
-                                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                     thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                         ' function => fromLiteralValue$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
                                         ' fromLiteralValue, for property \''+key+'\'. lodashSet(object, key, correctSrcValue)');
@@ -2369,13 +2360,13 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                     fromLiteralValue$.subscribe((correctSrcValueFlv) => {
                         //nothing
                     });
-                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.subscribe(). property \''+key+'\'.');
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
                 } else {
-                    if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Transformation is not necessary for property \''+key+'\'.');
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
@@ -2384,18 +2375,18 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
             } else if (lodashHas(object, key)) {
                 throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
             } else if (!lodashHas(object, key) && !thisLocal.isLiteralObjMetadataKey(key)) {
-                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
                 }
                 correctSrcValueRef.value = undefined;
             } else {
-                if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
                     thisLocal.consoleLikeMerge.debug(correctSrcValueRef.value);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
             }
-            if (thisLocal.consoleLikeMerge.enabledFor(JsHbLogLevel.Trace)) {
+            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. return');
                 thisLocal.consoleLikeMerge.debug(correctSrcValueRef.value);
                 thisLocal.consoleLikeMerge.groupEnd();
@@ -2434,15 +2425,15 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
     public notifyAllLazyrefsAboutEntityModification(entity: object, lazyRefSource: LazyRefImplementor<any, any>): void {
         const thisLocal = this;
         if (this._switchedOffNotificationEntitiesSet.has(entity)) {
-            if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: this._switchOffEntitiesSet.has(entity): entity modified but modifying notification is switched off!. entity:');
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                thisLocal.consoleLike.group('RecorderSessionDefault.notifyLazyrefAboutEntityModification: this._switchOffEntitiesSet.has(entity): entity modified but modifying notification is switched off!. entity:');
                 thisLocal.consoleLike.debug(entity);
                 thisLocal.consoleLike.groupEnd();
             }
         } else {
             if (!lazyRefSource) {
-                if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                    thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: !lazyRefSource: Am I been notified from a property set?!. entity:');
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    thisLocal.consoleLike.group('RecorderSessionDefault.notifyLazyrefAboutEntityModification: !lazyRefSource: Am I been notified from a property set?!. entity:');
                     thisLocal.consoleLike.debug(entity);
                     thisLocal.consoleLike.groupEnd();
                 }
@@ -2457,8 +2448,8 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                 let lazyrefsArr: Array<LazyRefImplementor<any,any>> = Array.from(this._lazyrefsByEntityMap.get(entity));
                 for (const lazyrefItem of lazyrefsArr) {
                     if (lazyRefSource === lazyrefItem) {
-                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                            thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Not notifing: lazyRefSource === lazyrefItem. entity:');
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLike.group('RecorderSessionDefault.notifyLazyrefAboutEntityModification: Not notifing: lazyRefSource === lazyrefItem. entity:');
                             thisLocal.consoleLike.debug(entity);
                             thisLocal.consoleLike.groupEnd();
                         }
@@ -2469,8 +2460,8 @@ export class JsHbSessionDefault implements IJsHbSessionImplementor {
                         if (lazyrefItem.lazyLoadedObj !== entity) {
                             throw new Error('Can not notify: lazyrefItem.lazyLoadedObj !== entity. \n' + this.toString());
                         }
-                        if (thisLocal.consoleLike.enabledFor(JsHbLogLevel.Trace)) {
-                            thisLocal.consoleLike.group('JsHbSessionDefault.notifyLazyrefAboutEntityModification: Notifing: lazyRefSource !== lazyrefItem.\n lazyRefSource and lazyrefItem:\n'+lazyRefSource+'\n'+lazyrefItem+'\n an . entity:');
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLike.group('RecorderSessionDefault.notifyLazyrefAboutEntityModification: Notifing: lazyRefSource !== lazyrefItem.\n lazyRefSource and lazyrefItem:\n'+lazyRefSource+'\n'+lazyrefItem+'\n an . entity:');
                             thisLocal.consoleLike.debug(entity);
                             thisLocal.consoleLike.groupEnd();
                         }

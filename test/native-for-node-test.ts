@@ -6,11 +6,11 @@ import * as memStreams from 'memory-streams';
 import { Readable, Stream } from "stream";
 import getStream from 'get-stream';
 import streamToObservable from 'stream-to-observable';
-import { CacheHandler } from "../src/implementation/js-hb-config";
-import { IFieldProcessor } from "../src/api/field-processor";
-import { StringStream, StringStreamMarker } from "../src/api/lazy-ref";
+import { IFieldProcessor } from '../src/api/field-processor';
+import { StringStream, StringStreamMarker } from '../src/api/lazy-ref';
+import { CacheHandler } from '../src/api/config';
 
-export namespace JsHbForNodeTest {
+export namespace ForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();
     export const CacheHandlerSync: CacheHandler = 
         {

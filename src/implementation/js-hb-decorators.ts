@@ -1,23 +1,22 @@
-import { JsHbContants } from './js-hb-constants';
+import { RecorderContants } from './js-hb-constants';
 import { TapeAction, TapeActionType } from './tape-action';
 import { get as lodashGet, has } from 'lodash';
-import { JsHbLogLevel } from './js-hb-config';
 import { Stream, Readable } from 'stream';
 import { Observable, of, from } from 'rxjs';
-import { JsHbManagerDefault } from './js-hb-manager';
+import { RecorderManagerDefault } from './js-hb-manager';
 import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
 import { ReadLine } from 'readline';
 import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
-import { ISession } from '../api/session';
-import { IJsHbSessionImplementor } from './js-hb-session';
+import { IRecorderSession } from '../api/session';
+import { IRecorderSessionImplementor } from './js-hb-session';
 import { TypeLike } from '../typeslike-dev';
 import { LazyRef, StringStream, StringStreamMarker } from '../api/lazy-ref';
-import { JsonPlaybackDecorators } from '../api/decorators';
-import { RecorderLogger } from '../api/config';
+import { RecorderDecorators } from '../api/decorators';
+import { RecorderLogger, RecorderLogLevel } from '../api/config';
 
-export namespace NgJsHbDecorators {
+export namespace RecorderDecoratorsInternal {
     /**
      * L: In case of LazyRef this is first type parameter of LazyRef.
      */
@@ -69,27 +68,27 @@ export namespace NgJsHbDecorators {
         }
 
         let returnFunc: MethodDecorator = function<Z> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<Z>) {
-            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
+            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                let session: IJsHbSessionImplementor = lodashGet(this, JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IJsHbSessionImplementor;
+                let session: IRecorderSessionImplementor = lodashGet(this, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSessionImplementor;
                 const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.JsonPlaybackDecorators)
-                let fieldEtc = JsHbManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
+                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
                 if (fieldEtc.propertyOptions.persistent) {
-                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                         consoleLike.group('JsonPlayback.set' +
                             'propertyOptions.persistent. Intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
                         consoleLike.debug(target);
                         consoleLike.debug(value);
                         consoleLike.groupEnd();
                     }
-                    let isOnlazyLoad: any = lodashGet(this, JsHbContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    let isOnlazyLoad: any = lodashGet(this, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
                         if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
-                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + JsHbContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
+                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
                             let actualValue = lodashGet(this, propertyKey);
                             if (actualValue !== value) {
@@ -97,7 +96,7 @@ export namespace NgJsHbDecorators {
                                     if (!session.isRecording()){
                                         throw new Error('Invalid operation. It is not recording. is this Error correct?!');
                                     }
-                                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                                    if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                                         consoleLike.group('JsonPlayback.set' +
                                             '(actualValue !== value) && !isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()\n' +
                                             'Recording action: ' + TapeActionType.SetField + '. actual and new value: ');
@@ -198,7 +197,7 @@ export namespace NgJsHbDecorators {
                                     }
                                 }
                             } else {
-                                if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                                if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                                     consoleLike.group('JsonPlayback.set' +
                                         '(actualValue === value)\n' +
                                         'NOT recording action, BUT may process : ' + TapeActionType.SetField + '. value: ');
@@ -215,7 +214,7 @@ export namespace NgJsHbDecorators {
                     }
                 } else {
                     oldSet.call(this, value);
-                    if (consoleLike.enabledFor(JsHbLogLevel.Trace)) {
+                    if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                         consoleLike.group('JsonPlayback.set' +
                             '!(propertyOptions.persistent && genericNode.gType !== LazyRef && genericNode.gType !== LazyRefPrpMarker). Not intercepting set method for '+target.constructor.name + '.' + (propertyKey as string) + '. target and value:');
                         consoleLike.debug(target);
@@ -232,7 +231,7 @@ export namespace NgJsHbDecorators {
     export function playerObjectId<T>(): MethodDecorator {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
             let playerObjectIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
-            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, playerObjectIdType, target);
+            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, playerObjectIdType, target);
         };
     }  
 
@@ -247,9 +246,9 @@ export namespace NgJsHbDecorators {
      * ...
      * ```
      */
-    export function clazz<T>(options: JsonPlaybackDecorators.clazzOptions): ClassDecorator {
+    export function clazz<T>(options: RecorderDecorators.clazzOptions): ClassDecorator {
         return function<T> (target: T): T | void {
-            Reflect.defineMetadata(JsHbContants.JSPB_REFLECT_METADATA_JAVA_CLASS, options, target);
+            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, options, target);
             Reflect.defineMetadata(
                 mountContructorByJavaClassMetadataKey(options, target as any as TypeLike<any>),
                 target,
@@ -260,8 +259,8 @@ export namespace NgJsHbDecorators {
     /**
      * Internal use only! It is no a decorator!
      */
-    export function mountContructorByJavaClassMetadataKey(options: JsonPlaybackDecorators.clazzOptions, entityType: TypeLike<any>): string {
-        return JsHbContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
+    export function mountContructorByJavaClassMetadataKey(options: RecorderDecorators.clazzOptions, entityType: TypeLike<any>): string {
+        return RecorderContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +
             ':' + options.javaClass;

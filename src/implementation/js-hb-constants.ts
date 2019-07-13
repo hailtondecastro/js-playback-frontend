@@ -1,4 +1,4 @@
-export namespace JsHbContants {
+export namespace RecorderContants {
     export let I_JSPB_MANAGER_IMPLE: string = 'I_JSPB_MANAGER_IMPLE';
     export let I_JSPB_CONFIG_IMPLE: string = 'I_JSPB_CONFIG_IMPLE';
     export let I_JSPB_HTTP_LAZY_OBSERVABLE_GEN_IMPLE: string = 'I_JSPB_HTTP_LAZY_OBSERVABLE_GEN_IMPLE';

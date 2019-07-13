@@ -8,22 +8,22 @@ import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import { MasterAEnt } from './entities/master-a-ent';
 import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
-import { JsHbForNodeTest } from './native-for-node-test';
+import { ForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
 import { HttpResponseLike } from '../src/typeslike';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
-import { ISession } from '../src/api/session.js';
-import { JsHbConfigDefault } from '../src/implementation/js-hb-config.js';
-import { IConfig, JsHbLogLevel, RecorderLogger } from '../src/api/config.js';
+import { IRecorderSession } from '../src/api/session.js';
+import { ConfigDefault } from '../src/implementation/js-hb-config.js';
+import { IConfig, RecorderLogLevel, RecorderLogger } from '../src/api/config.js';
 import { JsonPlaybackDecorators } from '../src/api/decorators';
-import { JsHbContants } from '../src/implementation/js-hb-constants.js';
+import { RecorderContants } from '../src/implementation/js-hb-constants.js';
 import { StringStream } from '../src/implementation/js-hb-lazy-ref.js';
-import { IManager } from '../src/api/manager.js';
-import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
+import { IRecorderManager } from '../src/api/manager.js';
+import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
 
 {
-    describe('JsHbManagerDefault', () => {
+    describe('RecorderManagerDefault', () => {
         it('poc-observable-just-once-pipe-test', (done) => {
             // let subTest1 = new Subject<number>();
             // let subTest2 = new Subject<number>();
@@ -317,13 +317,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
         });
 
         it('master-a-test-async', (done) => {
-            let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: ISession;
-            let config: IConfig = new JsHbConfigDefault()
-                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: IRecorderSession;
+            let config: IConfig = new ConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
                 
             let asyncCount = 0;
 
@@ -333,13 +333,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -405,7 +405,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IManager = new JsHbManagerDefault(
+            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateHttpObservable: (signature, info) => {
@@ -423,7 +423,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
                 });
 
             let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -435,7 +435,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -473,13 +473,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
         });
 
         it('master-a-test-sync', (done) => {
-            let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: ISession;
-            let config: IConfig = new JsHbConfigDefault()
-                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: IRecorderSession;
+            let config: IConfig = new ConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = 0;
 
@@ -489,13 +489,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -561,7 +561,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IManager = new JsHbManagerDefault(
+            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateHttpObservable: (signature, info) => {
@@ -579,7 +579,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
                 });
 
             let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -591,7 +591,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -631,13 +631,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
         });
 
         it('master-a-detail-a-test-sync', (done) => {
-            let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerSync);
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: ISession;
-            let config: IConfig = new JsHbConfigDefault()
-                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: IRecorderSession;
+            let config: IConfig = new ConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesSync);
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = 0;
 
@@ -647,13 +647,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -719,7 +719,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IManager = new JsHbManagerDefault(
+            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateHttpObservable: (signature, info) => {
@@ -737,7 +737,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
                 });
 
             let propertyOptions: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -749,7 +749,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterADetailATestLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterADetailATestLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -802,13 +802,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
         });
 
         it('master-lazy-prp-over-sized-test-async', (done) => {
-            let newCacheHandler = JsHbForNodeTest.createCacheHandlerWithInterceptor(JsHbForNodeTest.CacheHandlerAsync);
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: ISession;
-            let config: IConfig = new JsHbConfigDefault()
-                .configLogLevel(RecorderLogger.All, JsHbLogLevel.Error)
+            let jsHbSession: IRecorderSession;
+            let config: IConfig = new ConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(JsHbForNodeTest.TypeProcessorEntriesAsync);
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
 
             let asyncCount = 0;
 
@@ -817,7 +817,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
                 asyncCount++;
             }
 
-            let jsHbManager: IManager = new JsHbManagerDefault(
+            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateHttpObservable: (signature, info) => {
@@ -853,13 +853,13 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
                 });
 
             let propertyOptionsString: JsonPlaybackDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: JsonPlaybackDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: JsonPlaybackDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: JsonPlaybackDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(JsHbContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -926,7 +926,7 @@ import { JsHbManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processJsHbResultEntity(MasterAEnt, resultMasterLazyPrpOverSizedLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLazyPrpOverSizedLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {

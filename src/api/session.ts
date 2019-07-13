@@ -1,27 +1,27 @@
-import { IManager } from "./manager";
+import { IRecorderManager } from "./manager";
 import { TypeLike } from "../typeslike";
 import { Observable } from "rxjs";
 import { Stream } from "stream";
 import { ITape } from "./tape";
 
 
-export interface JsHbEntityRef {
-    iAmAJsHbEntityRef: boolean;
+export interface EntityRef {
+    iAmAnEntityRef: true;
     signatureStr?: string;
     creationId?: number;
 }
 
 export interface OriginalLiteralValueEntry {
-    method: 'processJsHbResultEntity' | 'processJsHbResultEntityArray' | 'newEntityInstance' | 'lazyRef';
+    method: 'processResultEntity' | 'processResultEntityArray' | 'newEntityInstance' | 'lazyRef';
     reflectFunctionMetadataTypeKey?: string;
     ownerSignatureStr?: string;
     ownerFieldName?: string;
-    literalJsHbResult?: {result: any};
+    literalResult?: {result: any};
     attachRefId?: string;
-    ref?: JsHbEntityRef;
+    ref?: EntityRef;
 }
 
-interface JsHbSessionState {
+export interface SessionState {
     sessionId: string;
     nextCreationId: number;
     originalLiteralValueEntries: Array<OriginalLiteralValueEntry>
@@ -32,20 +32,20 @@ interface JsHbSessionState {
 /**
  * Contract
  */
-export interface ISession {
+export interface IRecorderSession {
     /**
      * Manager.
      */
-    jsHbManager: IManager;
+    jsHbManager: IRecorderManager;
     /**
      * Process the response body literal object getted from backend.  
      * Body format: { result: any }.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the L instance.  
      * it call {@link #storeOriginalLiteralEntry)} for a future {@link this#restoreEntireStateFromLiteral}.  
      * @param entityType - TypeLike<L>
-     * @param literalJsHbResult a literal object with format { result: any }
+     * @param literalResult a literal object with format { result: any }
      */
-    processJsHbResultEntity<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<L>;
+    processResultEntity<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<L>;
     /**
      * Process the response body literal for each object getted from backend.  
      * Body format: \{ result: Array<any> \}.  
@@ -53,10 +53,10 @@ export interface ISession {
      * It call {@link this#storeOriginalLiteralEntry} for a future {@link this#restoreEntireStateFromLiteral}.  
      *
      * @param entityType - TypeLike<L>
-     * @param literalJsHbResult - \{result: any\}
+     * @param literalResult - \{result: any\}
      * @returns Array<L>
      */
-    processJsHbResultEntityArray<L>(entityType: TypeLike<L>, literalJsHbResult: {result: any}): Observable<Array<L>>;
+    processResultEntityArray<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<Array<L>>;
     /**
      * Generate a managed instance for type T.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the T instance.
