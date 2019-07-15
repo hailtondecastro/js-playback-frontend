@@ -48,15 +48,15 @@ export namespace RecorderDecorators {
     }
 
     /**
-     * Used with {@link JsonPlayback#clazz}.
+     * Used with {@link RecorderDecorators#playerType}.
      */
-    export interface clazzOptions {
+    export interface playerTypeOptions {
         /**
-         * Mapped java entity class.
+         * Mapped player side class type.
          */
-        javaClass: string;
+        playerType: string;
         /**
-         * Use it if you have more than one typescript classes mapping the same java entity class.
+         * Use it if you have more than one typescript classes mapping the same player side class type.
          */
         disambiguationId?: string;
     }
@@ -67,13 +67,13 @@ export namespace RecorderDecorators {
      * Sample:
      * ```ts
      * ...
-     * @JsonPlayback.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
+     * @JsonPlayback.playerType({playerType: 'org.mypackage.MyPersistentEntity'})
      * export class MyPersistentEntityJs {
      * ...
      * ```
      */
-    export function clazz<T>(options: clazzOptions): ClassDecorator {
-        return RecorderDecoratorsInternal.clazz(options);
+    export function playerType<T>(options: playerTypeOptions): ClassDecorator {
+        return RecorderDecoratorsInternal.playerType(options);
     }
 
     export const BufferProcessor = RecorderDecoratorsInternal.BufferProcessor;

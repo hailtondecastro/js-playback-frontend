@@ -74,7 +74,7 @@ export class LazyRefPrpMarker {
  * 
  * Do not use this as the field type, use {@link LazyRefMTO} or {@link LazyRefOTM}.
  * Use this as 'interface like' to do your own implementation if you need! 
- * See {@link IRecorderSession#createApropriatedLazyRef}
+ * See {@link RecorderSession#createApropriatedLazyRef}
  * 
  * Code sample:
  * ```ts
@@ -130,7 +130,7 @@ export class LazyRef<L extends object, I> extends Subject<L> {
      * that all other subscriptions (pipe async's for example) are called.
      * so it does not return Subscription, after all it does not subscribe permanently
      * on the observer's list.  
-     * Call {@link IRecorderSession#notifyAllLazyrefsAboutEntityModification} after modification and {@link Subscription#unsubscribe}.
+     * Call {@link RecorderSession#notifyAllLazyrefsAboutEntityModification} after modification and {@link Subscription#unsubscribe}.
      * @param observerOrNext
      * @param error
      * @param complete

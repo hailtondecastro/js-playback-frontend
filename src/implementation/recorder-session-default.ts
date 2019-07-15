@@ -11,7 +11,7 @@ import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
-import { OriginalLiteralValueEntry, IRecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
+import { OriginalLiteralValueEntry, RecorderSession as RecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
 import { RecorderManager } from '../api/recorder-manager';
@@ -30,7 +30,7 @@ declare type prptype = any;
 /**
  * Contract
  */
-export interface IRecorderSessionImplementor extends IRecorderSession {
+export interface RecorderSessionImplementor extends RecorderSession {
     /** Framework internal use. */
     isOnRestoreEntireStateFromLiteral(): boolean;
     /** Framework internal use. */
@@ -117,7 +117,7 @@ export interface IRecorderSessionImplementor extends IRecorderSession {
             };
 }
 
-export class RecorderSessionDefault implements IRecorderSessionImplementor {
+export class RecorderSessionDefault implements RecorderSessionImplementor {
     private _objectsBySignature: Map<string, any> = null;
     private _objectsByCreationId: Map<number, any> = null;
     private _lazyrefsByEntityMap: Map<object, Set<LazyRefImplementor<any, any>>> = null;
@@ -324,7 +324,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                         || originalLiteralValueEntry.method === 'newEntityInstance') {
                     let jsType: TypeLike<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
                     if (!jsType) {
-                        throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'JsonPlayback.clazz\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                        throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'RecorderDecorators.playerType\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                     }
                     if (originalLiteralValueEntry.method === 'processResultEntity') {
                         lazyRefProcessResponseArr.push(thisLocal.processPlayerSnapshot(jsType, originalLiteralValueEntry.playerSnapshot));
@@ -886,9 +886,9 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         if (!playerSnapshot.wrappedSnapshot) {
             throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
-        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
-        if (!clazzOptions) {
-            throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        if (!playerTypeOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
 
         let allMD = this.resolveMetadatas({literalObject: playerSnapshot.wrappedSnapshot});
@@ -899,7 +899,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                 this.storeOriginalLiteralEntry(
                     {
                         method: 'processResultEntity',
-                        reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                        reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByPlayerTypeMetadataKey(playerTypeOptions, entityType),
                         playerSnapshot: playerSnapshot
                     });
             }
@@ -940,15 +940,15 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         if (!playerSnapshot.wrappedSnapshot) {
             throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
-        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
-        if (!clazzOptions) {
-            throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        if (!playerTypeOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             this.storeOriginalLiteralEntry(
                 {
                     method: 'processResultEntityArray',
-                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByPlayerTypeMetadataKey(playerTypeOptions, entityType),
                     playerSnapshot: playerSnapshot
                 });
         }
@@ -1067,15 +1067,15 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         }
 
         this._objectsByCreationId.set(creationId, entityObj);
-        let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
-        if (!clazzOptions) {
-            throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        if (!playerTypeOptions) {
+            throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
         if (!this.isOnRestoreEntireStateFromLiteral()) {    
             this.storeOriginalLiteralEntry(
                 {
                     method: 'newEntityInstance',
-                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
+                    reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByPlayerTypeMetadataKey(playerTypeOptions, entityType),
                     ref: {
                         creationId: creationId,
                         iAmAnEntityRef: true
@@ -1092,11 +1092,11 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
             action.fieldName = null;
             action.actionType = TapeActionType.Create;
             
-            let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
-            if (!clazzOptions) {
-                throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
+            let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+            if (!playerTypeOptions) {
+                throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
             }
-            action.ownerPlayerType = clazzOptions.javaClass;
+            action.ownerPlayerType = playerTypeOptions.playerType;
             action.ownerCreationId = this._nextCreationId;
             this.addTapeAction(action);
         }
@@ -1182,7 +1182,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: IRecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
             throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
@@ -1217,7 +1217,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: IRecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {

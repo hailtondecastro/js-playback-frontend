@@ -8,13 +8,12 @@ export enum TapeActionType {
 }
 
 export interface TapeAction {
-    ownerPlayerType: string;
     ownerSignatureStr?: string;
     ownerCreationId?: number;
     ownerCreationRefId?: number;
     settedSignatureStr?: string;
     settedCreationRefId?: number;
-    ownerJavaClass?: string;
+    ownerPlayerType?: string;
     actionType?: TapeActionType;
     fieldName?: string;
     simpleSettedValue?: any;

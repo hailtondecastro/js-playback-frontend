@@ -1,5 +1,5 @@
 import { RecorderConfig, ConsoleLike, RecorderLogLevel, RecorderLogger } from "./recorder-config";
-import { IRecorderSession } from "./session";
+import { RecorderSession } from "./session";
 import { LazyObservableProvider } from "./lazy-observable-provider";
 
 /**
@@ -13,7 +13,7 @@ export interface IRecorderManager {
 	/**
 	 * Creates a new session.
 	 */
-	createSession(): IRecorderSession;
+	createSession(): RecorderSession;
 	/**
 	 * Adapter for your application.
 	 */

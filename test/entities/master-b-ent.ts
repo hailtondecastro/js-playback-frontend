@@ -4,7 +4,7 @@ import { GenericNodeNotNow } from '../../src/api/generic-tokenizer';
 import { GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { LazyRef, LazyRefOTM } from '../../src/api/lazy-ref';
 
-@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
+@RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
 export class MasterBCompComp {
 
     /**
@@ -27,7 +27,7 @@ export class MasterBCompComp {
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
 }
 
-@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBComp' })
+@RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBComp' })
 export class MasterBComp {
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
     private _masterBCompComp: MasterBCompComp;
@@ -69,7 +69,7 @@ export class MasterBComp {
 
 }
 
-@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBCompId' })
+@RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompId' })
 export class MasterBCompId {
     private _idA: number;
     private _idB: number;
@@ -111,7 +111,7 @@ export class MasterBCompId {
     
 }
 
-@RecorderDecorators.clazz({ javaClass: 'org.jsonplayback.player.hibernate.entities.MasterBEnt' })
+@RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBEnt' })
 export class MasterBEnt {
     private _compId: MasterBCompId;
     private _vcharA: string;

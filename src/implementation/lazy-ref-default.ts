@@ -1,5 +1,4 @@
-import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction } from 'rxjs';
-import { PartialObserver } from 'rxjs/Observer';
+import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction, PartialObserver } from 'rxjs';
 import { RecorderLogLevel, ConsoleLike } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap, map, finalize } from 'rxjs/operators';
@@ -14,9 +13,9 @@ import { ResponseLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { GenericNode } from '../api/generic-tokenizer';
-import { IRecorderSession, OriginalLiteralValueEntry, PlayerSnapshot } from '../api/session';
+import { RecorderSession, OriginalLiteralValueEntry, PlayerSnapshot } from '../api/session';
 import { IFieldProcessorEvents } from '../api/field-processor';
-import { IRecorderSessionImplementor } from './recorder-session-default';
+import { RecorderSessionImplementor } from './recorder-session-default';
 import { RecorderLogger } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
@@ -87,7 +86,7 @@ export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStre
 //  * 
 //  * Do not use this as the field type, use {@link LazyRefMTO} or {@link LazyRefOTM}.
 //  * Use this as 'interface like' to do your own implementation if you need! 
-//  * See {@link IRecorderSession#createApropriatedLazyRef}
+//  * See {@link RecorderSession#createApropriatedLazyRef}
 //  * 
 //  * Code sample:
 //  * ```ts
@@ -143,7 +142,7 @@ export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStre
 //      * that all other subscriptions (pipe async's for example) are called.
 //      * so it does not return Subscription, after all it does not subscribe permanently
 //      * on the observer's list.  
-//      * Call {@link IRecorderSession#notifyAllLazyrefsAboutEntityModification} after modification and {@link Subscription#unsubscribe}.
+//      * Call {@link RecorderSession#notifyAllLazyrefsAboutEntityModification} after modification and {@link Subscription#unsubscribe}.
 //      * @param observerOrNext
 //      * @param error
 //      * @param complete
@@ -199,11 +198,11 @@ export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStre
 // 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
 //     }
 //     /** Framework internal use. */
-// 	public get session(): IRecorderSession {
+// 	public get session(): RecorderSession {
 // 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
 //     }
 //     /** Framework internal use. */
-// 	public set session(value: IRecorderSession) {
+// 	public set session(value: RecorderSession) {
 // 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
 //     }
 //     /** Framework internal use. */
@@ -285,11 +284,11 @@ export class LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-	public get session(): IRecorderSession {
+	public get session(): RecorderSession {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-	public set session(value: IRecorderSession) {
+	public set session(value: RecorderSession) {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
@@ -355,9 +354,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     private _respObs: Observable<ResponseLike<Object>>;
     private _refererObj: any;
     private _refererKey: string;
-    private _session: IRecorderSessionImplementor;
+    private _session: RecorderSessionImplementor;
 
-    constructor(session: IRecorderSessionImplementor) {
+    constructor(session: RecorderSessionImplementor) {
         super();
         const thisLocal = this;
         this._session = session;
@@ -1381,10 +1380,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 	public set refererKey(value: string) {
 		this._refererKey = value;
     }
-	public get session(): IRecorderSessionImplementor {
+	public get session(): RecorderSessionImplementor {
 		return this._session;
 	}
-	public set session(value: IRecorderSessionImplementor) {
+	public set session(value: RecorderSessionImplementor) {
 		this._session = value;
     }
     public get genericNode(): GenericNode {

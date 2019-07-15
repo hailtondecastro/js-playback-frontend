@@ -4,7 +4,7 @@ import { RecorderContants } from './recorder-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { TypeLike } from '../typeslike';
-import { IRecorderSession } from '../api/session';
+import { RecorderSession } from '../api/session';
 import { LazyObservableProvider } from '../api/lazy-observable-provider';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
@@ -35,7 +35,7 @@ export class RecorderManagerDefault implements RecorderManager {
 		}
 	}	
 	
-	public createSession(): IRecorderSession {
+	public createSession(): RecorderSession {
 		const thisLocal = this;
 		let result = new RecorderSessionDefault(this);
 		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {

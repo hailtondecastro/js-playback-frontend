@@ -5,17 +5,15 @@ import { Observable, of, from } from 'rxjs';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
-import { ReadLine } from 'readline';
 import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
-import { IRecorderSession } from '../api/session';
-import { IRecorderSessionImplementor } from './recorder-session-default';
 import { TypeLike } from '../typeslike-dev';
 import { LazyRef, StringStream, StringStreamMarker } from '../api/lazy-ref';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
+import { RecorderSessionImplementor } from './recorder-session-default';
 
 export namespace RecorderDecoratorsInternal {
     /**
@@ -72,7 +70,7 @@ export namespace RecorderDecoratorsInternal {
             Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                let session: IRecorderSessionImplementor = lodashGet(this, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSessionImplementor;
+                let session: RecorderSessionImplementor = lodashGet(this, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
                 const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.RecorderDecorators)
                 let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
                 if (fieldEtc.propertyOptions.persistent) {
@@ -242,16 +240,16 @@ export namespace RecorderDecoratorsInternal {
      * Sample:
      * ```ts
      * ...
-     * @JsonPlayback.clazz({javaClass: 'org.mypackage.MyPersistentEntity'})
+     * @JsonPlayback.playerType({playerType: 'org.mypackage.MyPersistentEntity'})
      * export class MyPersistentEntityJs {
      * ...
      * ```
      */
-    export function clazz<T>(options: RecorderDecorators.clazzOptions): ClassDecorator {
+    export function playerType<T>(options: RecorderDecorators.playerTypeOptions): ClassDecorator {
         return function<T> (target: T): T | void {
-            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, options, target);
+            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, options, target);
             Reflect.defineMetadata(
-                mountContructorByJavaClassMetadataKey(options, target as any as TypeLike<any>),
+                mountContructorByPlayerTypeMetadataKey(options, target as any as TypeLike<any>),
                 target,
                 Function);
         }
@@ -260,11 +258,11 @@ export namespace RecorderDecoratorsInternal {
     /**
      * Internal use only! It is no a decorator!
      */
-    export function mountContructorByJavaClassMetadataKey(options: RecorderDecorators.clazzOptions, entityType: TypeLike<any>): string {
-        return RecorderContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_JAVA_CLASS_PREFIX +
+    export function mountContructorByPlayerTypeMetadataKey(options: RecorderDecorators.playerTypeOptions, entityType: TypeLike<any>): string {
+        return RecorderContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_PLAYER_TYPE_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +
-            ':' + options.javaClass;
+            ':' + options.playerType;
     }
 
     export const BufferProcessor: IFieldProcessor<Buffer> = {

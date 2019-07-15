@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
 import { ResponseLike } from '../src/typeslike';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
-import { IRecorderSession } from '../src/api/session.js';
+import { RecorderSession } from '../src/api/session.js';
 import { RecorderConfigDefault } from '../src/implementation/recorder-config-default.js';
 import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config.js';
 import { RecorderDecorators } from '../src/api/recorder-decorators';
@@ -319,7 +319,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
         it('master-a-test-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: IRecorderSession;
+            let jsHbSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
@@ -475,7 +475,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
         it('master-a-test-sync', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: IRecorderSession;
+            let jsHbSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
@@ -633,7 +633,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
         it('master-a-detail-a-test-sync', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-            let jsHbSession: IRecorderSession;
+            let jsHbSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
@@ -804,7 +804,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
         it('master-lazy-prp-over-sized-test-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
-            let jsHbSession: IRecorderSession;
+            let jsHbSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)

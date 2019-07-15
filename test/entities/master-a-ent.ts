@@ -5,7 +5,7 @@ import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-token
 import { Stream } from 'stream';
 import { ReadLine } from 'readline';
 
-@RecorderDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
+@RecorderDecorators.playerType({playerType: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
 export class MasterAEnt {
     private _id: number;
     private _vcharA: string;

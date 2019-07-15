@@ -35,7 +35,7 @@ export interface SessionState {
 /**
  * Contract
  */
-export interface IRecorderSession {
+export interface RecorderSession {
     /**
      * Manager.
      */
