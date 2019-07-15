@@ -11,7 +11,7 @@ import * as memStreams from 'memory-streams';
 import { ForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
-import { HttpResponseLike } from '../src/typeslike';
+import { ResponseLike } from '../src/typeslike';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
 import { IRecorderSession } from '../src/api/session.js';
 import { ConfigDefault } from '../src/implementation/js-hb-config.js';
@@ -408,14 +408,14 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
-                    generateHttpObservable: (signature, info) => {
-                        let responseResult: HttpResponseLike<Object> = {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
-                    generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: HttpResponseLike<Stream> = {
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -435,7 +435,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processPlayerSnapshot(MasterAEnt, resultMasterLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -564,14 +564,14 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
-                    generateHttpObservable: (signature, info) => {
-                        let responseResult: HttpResponseLike<Object> = {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
-                    generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: HttpResponseLike<Stream> = {
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -591,7 +591,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processPlayerSnapshot(MasterAEnt, resultMasterLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -722,14 +722,14 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
-                    generateHttpObservable: (signature, info) => {
-                        let responseResult: HttpResponseLike<Object> = {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
-                    generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: HttpResponseLike<Stream> = {
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<Stream> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
@@ -749,7 +749,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             }
 
             jsHbSession = jsHbManager.createSession();
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterADetailATestLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processPlayerSnapshot(MasterAEnt, resultMasterADetailATestLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {
@@ -780,9 +780,9 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                             let detailAEntArr = Array.from(coll);
                             for (let index = 0; index < detailAEntArr.length; index++) {
                                 const detailAItem = detailAEntArr[index];
-                                chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharA)
+                                chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharA)
                                     .to.eq(detailAItem.detailAComp.vcharA);
-                                chai.expect(resultMasterADetailATestLiteral.result.detailAEntCol[index].detailAComp.vcharB)
+                                chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharB)
                                     .to.eq(detailAItem.detailAComp.vcharB);
                                 chai.expect(masterA)
                                     .to.eq(detailAItem.compId.masterA);
@@ -820,14 +820,14 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let jsHbManager: IRecorderManager = new RecorderManagerDefault(
                 config, 
                 {
-                    generateHttpObservable: (signature, info) => {
-                        let responseResult: HttpResponseLike<Object> = {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
                             body: null
                         }
                         return of(responseResult).pipe(delay(10));
                     },
-                    generateHttpObservableForDirectRaw: (signature, info) => {
-                        let responseResult: HttpResponseLike<Stream> = {
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<Stream> = {
                             body: null
                         }
                         if (info.fieldName === 'blobLazyA') {
@@ -926,7 +926,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let masterA$: Observable<MasterAEnt> = jsHbSession.processResultEntity(MasterAEnt, resultMasterLazyPrpOverSizedLiteral);
+            let masterA$: Observable<MasterAEnt> = jsHbSession.processPlayerSnapshot(MasterAEnt, resultMasterLazyPrpOverSizedLiteral);
             masterA$.subscribe(
                 {
                     next: (masterA) => {

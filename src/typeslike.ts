@@ -1,11 +1,11 @@
 import { HttpHeaders, HttpResponse } from "@angular/common/http";
 import { Type } from "@angular/core";
 
-export declare class HttpHeadersLike extends HttpHeaders {
+export declare class HeadersLike extends HttpHeaders {
 }
-export interface HttpResponseLike<T> {
+export interface ResponseLike<T> {
 	body: T | null;
-	headers?: HttpHeadersLike;
+	headers?: HeadersLike;
 }
 
 export const TypeLike = Type;

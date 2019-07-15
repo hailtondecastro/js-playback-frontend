@@ -1,13 +1,17 @@
-export declare interface HttpHeadersLike {
+export declare interface HeadersLike {
+    has(name: string): boolean;
+    get(name: string): string | null;
+    keys(): string[];
+    getAll(name: string): string[] | null;
 }
 
-export interface HttpResponseLike<T> {
+export interface ResponseLike<T> {
 	body: T | null;
-	headers?: HttpHeadersLike;
+	headers?: HeadersLike;
 }
-export interface HttpResponseLike<T> {
+export interface ResponseLike<T> {
 	body: T | null;
-	headers?: HttpHeadersLike;
+	headers?: HeadersLike;
 }
 
 export const TypeLike = Function;

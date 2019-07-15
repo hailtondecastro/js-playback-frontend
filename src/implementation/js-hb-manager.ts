@@ -5,7 +5,7 @@ import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { TypeLike } from '../typeslike';
 import { IRecorderSession } from '../api/session';
-import { IHttpResponseLazyObservableGen } from '../api/js-hb-http-lazy-observable-gen';
+import { LazyObservableProvider } from '../api/lazy-observable-provider';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
@@ -18,7 +18,7 @@ export class RecorderManagerDefault implements IRecorderManager {
 	private consoleLikeMerge: ConsoleLike;
     constructor(
 			private _jsHbConfig: IConfig,
-			private _httpLazyObservableGen: IHttpResponseLazyObservableGen) {
+			private _httpLazyObservableGen: LazyObservableProvider) {
 		const thisLocal = this;
 		if (!this._httpLazyObservableGen) {
 			throw new Error('_httpLazyObservableGen can not be null');
@@ -46,11 +46,11 @@ export class RecorderManagerDefault implements IRecorderManager {
 		return result;
 	}
 
-	public get httpLazyObservableGen(): IHttpResponseLazyObservableGen {
+	public get httpLazyObservableGen(): LazyObservableProvider {
 		return this._httpLazyObservableGen;
 	}
 
-	public set httpLazyObservableProvider(value: IHttpResponseLazyObservableGen) {
+	public set httpLazyObservableProvider(value: LazyObservableProvider) {
 		this._httpLazyObservableGen = value;
 	}
 

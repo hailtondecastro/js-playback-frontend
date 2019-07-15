@@ -1,6 +1,6 @@
 import { IConfig, ConsoleLike, RecorderLogLevel, RecorderLogger } from "./config";
 import { IRecorderSession } from "./session";
-import { IHttpResponseLazyObservableGen } from "./js-hb-http-lazy-observable-gen";
+import { LazyObservableProvider } from "./lazy-observable-provider";
 
 /**
  * Contract.
@@ -17,5 +17,5 @@ export interface IRecorderManager {
 	/**
 	 * Adapter for your application.
 	 */
-	httpLazyObservableGen: IHttpResponseLazyObservableGen;
+	httpLazyObservableGen: LazyObservableProvider;
 }

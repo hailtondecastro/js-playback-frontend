@@ -13,13 +13,13 @@ import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
-import { OriginalLiteralValueEntry, IRecorderSession, EntityRef, SessionState } from '../api/session';
+import { OriginalLiteralValueEntry, IRecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
 import { IRecorderManager } from '../api/manager';
 import { GenericNode } from '../api/generic-tokenizer';
 import { GenericTokenizer } from '../api/generic-tokenizer';
-import { LazyInfo } from '../api/js-hb-http-lazy-observable-gen';
+import { LazyInfo } from '../api/lazy-observable-provider';
 import { LazyRefImplementor, LazyRefDefault } from './js-hb-lazy-ref';
 import { RecorderDecorators } from '../api/decorators';
 import { RecorderDecoratorsInternal } from './js-hb-decorators';
@@ -54,17 +54,17 @@ export interface IRecorderSessionImplementor extends IRecorderSession {
         tryOptions:
             {
                 realInstance: any,
-                literalResult: {result: any},
+                playerSnapshot: PlayerSnapshot,
                 lazySignature?: string
             }): void;
     /**
      * Framework internal use.
      */
-    processResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L>;
+    processWrappedSnapshotFieldInternal<L>(entityType: TypeLike<L>, wrappedSnapshotField: any): Observable<L>;
     /**
      * Framework internal use. Used exclusively in lazy load.
      */
-    processResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void>;
+    processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, wrappedSnapshotField: any[]): Observable<void>;
     /** Framework internal use.  Collection utility. */
     createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any;
     /** Framework internal use.  Collection utility. */
@@ -327,9 +327,9 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                         throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'JsonPlayback.clazz\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                     }
                     if (originalLiteralValueEntry.method === 'processResultEntity') {
-                        lazyRefProcessResponseArr.push(thisLocal.processResultEntity(jsType, originalLiteralValueEntry.literalResult));
+                        lazyRefProcessResponseArr.push(thisLocal.processPlayerSnapshot(jsType, originalLiteralValueEntry.playerSnapshot));
                     } else if (originalLiteralValueEntry.method === 'processResultEntityArray') {
-                        lazyRefProcessResponseArr.push(thisLocal.processResultEntityArray(jsType, originalLiteralValueEntry.literalResult));
+                        lazyRefProcessResponseArr.push(thisLocal.processPlayerSnapshotArray(jsType, originalLiteralValueEntry.playerSnapshot));
                     } else if (originalLiteralValueEntry.method === 'newEntityInstance') {
                         lazyRefProcessResponseArr.push(thisLocal.newEntityInstanceWithCreationId(jsType, originalLiteralValueEntry.ref.creationId));
                     } else {
@@ -353,7 +353,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                             throw new Error(originalLiteralValueEntry.ownerFieldName + ' is not a LazyRef for ' + ownerEnt);    
                         }
                         lazyRefProcessResponseArr.push(
-                            lazyRef.processResponse({ body: originalLiteralValueEntry.literalResult })
+                            lazyRef.processResponse({ body: originalLiteralValueEntry.playerSnapshot })
                         );
                     } else {
                         if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
@@ -879,19 +879,19 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         this._jsHbManager = value;
     }
 
-    public processResultEntity<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<L> {
+    public processPlayerSnapshot<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<L> {
         const thisLocal = this;
         let result$: Observable<L>;
 
-        if (!literalResult.result) {
-            throw new Error('literalResult.result existe' + JSON.stringify(literalResult));
+        if (!playerSnapshot.wrappedSnapshot) {
+            throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
         let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
         if (!clazzOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'JsonPlayback.clazz\'');
         }
 
-        let allMD = this.resolveMetadatas({literalObject: literalResult.result});
+        let allMD = this.resolveMetadatas({literalObject: playerSnapshot.wrappedSnapshot});
         let bMd = allMD.objectMd;
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
@@ -900,17 +900,17 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                     {
                         method: 'processResultEntity',
                         reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
-                        literalResult: literalResult
+                        playerSnapshot: playerSnapshot
                     });
             }
         }
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntity<L>()');
-            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalResult);
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(playerSnapshot);
             thisLocal.consoleLike.groupEnd();
         }
         let refMap: Map<Number, any> = new Map<Number, any>();
-        result$ = this.processResultEntityPriv(entityType, literalResult.result, refMap);
+        result$ = this.processResultEntityPriv(entityType, playerSnapshot.wrappedSnapshot, refMap);
         result$.pipe(
             map((resultL) => {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -935,10 +935,10 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         }
     }
 
-    public processResultEntityArray<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<Array<L>> {
+    public processPlayerSnapshotArray<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<Array<L>> {
         const thisLocal = this;
-        if (!literalResult.result) {
-            throw new Error('literalResult.result existe' + JSON.stringify(literalResult));
+        if (!playerSnapshot.wrappedSnapshot) {
+            throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
         let clazzOptions: RecorderDecorators.clazzOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_JAVA_CLASS, entityType);
         if (!clazzOptions) {
@@ -949,7 +949,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                 {
                     method: 'processResultEntityArray',
                     reflectFunctionMetadataTypeKey: RecorderDecoratorsInternal.mountContructorByJavaClassMetadataKey(clazzOptions, entityType),
-                    literalResult: literalResult
+                    playerSnapshot: playerSnapshot
                 });
         }
 
@@ -957,15 +957,15 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         let refMap: Map<Number, any> = new Map<Number, any>();
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>()');
-            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(literalResult);
+            thisLocal.consoleLike.debug(entityType); thisLocal.consoleLike.debug(playerSnapshot);
             thisLocal.consoleLike.groupEnd();
         }
-        for (let index = 0; index < literalResult.result.length; index++) {
-            const resultElement = literalResult.result[index];
+        for (let index = 0; index < (playerSnapshot.wrappedSnapshot as any[]).length; index++) {
+            const resultElement = (playerSnapshot.wrappedSnapshot as any[])[index];
             resultObsArr.push(this.processResultEntityPriv(entityType, resultElement, refMap));
         }
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-            thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>(). result:');
+            thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>(). wrappedSnapshot:');
             thisLocal.consoleLike.debug(resultObsArr);
             thisLocal.consoleLike.groupEnd();
         }
@@ -1513,12 +1513,12 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         }
     }
 
-    public processResultEntityArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, literalResultField: any[]): Observable<void> {
+    public processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, snapshotField: any[]): Observable<void> {
         let thisLocal = this;
         let refMap: Map<Number, any> = new Map();
 
         let realItemObsArr: Observable<L>[] = []
-        for (const literalItem of literalResultField) {                               
+        for (const literalItem of snapshotField) {                               
             let realItem$: Observable<L> = this.processResultEntityPriv(entityType, literalItem, refMap);
             realItemObsArr.push(realItem$);
         }
@@ -1547,9 +1547,9 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         }
     }
 
-    public processResultEntityInternal<L>(entityType: TypeLike<L>, literalResultField: any): Observable<L> {
+    public processWrappedSnapshotFieldInternal<L>(entityType: TypeLike<L>, snapshotField: any): Observable<L> {
         let refMap: Map<Number, any> = new Map();
-        let result$ = this.processResultEntityPriv(entityType, literalResultField, refMap);
+        let result$ = this.processResultEntityPriv(entityType, snapshotField, refMap);
 
         const isSynchronouslyDone = { value: false, result: null as L};
         result$.subscribe((result)=>{
@@ -1564,12 +1564,12 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         }
     }
 
-    private processResultEntityPriv<L>(entityType: TypeLike<L>, literalResultField: any, refMap: Map<Number, any>): Observable<L> {
+    private processResultEntityPriv<L>(entityType: TypeLike<L>, snapshotField: any, refMap: Map<Number, any>): Observable<L> {
         const thisLocal = this;
-        if (!literalResultField) {
-            throw new Error('literalResultField can not be null');
+        if (!snapshotField) {
+            throw new Error('snapshotField can not be null');
         }
-        let allMD = this.resolveMetadatas({literalObject: literalResultField, })
+        let allMD = this.resolveMetadatas({literalObject: snapshotField, })
         let bMd = allMD.objectMd;
         let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
 
@@ -1586,7 +1586,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
             lodashSet(entityValue as any, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
-            this.removeNonUsedKeysFromLiteral(entityValue as any, literalResultField);
+            this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
 
             if (bMd.$id$) {
                 refMap.set(bMd.$id$, entityValue);
@@ -1598,10 +1598,10 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
                 this.tryCacheInstanceBySignature(
                     {
                         realInstance: entityValue, 
-                        literalResult: literalResultField
+                        playerSnapshot: { wrappedSnapshot: snapshotField }
                     }
                 );
-                lodashMergeWith(entityValue as any, literalResultField, this.mergeWithCustomizerPropertyReplection(refMap));
+                lodashMergeWith(entityValue as any, snapshotField, this.mergeWithCustomizerPropertyReplection(refMap));
             });
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1774,16 +1774,16 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
             tryOptions:
                 {
                     realInstance: any,
-                    literalResult: {result: any},
+                    playerSnapshot: PlayerSnapshot,
                     lazySignature?: string
                 }): void {
         if (!tryOptions){
             throw new Error('tryOptions nao pode ser nula');
         }
-        if (!tryOptions.literalResult){
-            throw new Error('tryOptions.literalResult nao pode ser nula');
+        if (!tryOptions.playerSnapshot){
+            throw new Error('tryOptions.playerSnapshot nao pode ser nula');
         }
-        let allMD = this.resolveMetadatas({literalObject: tryOptions.literalResult});
+        let allMD = this.resolveMetadatas({literalObject: tryOptions.playerSnapshot});
         let bMd = allMD.objectMd;
         if (bMd.$signature$) {
             this._objectsBySignature.set(bMd.$signature$, tryOptions.realInstance);
@@ -1826,20 +1826,20 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
             }
             
             if (!propertyOptions.lazyDirectRawRead) {
-                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(lr.signatureStr, lazyInfo)
+                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservable(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );
             } else {
-                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservableForDirectRaw(lr.signatureStr, lazyInfo)
+                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateHttpObservableForDirectRaw(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );

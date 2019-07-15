@@ -11,11 +11,11 @@ import { request } from 'http';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
 import { TypeLike } from '../typeslike';
-import { HttpResponseLike } from '../typeslike';
+import { ResponseLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { GenericNode } from '../api/generic-tokenizer';
-import { IRecorderSession, OriginalLiteralValueEntry } from '../api/session';
+import { IRecorderSession, OriginalLiteralValueEntry, PlayerSnapshot } from '../api/session';
 import { IFieldProcessorEvents } from '../api/field-processor';
 import { IRecorderSessionImplementor } from './js-hb-session';
 import { RecorderLogger } from '../api/config';
@@ -296,11 +296,11 @@ export class LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-    public get respObs(): Observable<HttpResponseLike<Object>> {
+    public get respObs(): Observable<ResponseLike<Object>> {
         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
-    public set respObs(value: Observable<HttpResponseLike<Object>>) {
+    public set respObs(value: Observable<ResponseLike<Object>>) {
         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
     }
     /** Framework internal use. */
@@ -351,7 +351,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     private _lazyLoadedObj: L;
     private _genericNode: GenericNode;
     private _signatureStr: string;
-    private _respObs: Observable<HttpResponseLike<Object>>;
+    private _respObs: Observable<ResponseLike<Object>>;
     private _refererObj: any;
     private _refererKey: string;
     private _session: IRecorderSessionImplementor;
@@ -894,7 +894,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     public processResponse(responselike: { body: any }): Observable<L> {
         const thisLocal = this;
         let lazyLoadedObj$: Observable<L>;
-        let literalResult: {result: any};
+        let playerSnapshot: PlayerSnapshot;
         let isLazyRefOfCollection = false;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
         if (lodashHas(this.refererObj, this.session.jsHbManager.config.jsHbMetadatasName)) {
@@ -907,7 +907,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
         let isResponseBodyStream = (responselike.body as Stream).pipe && (responselike.body as Stream);
         if (this.lazyLoadedObj == null) {
-            literalResult = responselike.body;
+            playerSnapshot = responselike.body;
             if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef.lazyLoadedObj is not setted yet: Me:\n' + this);
             }
@@ -935,7 +935,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
                 lodashSet(lazyLoadedColl, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
-                    let processResultEntityArrayInternal$ = this.session.processResultEntityArrayInternal(collTypeParam, lazyLoadedColl, literalResult.result);
+                    let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, playerSnapshot.wrappedSnapshot as any[]);
                     lazyLoadedObj$ = processResultEntityArrayInternal$
                         .pipe(
                             thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, () => {
@@ -1063,7 +1063,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
                                     mdRefererObj,
                                     fieldEtc,
-                                    literalResult);
+                                    playerSnapshot);
                                 return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
                                     .pipe(
                                         map( () => {
@@ -1086,7 +1086,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
-                let processedEntity = this.session.processResultEntityInternal(fieldEtc.lazyLoadedObjType, literalResult.result)
+                let processedEntity = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, playerSnapshot.wrappedSnapshot)
                 lazyLoadedObj$ = 
                     this.setLazyObjOnLazyLoadingNoNext(processedEntity as L)
                         .pipe(
@@ -1118,7 +1118,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
-                        literalResult: literalResult,
+                        playerSnapshot: playerSnapshot,
                         ref: {
                             iAmAnEntityRef: true,
                             signatureStr: thisLocal.signatureStr
@@ -1135,7 +1135,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 this.session.tryCacheInstanceBySignature(
                     {
                         realInstance: this.lazyLoadedObj,
-                        literalResult: literalResult,
+                        playerSnapshot: playerSnapshot,
                         lazySignature: this.signatureStr
                     }
                 );
@@ -1195,7 +1195,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         }
     }
 
-    private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: PlayerMetadatas, fieldEtc: FieldEtc<L, any>, literalResult: any): void {
+    private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: PlayerMetadatas, fieldEtc: FieldEtc<L, any>, playerSnapshot: PlayerSnapshot): void {
         const thisLocal = this;
         if (!this.session.isOnRestoreEntireStateFromLiteral()) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1220,7 +1220,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
-                        literalResult: literalResult,
+                        playerSnapshot: playerSnapshot,
                         ref: {
                             iAmAnEntityRef: true,
                             signatureStr: thisLocal.signatureStr
@@ -1238,7 +1238,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             this.session.tryCacheInstanceBySignature(
                 {
                     realInstance: this.lazyLoadedObj,
-                    literalResult: literalResult,
+                    playerSnapshot: playerSnapshot,
                     lazySignature: this.signatureStr
                 }
             );
@@ -1348,10 +1348,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     public set signatureStr(value: string) {
         this._signatureStr = value;
     }
-    public get respObs(): Observable<HttpResponseLike<Object>> {
+    public get respObs(): Observable<ResponseLike<Object>> {
         return this._respObs;
     }
-    public set respObs(value: Observable<HttpResponseLike<Object>>) {
+    public set respObs(value: Observable<ResponseLike<Object>>) {
         this._respObs = value;
     }
 
@@ -1361,7 +1361,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     public get fieldProcessorEvents(): IFieldProcessorEvents<L> {
         return this._fieldProcessorEvents;
     }
-    private createFlatMapCallback(): (response: HttpResponseLike<L>) => Observable<L> {
+    private createFlatMapCallback(): (response: ResponseLike<L>) => Observable<L> {
         const thisLocal = this;
         return (response) => {
             return this.processResponseOnLazyLoading(response);

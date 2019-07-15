@@ -4,6 +4,9 @@ import { Observable } from "rxjs";
 import { Stream } from "stream";
 import { ITape } from "./tape";
 
+export interface PlayerSnapshot {
+    wrappedSnapshot: any[] | {};
+}
 
 export interface EntityRef {
     iAmAnEntityRef: true;
@@ -16,7 +19,7 @@ export interface OriginalLiteralValueEntry {
     reflectFunctionMetadataTypeKey?: string;
     ownerSignatureStr?: string;
     ownerFieldName?: string;
-    literalResult?: {result: any};
+    playerSnapshot?: PlayerSnapshot;
     attachRefId?: string;
     ref?: EntityRef;
 }
@@ -39,24 +42,24 @@ export interface IRecorderSession {
     jsHbManager: IRecorderManager;
     /**
      * Process the response body literal object getted from backend.  
-     * Body format: { result: any }.  
+     * Body format: PlayerSnapshot.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the L instance.  
      * it call {@link #storeOriginalLiteralEntry)} for a future {@link this#restoreEntireStateFromLiteral}.  
      * @param entityType - TypeLike<L>
-     * @param literalResult a literal object with format { result: any }
+     * @param playerSnapshot a literal object with format PlayerSnapshot
      */
-    processResultEntity<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<L>;
+    processPlayerSnapshot<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<L>;
     /**
      * Process the response body literal for each object getted from backend.  
-     * Body format: \{ result: Array<any> \}.  
+     * Body format: PlayerSnapshot.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the L instance.  
      * It call {@link this#storeOriginalLiteralEntry} for a future {@link this#restoreEntireStateFromLiteral}.  
      *
      * @param entityType - TypeLike<L>
-     * @param literalResult - \{result: any\}
+     * @param playerSnapshot - PlayerSnapshot
      * @returns Array<L>
      */
-    processResultEntityArray<L>(entityType: TypeLike<L>, literalResult: {result: any}): Observable<Array<L>>;
+    processPlayerSnapshotArray<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<Array<L>>;
     /**
      * Generate a managed instance for type T.  
      * Creates all the {@link ./lazy-ref#LazyRef} and {@link ./lazy-ref#LazyRefOTM} for the T instance.

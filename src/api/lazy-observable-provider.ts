@@ -1,5 +1,5 @@
 import { Observable } from "rxjs";
-import { HttpResponseLike } from "../typeslike";
+import { ResponseLike } from "../typeslike";
 import { Stream } from "stream";
 import { TypeLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
@@ -14,7 +14,7 @@ export interface LazyInfo<L> {
 	fieldName: string
 }
 
-export interface IHttpResponseLazyObservableGen {
-	generateHttpObservable(signatureStr: string, info: LazyInfo<any>): Observable<HttpResponseLike<Object>>;
-	generateHttpObservableForDirectRaw(signatureStr: string, info: LazyInfo<any>): Observable<HttpResponseLike<Stream | any>>;
+export interface LazyObservableProvider {
+	generateObservable(signatureStr: string, info: LazyInfo<any>): Observable<ResponseLike<Object>>;
+	generateObservableForDirectRaw(signatureStr: string, info: LazyInfo<any>): Observable<ResponseLike<Stream | any>>;
 }

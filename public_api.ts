@@ -2,7 +2,7 @@ export * from './src/api/config';
 export * from './src/api/decorators';
 export * from './src/api/field-processor';
 export * from './src/api/generic-tokenizer';
-export * from './src/api/js-hb-http-lazy-observable-gen';
+export * from './src/api/lazy-observable-provider';
 export * from './src/api/lazy-ref';
 export * from './src/api/manager';
 export * from './src/api/player-metadatas';
