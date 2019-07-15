@@ -4,7 +4,7 @@ node_js:
 
 deploy:
   provider: script
-  script: "cp .npmrc.template .npmrc && npm publish /dist"
+  script: "cp TRAVIS_BUILD_DIR.npmrc.template .npmrc && npm publish dist"
   skip_cleanup: true
   on:
     tags: deploy
