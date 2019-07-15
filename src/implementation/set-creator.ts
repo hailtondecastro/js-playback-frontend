@@ -1,6 +1,6 @@
 import { TapeAction, TapeActionType } from '../api/tape';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
-import { RecorderContants } from './js-hb-constants';
+import { RecorderContants } from './recorder-constants';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { IRecorderSession } from '../api/session';
 import { IRecorderSessionImplementor } from './recorder-session-default';

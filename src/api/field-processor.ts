@@ -1,4 +1,3 @@
-import { GenericNode } from "./generic-tokenizer";
 import { Stream } from "stream";
 import { Observable } from "rxjs";
 import { FieldInfo } from "./recorder-config";

@@ -1,6 +1,6 @@
 import { RecorderConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/recorder-config';
 import { RecorderSessionDefault } from './recorder-session-default';
-import { RecorderContants } from './js-hb-constants';
+import { RecorderContants } from './recorder-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { TypeLike } from '../typeslike';

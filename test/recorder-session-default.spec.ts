@@ -17,7 +17,7 @@ import { IRecorderSession } from '../src/api/session.js';
 import { RecorderConfigDefault } from '../src/implementation/recorder-config-default.js';
 import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config.js';
 import { RecorderDecorators } from '../src/api/recorder-decorators';
-import { RecorderContants } from '../src/implementation/js-hb-constants.js';
+import { RecorderContants } from '../src/implementation/recorder-constants.js';
 import { StringStream } from '../src/implementation/lazy-ref-default.js';
 import { RecorderManager } from '../src/api/recorder-manager.js';
 import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default.js';

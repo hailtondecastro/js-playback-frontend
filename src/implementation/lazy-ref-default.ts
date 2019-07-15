@@ -3,7 +3,7 @@ import { PartialObserver } from 'rxjs/Observer';
 import { RecorderLogLevel, ConsoleLike } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap, map, finalize } from 'rxjs/operators';
-import { RecorderContants } from './js-hb-constants';
+import { RecorderContants } from './recorder-constants';
 import { Stream, Readable } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { request } from 'http';

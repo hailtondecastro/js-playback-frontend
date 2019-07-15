@@ -1,4 +1,4 @@
-import { RecorderContants } from './js-hb-constants';
+import { RecorderContants } from './recorder-constants';
 import { get as lodashGet, has } from 'lodash';
 import { Stream, Readable } from 'stream';
 import { Observable, of, from } from 'rxjs';
