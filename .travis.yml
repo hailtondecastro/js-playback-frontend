@@ -3,6 +3,7 @@ node_js:
   - "8"
 
 deploy:
+  provider: script
   script: "cp .npmrc.template $HOME/.npmrc && npm publish $HOME/dist"
   skip_cleanup: true
   on:
