@@ -14,13 +14,13 @@ import { delay, flatMap, map, catchError, timeout } from 'rxjs/operators';
 import { ResponseLike } from '../src/typeslike';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
 import { IRecorderSession } from '../src/api/session.js';
-import { ConfigDefault } from '../src/implementation/js-hb-config.js';
-import { IConfig, RecorderLogLevel, RecorderLogger } from '../src/api/config.js';
-import { RecorderDecorators } from '../src/api/decorators';
+import { RecorderConfigDefault } from '../src/implementation/recorder-config-default.js';
+import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config.js';
+import { RecorderDecorators } from '../src/api/recorder-decorators';
 import { RecorderContants } from '../src/implementation/js-hb-constants.js';
-import { StringStream } from '../src/implementation/js-hb-lazy-ref.js';
-import { IRecorderManager } from '../src/api/manager.js';
-import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
+import { StringStream } from '../src/implementation/lazy-ref-default.js';
+import { RecorderManager } from '../src/api/recorder-manager.js';
+import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default.js';
 
 {
     describe('RecorderManagerDefault', () => {
@@ -320,7 +320,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IRecorderSession;
-            let config: IConfig = new ConfigDefault()
+            let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
@@ -405,7 +405,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
+            let jsHbManager: RecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateObservable: (signature, info) => {
@@ -476,7 +476,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
             let jsHbSession: IRecorderSession;
-            let config: IConfig = new ConfigDefault()
+            let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
@@ -561,7 +561,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
+            let jsHbManager: RecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateObservable: (signature, info) => {
@@ -634,7 +634,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
             let jsHbSession: IRecorderSession;
-            let config: IConfig = new ConfigDefault()
+            let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
@@ -719,7 +719,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let allStreamReadedSub = new Subject<void>();
             let allStreamReaded$ = allStreamReadedSub.asObservable();
 
-            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
+            let jsHbManager: RecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateObservable: (signature, info) => {
@@ -805,7 +805,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let jsHbSession: IRecorderSession;
-            let config: IConfig = new ConfigDefault()
+            let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
@@ -817,7 +817,7 @@ import { RecorderManagerDefault } from '../src/implementation/js-hb-manager.js';
                 asyncCount++;
             }
 
-            let jsHbManager: IRecorderManager = new RecorderManagerDefault(
+            let jsHbManager: RecorderManager = new RecorderManagerDefault(
                 config, 
                 {
                     generateObservable: (signature, info) => {

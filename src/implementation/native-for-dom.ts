@@ -2,7 +2,7 @@
 import { of, from, Observable, combineLatest } from "rxjs";
 import { map } from "rxjs/operators";
 import { flatMapJustOnceRxOpr } from "./rxjs-util";
-import { CacheHandler } from "../api/config";
+import { CacheHandler } from "../api/recorder-config";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 

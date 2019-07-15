@@ -2,8 +2,8 @@ import { Observable } from "rxjs";
 import { Stream } from "stream";
 import { TypeLike } from '../typeslike';
 import { GenericNode } from "../api/generic-tokenizer";
-import { RecorderDecorators } from "../api/decorators";
-import { FieldInfo } from "../api/config";
+import { RecorderDecorators } from "../api/recorder-decorators";
+import { FieldInfo } from "../api/recorder-config";
 
 export interface IFieldProcessorCaller<P> {
     callFromLiteralValue?(value: any, info: FieldInfo): Observable<P>;

@@ -38,7 +38,7 @@ export interface ConsoleLike {
     getLevel(): RecorderLogLevel;
 }
 
-export interface IConfig {
+export interface RecorderConfig {
     jsHbCreationIdName: string;
     jsHbMetadatasName: string;
     //logLevel: JsHbLogLevel;
@@ -48,26 +48,26 @@ export interface IConfig {
     attachPrefix: string;
     cacheStoragePrefix: string;
     cacheHandler: CacheHandler;
-    configCreationIdName(jsHbCreationIdName: string): IConfig;  
-    configMetadatasName(jsHbMetadatasName: string): IConfig;
-    configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): IConfig;
-    configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): IConfig;
-    configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): IConfig;
-    configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): IConfig;
-    configCacheHandler(cacheHandler: CacheHandler): IConfig;
-    configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): IConfig;
+    configCreationIdName(jsHbCreationIdName: string): RecorderConfig;  
+    configMetadatasName(jsHbMetadatasName: string): RecorderConfig;
+    configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig;
+    configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): RecorderConfig;
+    configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): RecorderConfig;
+    configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): RecorderConfig;
+    configCacheHandler(cacheHandler: CacheHandler): RecorderConfig;
+    configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): RecorderConfig;
     getConsole(logger: RecorderLogger): ConsoleLike;
     /**
      * Default: "jsHbAttachPrefix_"
      * @param attachPrefix 
      */
-    configAttachPrefix(attachPrefix: string): IConfig;
+    configAttachPrefix(attachPrefix: string): RecorderConfig;
     /**
      * Default: "jsCacheStoragePrefix_"
      * @param cacheStoragePrefix 
      */
-    configCacheStoragePrefix(cacheStoragePrefix: string): IConfig;
-    configAttachPrefix(attachPrefix: string): IConfig;
+    configCacheStoragePrefix(cacheStoragePrefix: string): RecorderConfig;
+    configAttachPrefix(attachPrefix: string): RecorderConfig;
     getTypeProcessor<L,LM>(type: TypeLike<LM>): IFieldProcessor<L>;
 }
 
@@ -78,7 +78,7 @@ export enum RecorderLogger {
     RecorderSessionDefaultLogRxOpr = 'RecorderSessionDefault.logRxOpr',
     RecorderSessionDefaultMergeWithCustomizerPropertyReplection = 'RecorderSessionDefault.mergeWithCustomizerPropertyReplection',
     RecorderSessionDefaultRestoreState = 'RecorderSessionDefault.restoreEntireStateFromLiteral',
-    JsonPlaybackDecorators = 'JsonPlaybackDecorators',
+    RecorderDecorators = 'RecorderDecorators',
     LazyRef = 'LazyRef',
     LazyRefSubscribe = 'LazyRef.subscribe',
     LazyRefBaseProcessResponse = 'LazyRefBase.processResponse',

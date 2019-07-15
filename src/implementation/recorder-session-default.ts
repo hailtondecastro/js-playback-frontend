@@ -1,11 +1,9 @@
 import { LazyRef, LazyRefPrpMarker} from '../api/lazy-ref';
-import { RecorderManagerDefault } from './js-hb-manager';
+import { RecorderManagerDefault } from './recorder-manager-default';
 import { catchError, map, flatMap, delay, finalize, mapTo } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
 import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe, PartialObserver, ObservableInput } from 'rxjs';
 import { RecorderContants } from './js-hb-constants';
-import { Tape } from './tape';
-import { TapeAction, TapeActionType } from './tape-action';
 import { SetCreator } from './js-hb-set-creator';
 import { JSONHelper } from './json-helper';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
@@ -16,14 +14,16 @@ import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rx
 import { OriginalLiteralValueEntry, IRecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
-import { IRecorderManager } from '../api/manager';
+import { RecorderManager } from '../api/recorder-manager';
 import { GenericNode } from '../api/generic-tokenizer';
 import { GenericTokenizer } from '../api/generic-tokenizer';
 import { LazyInfo } from '../api/lazy-observable-provider';
-import { LazyRefImplementor, LazyRefDefault } from './js-hb-lazy-ref';
-import { RecorderDecorators } from '../api/decorators';
-import { RecorderDecoratorsInternal } from './js-hb-decorators';
-import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/config';
+import { LazyRefImplementor, LazyRefDefault } from './lazy-ref-default';
+import { RecorderDecorators } from '../api/recorder-decorators';
+import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
+import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
+import { TapeAction, Tape, TapeActionType } from '../api/tape';
+import { TapeActionDefault, TapeDefault } from './tape-default';
 
 declare type prptype = any;
 
@@ -226,7 +226,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         return result$;
     }
 
-    constructor(private _jsHbManager: IRecorderManager) {
+    constructor(private _jsHbManager: RecorderManager) {
         const thisLocal = this;
 		if (!_jsHbManager) {
 			throw new Error('_jsHbManager can not be null');
@@ -304,13 +304,13 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
             thisLocal._nextCreationId = literalStateLocal.nextCreationId;
             thisLocal._originalLiteralValueEntries = literalStateLocal.originalLiteralValueEntries;
             if (literalStateLocal.currentTapeAsLiteral) {
-                thisLocal._currentTape = thisLocal.getPlaybackFromLiteral(literalStateLocal.currentTapeAsLiteral);
+                thisLocal._currentTape = thisLocal.getTapeFromLiteral(literalStateLocal.currentTapeAsLiteral);
             } else {
                 thisLocal._currentTape = null;
             }
             this._latestTape = [];
             for (const tapeLiteral of literalStateLocal.latestPlaybackArrAsLiteral) {
-                thisLocal._latestTape.push(thisLocal.getPlaybackFromLiteral(tapeLiteral));
+                thisLocal._latestTape.push(thisLocal.getTapeFromLiteral(tapeLiteral));
             }
             let originalLiteralValueEntriesLengthInitial: number = thisLocal._originalLiteralValueEntries.length;
             for (const originalLiteralValueEntry of thisLocal._originalLiteralValueEntries) {
@@ -859,17 +859,17 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
 
     /**
      * Getter jsHbManager
-     * @return {IRecorderManager}
+     * @return {RecorderManager}
      */
-    public get jsHbManager(): IRecorderManager {
+    public get jsHbManager(): RecorderManager {
         return this._jsHbManager;
     }
 
     /**
      * Setter jsHbManager
-     * @param {IRecorderManager} value
+     * @param {RecorderManager} value
      */
-    public set jsHbManager(value: IRecorderManager) {
+    public set jsHbManager(value: RecorderManager) {
         const thisLocal = this;
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.group('RecorderSessionDefault.jsHbManager set');
@@ -1088,7 +1088,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             //recording tape
-            let action: TapeAction = new TapeAction();
+            let action: TapeAction = new TapeActionDefault();
             action.fieldName = null;
             action.actionType = TapeActionType.Create;
             
@@ -1157,7 +1157,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.debug('reseting this._currentTape, this._objectsCreationId and this._nextCreationId');
         }
-        this._currentTape = new Tape();
+        this._currentTape = new TapeDefault();
         this._nextCreationId = 1;
     }
 
@@ -1192,7 +1192,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         let bMd = allMD.objectMd;
 
         //recording tape
-        let action: TapeAction = new TapeAction();
+        let action: TapeAction = new TapeActionDefault();
         action.actionType = TapeActionType.Save;
         if (bMd.$signature$) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' has a signature, that is, it has persisted');
@@ -1226,7 +1226,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         let allMD = this.resolveMetadatas({object: entity});
         let bMd = allMD.objectMd;
         //recording tape
-        let action: TapeAction = new TapeAction();
+        let action: TapeAction = new TapeActionDefault();
         action.actionType = TapeActionType.Delete;
         if (bMd.$signature$) {
             action.ownerSignatureStr = bMd.$signature$;
@@ -1468,12 +1468,12 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         return literalReturn;
     }
 
-    private getPlaybackFromLiteral(tapeLiteral: any): Tape {
+    private getTapeFromLiteral(tapeLiteral: any): Tape {
         const thisLocal = this;
-        const playBackReturn: Tape = new Tape();
+        const playBackReturn: Tape = new TapeDefault();
         playBackReturn.actions = [];
         for (const actionLiteral of tapeLiteral.actions) {
-            let action: TapeAction = new TapeAction();
+            let action: TapeAction = new TapeActionDefault();
             action = lodashMergeWith(
                 action, 
                 actionLiteral, 
@@ -1803,7 +1803,7 @@ export class RecorderSessionDefault implements IRecorderSessionImplementor {
         const thisLocal = this;
         let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
-            throw new Error('@JsonPlayback.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
+            throw new Error('@RecorderDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
         }
         let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(genericNode, literalLazyObj, refererObj, refererKey, refMap);
         let trySetPlayerObjectIdentifier$ = this.trySetPlayerObjectIdentifier(lr, genericNode, literalLazyObj, refMap);

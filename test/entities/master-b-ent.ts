@@ -1,5 +1,5 @@
 import { DetailAEnt } from './detail-a-ent';
-import { RecorderDecorators } from '../../src/api/decorators';
+import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow } from '../../src/api/generic-tokenizer';
 import { GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { LazyRef, LazyRefOTM } from '../../src/api/lazy-ref';

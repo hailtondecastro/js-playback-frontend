@@ -5,7 +5,7 @@ import { LazyObservableProvider } from "./lazy-observable-provider";
 /**
  * Contract.
  */
-export interface RecorderManager {
+export interface IRecorderManager {
 	/**
 	 * Configuration.
 	 */

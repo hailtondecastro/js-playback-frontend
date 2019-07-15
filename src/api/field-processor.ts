@@ -1,7 +1,7 @@
 import { GenericNode } from "./generic-tokenizer";
 import { Stream } from "stream";
 import { Observable } from "rxjs";
-import { FieldInfo } from "./config";
+import { FieldInfo } from "./recorder-config";
 
 export interface IFieldProcessor<L> {
     fromLiteralValue?(value: any, info: FieldInfo): Observable<L>;

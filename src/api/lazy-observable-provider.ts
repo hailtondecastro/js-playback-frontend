@@ -3,7 +3,7 @@ import { ResponseLike } from "../typeslike";
 import { Stream } from "stream";
 import { TypeLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
-import { RecorderDecorators } from "./decorators";
+import { RecorderDecorators } from "./recorder-decorators";
 
 export interface LazyInfo<L> {
 	gNode: GenericNode

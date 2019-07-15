@@ -1,20 +1,21 @@
 import { RecorderContants } from './js-hb-constants';
-import { TapeAction, TapeActionType } from './tape-action';
 import { get as lodashGet, has } from 'lodash';
 import { Stream, Readable } from 'stream';
 import { Observable, of, from } from 'rxjs';
-import { RecorderManagerDefault } from './js-hb-manager';
+import { RecorderManagerDefault } from './recorder-manager-default';
 import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
 import { ReadLine } from 'readline';
 import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
 import { IRecorderSession } from '../api/session';
-import { IRecorderSessionImplementor } from './js-hb-session';
+import { IRecorderSessionImplementor } from './recorder-session-default';
 import { TypeLike } from '../typeslike-dev';
 import { LazyRef, StringStream, StringStreamMarker } from '../api/lazy-ref';
-import { RecorderDecorators } from '../api/decorators';
-import { RecorderLogger, RecorderLogLevel } from '../api/config';
+import { RecorderDecorators } from '../api/recorder-decorators';
+import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
+import { TapeActionType, TapeAction } from '../api/tape';
+import { TapeActionDefault } from './tape-default';
 
 export namespace RecorderDecoratorsInternal {
     /**
@@ -30,13 +31,13 @@ export namespace RecorderDecoratorsInternal {
     }
     /**
      * Decorator for get property.  
-     * \@JsonPlayback.property() is equivalent to \@JsonPlayback.property({persistent: true})
+     * \@RecorderDecorators.property() is equivalent to \@RecorderDecorators.property({persistent: true})
      * 
      * Examplo:
      * ```ts
        ...
        private _myField: string;
-       @JsonPlayback.property()
+       @RecorderDecorators.property()
        public get myField(): string {
          return this._myField;
        }
@@ -72,7 +73,7 @@ export namespace RecorderDecoratorsInternal {
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
                 let session: IRecorderSessionImplementor = lodashGet(this, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as IRecorderSessionImplementor;
-                const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.JsonPlaybackDecorators)
+                const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.RecorderDecorators)
                 let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
                 if (fieldEtc.propertyOptions.persistent) {
                     if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -105,7 +106,7 @@ export namespace RecorderDecoratorsInternal {
                                         consoleLike.groupEnd();
                                     }
                                     //do the TapeAction log here
-                                    const action: TapeAction = new TapeAction();
+                                    const action: TapeAction = new TapeActionDefault();
                                     action.fieldName = propertyKey.toString();
                                     action.actionType = TapeActionType.SetField;
                                     let allMD = session.resolveMetadatas({object: this});

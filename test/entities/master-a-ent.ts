@@ -1,6 +1,6 @@
 import { DetailAEnt } from './detail-a-ent';
 import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker } from '../../src/api/lazy-ref';
-import { RecorderDecorators } from '../../src/api/decorators';
+import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { Stream } from 'stream';
 import { ReadLine } from 'readline';

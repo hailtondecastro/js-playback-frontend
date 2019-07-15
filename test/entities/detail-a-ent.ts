@@ -2,7 +2,7 @@ import { MasterBEnt, MasterBCompId } from './master-b-ent';
 import { MasterAEnt } from './master-a-ent';
 import { LazyRefMTO, LazyRef } from '../../src/api/lazy-ref';
 import { Stream } from 'stream';
-import { RecorderDecorators } from '../../src/api/decorators';
+import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 
 @RecorderDecorators.clazz({javaClass: 'org.jsonplayback.player.hibernate.entities.DetailACompComp'})

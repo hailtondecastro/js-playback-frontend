@@ -1,8 +1,8 @@
-import { IRecorderManager } from "./manager";
+import { RecorderManager } from "./recorder-manager";
 import { TypeLike } from "../typeslike";
 import { Observable } from "rxjs";
 import { Stream } from "stream";
-import { ITape } from "./tape";
+import { Tape } from "./tape";
 
 export interface PlayerSnapshot {
     wrappedSnapshot: any[] | {};
@@ -39,7 +39,7 @@ export interface IRecorderSession {
     /**
      * Manager.
      */
-    jsHbManager: IRecorderManager;
+    jsHbManager: RecorderManager;
     /**
      * Process the response body literal object getted from backend.  
      * Body format: PlayerSnapshot.  
@@ -121,9 +121,9 @@ export interface IRecorderSession {
      *
      * @returns {ITape}
      */
-    getLastRecordedTape(): Observable<ITape>;
+    getLastRecordedTape(): Observable<Tape>;
     getLastRecordedStreams(): Observable<Map<String, Stream>>;
-    getLastRecordedTapeAndStreams(): Observable<{tape: ITape, streams: Map<String, Stream>}>;
+    getLastRecordedTapeAndStreams(): Observable<{tape: Tape, streams: Map<String, Stream>}>;
     /**
      * Equivalent to {@link this#getLastRecordedTape} with recoverable
      * JSONParsable literal object return.

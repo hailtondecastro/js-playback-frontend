@@ -1,12 +1,11 @@
 import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction } from 'rxjs';
 import { PartialObserver } from 'rxjs/Observer';
-import { TapeAction, TapeActionType } from './tape-action';
-import { RecorderLogLevel, ConsoleLike } from '../api/config';
+import { RecorderLogLevel, ConsoleLike } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap, map, finalize } from 'rxjs/operators';
 import { RecorderContants } from './js-hb-constants';
 import { Stream, Readable } from 'stream';
-import { RecorderManagerDefault } from './js-hb-manager';
+import { RecorderManagerDefault } from './recorder-manager-default';
 import { request } from 'http';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
@@ -17,8 +16,10 @@ import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IRecorderSession, OriginalLiteralValueEntry, PlayerSnapshot } from '../api/session';
 import { IFieldProcessorEvents } from '../api/field-processor';
-import { IRecorderSessionImplementor } from './js-hb-session';
-import { RecorderLogger } from '../api/config';
+import { IRecorderSessionImplementor } from './recorder-session-default';
+import { RecorderLogger } from '../api/recorder-config';
+import { TapeActionType, TapeAction } from '../api/tape';
+import { TapeActionDefault } from './tape-default';
 
 export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
            /**
@@ -92,7 +93,7 @@ export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStre
 //  * ```ts
 //    ...
 //    private _myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>>;
-//    @JsonPlayback.property()
+//    @RecorderDecorators.property()
 //    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(MyChildEntity).gt().gt().tree))
 //    public get myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>> {
 //      return this._myChildEntitiesSet;
@@ -103,7 +104,7 @@ export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStre
 //  * ```ts
 //    ...
 //    private _myParentEntity(): LazyRefMTO<MyParentEntity, Number>;
-//    @JsonPlayback.property()
+//    @RecorderDecorators.property()
 //    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MyParentEntity).comma().tp(Number).gt().tree))
 //    public get myParentEntity(): LazyRefMTO<MyParentEntity, Number> {
 //      return this._myParentEntity;
@@ -549,7 +550,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         const thisLocal = this;
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.config);
         if (!fieldEtc.propertyOptions){
-            throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
+            throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         //Validating
         if (!this.refererObj || !this.refererKey) {
@@ -587,7 +588,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 let mdLazyLoadedObj = this.bMdLazyLoadedObj;
 
                 //recording tape
-                const action: TapeAction = new TapeAction();
+                const action: TapeAction = new TapeActionDefault();
                 action.fieldName = this.refererKey;
                 action.actionType = TapeActionType.SetField;
                 if (mdRefererObj.$signature$) {

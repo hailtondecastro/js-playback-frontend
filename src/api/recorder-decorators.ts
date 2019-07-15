@@ -1,4 +1,4 @@
-import { RecorderDecoratorsInternal } from "../implementation/js-hb-decorators";
+import { RecorderDecoratorsInternal } from "../implementation/recorder-decorators-internal";
 import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
 import { Stream } from "stream";
 import { StringStreamMarker } from "./lazy-ref";
@@ -17,13 +17,13 @@ export namespace RecorderDecorators {
     }
     /**
      * Decorator for get property.  
-     * \@JsonPlayback.property() is equivalent to \@JsonPlayback.property({persistent: true})
+     * \@RecorderDecorators.property() is equivalent to \@RecorderDecorators.property({persistent: true})
      * 
      * Examplo:
      * ```ts
        ...
        private _myField: string;
-       @JsonPlayback.property()
+       @RecorderDecorators.property()
        public get myField(): string {
          return this._myField;
        }

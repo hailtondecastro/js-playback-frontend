@@ -1,11 +1,4 @@
-export enum TapeActionType {
-    Create = <any>'CREATE',
-    Save = <any>'SAVE',
-    Delete = <any>'DELETE',
-    SetField = <any>'SET_FIELD',
-    CollectionAdd = <any>'COLLECTION_ADD',
-    CollectionRemove = <any>'COLLECTION_REMOVE',
-}
+import { TapeActionType } from "../implementation/tape-action";
 
 export interface ITapeAction {
     ownerSignatureStr?: string;

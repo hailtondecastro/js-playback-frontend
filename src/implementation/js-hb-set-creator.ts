@@ -1,10 +1,11 @@
-import { TapeAction, TapeActionType } from './tape-action';
+import { TapeAction, TapeActionType } from '../api/tape';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
 import { RecorderContants } from './js-hb-constants';
-import { RecorderDecoratorsInternal } from './js-hb-decorators';
+import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { IRecorderSession } from '../api/session';
-import { IRecorderSessionImplementor } from './js-hb-session';
-import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/config';
+import { IRecorderSessionImplementor } from './recorder-session-default';
+import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
+import { TapeActionDefault } from './tape-default';
 
 export class SetCreator<T> {
 
@@ -85,7 +86,7 @@ export class SetCreator<T> {
     add(targetSet: Set<T>, value: T): void {
         let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
-            throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
+            throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
             let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
@@ -98,7 +99,7 @@ export class SetCreator<T> {
                 let mdValue = allMD.objectMd;
                 
                 //recording tape
-                let action: TapeAction = new TapeAction();
+                let action: TapeAction = new TapeActionDefault();
                 action.fieldName = this.refererKey;
                 action.actionType = TapeActionType.CollectionAdd;
                 if (mdRefererObj.$signature$) {
@@ -126,7 +127,7 @@ export class SetCreator<T> {
     delete(targetSet: Set<T>, value: T): void {
         let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
-            throw new Error('@JsonPlayback.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
+            throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
             let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
@@ -139,7 +140,7 @@ export class SetCreator<T> {
                 let mdValue = allMD.objectMd;
 
                 //recording tape
-                let action: TapeAction = new TapeAction();
+                let action: TapeAction = new TapeActionDefault();
                 action.fieldName = this.refererKey;
                 action.actionType = TapeActionType.CollectionRemove;
                 if (mdRefererObj.$signature$) {

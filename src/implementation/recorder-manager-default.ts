@@ -1,5 +1,5 @@
-import { IConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/config';
-import { RecorderSessionDefault } from './js-hb-session';
+import { RecorderConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/recorder-config';
+import { RecorderSessionDefault } from './recorder-session-default';
 import { RecorderContants } from './js-hb-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
@@ -9,15 +9,15 @@ import { LazyObservableProvider } from '../api/lazy-observable-provider';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
-import { RecorderDecorators } from '../api/decorators';
-import { IRecorderManager } from '../api/manager';
+import { RecorderDecorators } from '../api/recorder-decorators';
+import { RecorderManager } from '../api/recorder-manager';
 
-export class RecorderManagerDefault implements IRecorderManager {
+export class RecorderManagerDefault implements RecorderManager {
 	private consoleLike: ConsoleLike;
 	private consoleLikeLogRxOpr: ConsoleLike;
 	private consoleLikeMerge: ConsoleLike;
     constructor(
-			private _jsHbConfig: IConfig,
+			private _jsHbConfig: RecorderConfig,
 			private _httpLazyObservableGen: LazyObservableProvider) {
 		const thisLocal = this;
 		if (!this._httpLazyObservableGen) {
@@ -54,11 +54,11 @@ export class RecorderManagerDefault implements IRecorderManager {
 		this._httpLazyObservableGen = value;
 	}
 
-	public get config(): IConfig {
+	public get config(): RecorderConfig {
 		return this._jsHbConfig;
 	}
 
-	public set config(value: IConfig) {
+	public set config(value: RecorderConfig) {
 		const thisLocal = this;
 		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
 			thisLocal.consoleLike.group('RecorderManagerDefault.config() set: ' + value);
@@ -72,7 +72,7 @@ export class RecorderManagerDefault implements IRecorderManager {
 			fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>,
 			owner: any,
 			fieldName: string,
-			config: IConfig): 
+			config: RecorderConfig): 
 			FieldEtc<P, GP> {
 		if (!fielEtcCacheMap.has(owner)) {
 			fielEtcCacheMap.set(owner, new Map());

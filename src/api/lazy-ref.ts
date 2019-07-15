@@ -1,6 +1,6 @@
 import { PlayerMetadatas } from "./player-metadatas";
 import { Subject, PartialObserver, Observable } from "rxjs";
-import { ConsoleLike } from "./config";
+import { ConsoleLike } from "./recorder-config";
 
 export class StringStreamMarker {
 }
@@ -80,7 +80,7 @@ export class LazyRefPrpMarker {
  * ```ts
    ...
    private _myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>>;
-   @JsonPlayback.property()
+   @RecorderDecorators.property()
    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(MyChildEntity).gt().gt().tree))
    public get myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>> {
      return this._myChildEntitiesSet;
@@ -91,7 +91,7 @@ export class LazyRefPrpMarker {
  * ```ts
    ...
    private _myParentEntity(): LazyRefMTO<MyParentEntity, Number>;
-   @JsonPlayback.property()
+   @RecorderDecorators.property()
    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MyParentEntity).comma().tp(Number).gt().tree))
    public get myParentEntity(): LazyRefMTO<MyParentEntity, Number> {
      return this._myParentEntity;

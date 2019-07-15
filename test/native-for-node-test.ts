@@ -8,7 +8,7 @@ import getStream from 'get-stream';
 import streamToObservable from 'stream-to-observable';
 import { IFieldProcessor } from '../src/api/field-processor';
 import { StringStream, StringStreamMarker } from '../src/api/lazy-ref';
-import { CacheHandler } from '../src/api/config';
+import { CacheHandler } from '../src/api/recorder-config';
 
 export namespace ForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();
