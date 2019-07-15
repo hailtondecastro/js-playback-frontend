@@ -67,10 +67,10 @@ export namespace RecorderDecoratorsInternal {
         }
 
         let returnFunc: MethodDecorator = function<Z> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<Z>) {
-            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
+            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                let session: RecorderSessionImplementor = lodashGet(this, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
+                let session: RecorderSessionImplementor = lodashGet(this, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
                 const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.RecorderDecorators)
                 let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
                 if (fieldEtc.propertyOptions.persistent) {
@@ -81,13 +81,13 @@ export namespace RecorderDecoratorsInternal {
                         consoleLike.debug(value);
                         consoleLike.groupEnd();
                     }
-                    let isOnlazyLoad: any = lodashGet(this, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    let isOnlazyLoad: any = lodashGet(this, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
                         if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
-                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
+                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
                             let actualValue = lodashGet(this, propertyKey);
                             if (actualValue !== value) {
@@ -230,7 +230,7 @@ export namespace RecorderDecoratorsInternal {
     export function playerObjectId<T>(): MethodDecorator {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
             let playerObjectIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
-            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, playerObjectIdType, target);
+            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, playerObjectIdType, target);
         };
     }  
 
@@ -247,7 +247,7 @@ export namespace RecorderDecoratorsInternal {
      */
     export function playerType<T>(options: RecorderDecorators.playerTypeOptions): ClassDecorator {
         return function<T> (target: T): T | void {
-            Reflect.defineMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, options, target);
+            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, options, target);
             Reflect.defineMetadata(
                 mountContructorByPlayerTypeMetadataKey(options, target as any as TypeLike<any>),
                 target,
@@ -259,7 +259,7 @@ export namespace RecorderDecoratorsInternal {
      * Internal use only! It is no a decorator!
      */
     export function mountContructorByPlayerTypeMetadataKey(options: RecorderDecorators.playerTypeOptions, entityType: TypeLike<any>): string {
-        return RecorderContants.JSPB_REFLECT_METADATA_JSCONTRUCTOR_BY_PLAYER_TYPE_PREFIX +
+        return RecorderContants.REFLECT_METADATA_JSCONTRUCTOR_BY_PLAYER_TYPE_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +
             ':' + options.playerType;

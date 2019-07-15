@@ -339,7 +339,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     originalLiteralValueEntry.ownerSignatureStr
                     if (originalLiteralValueEntry.ownerSignatureStr) {
                         if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
-                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a hibernate component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a player side component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
                         }
                         let ownerEnt = this._objectsBySignature.get(originalLiteralValueEntry.ownerSignatureStr);
                         if (!ownerEnt) {
@@ -359,7 +359,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
                                 'No owner entity for original literal value entry, the owner must be a\n'+
-                                'hibernate component. Doing nothing, in any next literal value entry\n'+
+                                'player side component. Doing nothing, in any next literal value entry\n'+
                                 'there will exist an action with type \'processResultEntity\' that will\n'+
                                 'put the entity on cache. Entry:\n' +
                                 JSON.stringify(originalLiteralValueEntry, null, 2));
@@ -408,26 +408,26 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private lazyLoadTemplateCallback<T>(lazyLoadedObj: any, originalCb: () => T|void): T|void {
         try {
-            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
             return originalCb();
         } finally {
-            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
         }
     }
 
     private createKeepAllFlagsTemplateCallback<T>(lazyLoadedObj: any): (originalCb: () => T|void) => T|void {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         return (originalCb: () => T) => {
-            const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
-            lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
             thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
             try {
                 return originalCb();
             } finally {
-                lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                 thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
             }
         }
@@ -444,7 +444,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             project: (value: T, index?: number) => R,
             thisArg?: any): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as R};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -452,12 +452,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -467,7 +467,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -493,7 +493,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             project: (value: T, index?: number) => ObservableInput<R>,
             concurrent?: number): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -501,12 +501,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -518,7 +518,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -886,7 +886,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!playerSnapshot.wrappedSnapshot) {
             throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -940,7 +940,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!playerSnapshot.wrappedSnapshot) {
             throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -991,7 +991,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
         this.validatingMetaFieldsExistence(entityType);
         let entityObj = new entityType();
-        lodashSet(entityObj, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(entityObj));
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.debug('entityType: ' + entityType.name);
@@ -1067,7 +1067,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
 
         this._objectsByCreationId.set(creationId, entityObj);
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -1084,7 +1084,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
         
         lodashSet(entityObj, this.jsHbManager.config.jsHbCreationIdName, creationId);
-        lodashSet(entityObj, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             //recording tape
@@ -1092,7 +1092,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             action.fieldName = null;
             action.actionType = TapeActionType.Create;
             
-            let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_PLAYER_TYPE, entityType);
+            let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
             if (!playerTypeOptions) {
                 throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
             }
@@ -1182,9 +1182,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: RecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor.name + '\' managed by another session.');
         }
@@ -1217,9 +1217,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: RecorderSession = lodashGet(entity, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' managed by another session.');
         }
@@ -1503,8 +1503,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const camposControleArr = [
             this.jsHbManager.config.jsHbCreationIdName,
             this.jsHbManager.config.jsHbMetadatasName,
-            RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME,
-            RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME];
+            RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME,
+            RecorderContants.ENTITY_SESION_PROPERTY_NAME];
         for (let index = 0; index < camposControleArr.length; index++) {
             const internalKeyItem = camposControleArr[index];
             if (Object.keys(entityType.prototype).lastIndexOf(internalKeyItem.toString()) >= 0) {
@@ -1585,7 +1585,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
-            lodashSet(entityValue as any, RecorderContants.JSPB_ENTITY_SESION_PROPERTY_NAME, this);
+            lodashSet(entityValue as any, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
             this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
 
             if (bMd.$id$) {
@@ -1801,7 +1801,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refererObj: any,
             refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
-        let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, refererObj, refererKey);
+        let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
         }
@@ -1970,36 +1970,36 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
         let jsHbPlayerObjectIdLiteral: any = bMd.$playerObjectId$;
         if (jsHbPlayerObjectIdLiteral instanceof Object && !(jsHbPlayerObjectIdLiteral instanceof Date)) {
-            let hbIdType: TypeLike<any> = null;
+            let playerObjectIdType: TypeLike<any> = null;
             if (genericNode.gParams[1] instanceof GenericNode) {
-                hbIdType = (<GenericNode>genericNode.gParams[1]).gType;
+                playerObjectIdType = (<GenericNode>genericNode.gParams[1]).gType;
             } else {
-                hbIdType = <TypeLike<any>>genericNode.gParams[1];
+                playerObjectIdType = <TypeLike<any>>genericNode.gParams[1];
             }
-            if (hbIdType) {
+            if (playerObjectIdType) {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLike.debug('There is a hbIdType on LazyRef. Is it many-to-one LazyRef?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
+                    thisLocal.consoleLike.debug('There is a playerObjectIdType on LazyRef. Is it many-to-one LazyRef?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
                 }
-                this.validatingMetaFieldsExistence(hbIdType);
-                result$ = this.processResultEntityPriv(hbIdType, jsHbPlayerObjectIdLiteral, refMap)
+                this.validatingMetaFieldsExistence(playerObjectIdType);
+                result$ = this.processResultEntityPriv(playerObjectIdType, jsHbPlayerObjectIdLiteral, refMap)
                     .pipe(
-                        map((hbId) => {
-                            lr.hbId = hbId;
+                        map((playerObjectId) => {
+                            lr.playerObjectId = playerObjectId;
                         })
                     );
             } else {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLike.debug('Thre is no hbIdType on LazyRef. Is it a collection?!. hbIdType: ' + hbIdType.name + ', genericNode:'+genericNode);
+                    thisLocal.consoleLike.debug('Thre is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
                 }
             }
         } else if (jsHbPlayerObjectIdLiteral) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('The hibernate id is a simple type value: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
+                thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
             }
-            lr.hbId = jsHbPlayerObjectIdLiteral;
+            lr.playerObjectId = jsHbPlayerObjectIdLiteral;
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('The hibernate id is null! Is it a collection?!: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
+                thisLocal.consoleLike.debug('The player object Id is null! Is it a collection?!: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
             }
         }
 
@@ -2154,16 +2154,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
-                fieldEtc.prpType = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_ID_TYPE, object);
+                fieldEtc.prpType = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
                 if (!fieldEtc.prpType) {
                     throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                 }
             }
             if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType !== LazyRef) {
-                throw new Error('Key '+ object.constructor.name + '.' + key + ' is hibernate associative relation and is not LazyRef or not define GenericTokenizer');
+                throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side associative relation and is not LazyRef or not define GenericTokenizer');
             }
             if (mdSrcValue.$isComponent$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType === LazyRef) {
-                throw new Error('Key '+ object.constructor.name + '.' + key + ' is hibernate component and is a LazyRef.');
+                throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
             }
             const correctSrcValueRef = { value: srcValue };
             if (key === thisLocal.jsHbManager.config.jsHbMetadatasName) {
@@ -2178,16 +2178,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 Object.assign(correctSrcValueAsMetadata, mdSource);
                 if (mdPlayerObjectId.$isComponent$) {
                     correctSrcValueRef.value = new UndefinedForMergeAsync();
-                    let processResultEntityPrivHbId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap)
+                    let processResultEntityPrivPlayerObjectId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap)
                         .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (hbIdValue) => {
-                                correctSrcValueAsMetadata.$playerObjectId$ = hbIdValue;
+                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
+                                correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
                                 correctSrcValueRef.value = correctSrcValueAsMetadata;
                                 lodashSet(object, key, correctSrcValueRef.value);
-                                return hbIdValue;
+                                return playerObjectIdValue;
                             })
                         );
-                    processResultEntityPrivHbId$.subscribe((hbIdValue) => {
+                    processResultEntityPrivPlayerObjectId$.subscribe((playerObjectIdValue) => {
                         // nothing
                     });
                 } 

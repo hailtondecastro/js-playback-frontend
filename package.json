@@ -1,5 +1,5 @@
 {
-  "name": "njson-playback-recorder-ts",
+  "name": "json-playback-recorder-ts",
   "description": "Framework for integrate entity object graph operations (field, collections modifications, etc) between backend and frontend.",
   "version": "0.0.1",
   "main": "index.js",
@@ -57,7 +57,7 @@
     "@types/node": "^10.3.5",
     "blob-to-stream": "^1.0.3",
     "get-stream": "^5.1.0",
-    "lodash": "^4.17.5",
+    "lodash": "^4.17.13",
     "reflect-metadata": "^0.1.9",
     "rxjs": "^6.2.1",
     "stream-to-blob": "^1.0.1",
@@ -67,10 +67,17 @@
     "name": "Hailton de Castro",
     "email": "hailtondecastro@gmail.com"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/hailtondecastro/json-playback-recorder-ts"
   },
+  "bugs": {
+    "url": "https://github.com/hailtondecastro/json-playback-recorder-ts/issues"
+  },
   "homepage": "https://github.com/hailtondecastro/json-playback-recorder-ts",
-  "sideEffects": false
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
 }

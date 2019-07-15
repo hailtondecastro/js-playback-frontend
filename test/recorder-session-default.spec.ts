@@ -333,13 +333,13 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
             }
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -423,7 +423,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
                 });
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -489,13 +489,13 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
             }
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -579,7 +579,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
                 });
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -647,13 +647,13 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
             }
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -737,7 +737,7 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
                 });
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
             propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(
@@ -853,13 +853,13 @@ import { RecorderManagerDefault } from '../src/implementation/recorder-manager-d
                 });
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
             let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<Stream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
             let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
             let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-                Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+                Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
             propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
                 return obs.pipe(

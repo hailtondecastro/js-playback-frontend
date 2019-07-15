@@ -84,12 +84,12 @@ export class SetCreator<T> {
     }
 
     add(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -125,12 +125,12 @@ export class SetCreator<T> {
     }
 
     delete(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.JSPB_ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');

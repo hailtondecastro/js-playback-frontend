@@ -83,7 +83,7 @@ export class RecorderManagerDefault implements RecorderManager {
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
 			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
-				Reflect.getMetadata(RecorderContants.JSPB_REFLECT_METADATA_HIBERNATE_PROPERTY_OPTIONS, owner, fieldName);
+				Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
 			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
