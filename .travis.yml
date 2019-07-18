@@ -3,9 +3,10 @@ node_js:
   - "8"
 
 deploy:
-  provider: script
-  script: "cp .npmrc.template .npmrc && npm publish dist"
-  skip_cleanup: true
-  on:
-    tags: deploy
+  - provider: script
+    script: "cp .npmrc.template .npmrc && npm publish dist"
+    on:
+      tags: deploy
+  - provider: script
+    script: echo none
     
