@@ -1,7 +1,3 @@
-stages:
-  - name: deploy
-    if: tag = deploy
-
 language: node_js
 node_js:
   - "8"
@@ -10,3 +6,7 @@ deploy:
   provider: script
   script: "cp .npmrc.template .npmrc && npm publish dist"
   skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
+    condition: $TRAVIS_TAG = deploy
