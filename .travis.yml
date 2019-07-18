@@ -3,7 +3,7 @@ node_js:
   - "8"
 
 deploy:
-  - provider: script
-    script: "cp .npmrc.template .npmrc && npm publish dist"
-    skip_cleanup: true
-    if: tag = deploy
+  provider: script
+  script: "cp .npmrc.template .npmrc && npm publish dist"
+  skip_cleanup: true
+  if: tag = deploy
