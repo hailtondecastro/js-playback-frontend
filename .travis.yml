@@ -11,4 +11,5 @@ deploy:
   - provider: script
     script: echo none
     skip_cleanup: true
-    
+    on:
+      all_branches: true
