@@ -6,4 +6,7 @@ deploy:
   provider: script
   script: "cp .npmrc.template .npmrc && npm publish dist"
   skip_cleanup: true
-  if: tag = deploy
+  
+stages:
+  - name: deploy
+    if: tag = deploy
