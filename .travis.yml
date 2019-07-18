@@ -2,11 +2,11 @@ language: node_js
 node_js:
   - "8"
 
+stages:
+  - name: deploy
+    if: tag = deploy
+
 deploy:
   provider: script
   script: "cp .npmrc.template .npmrc && npm publish dist"
   skip_cleanup: true
-  
-stages:
-  - name: deploy
-    if: tag = deploy
