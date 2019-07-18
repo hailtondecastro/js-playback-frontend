@@ -4,12 +4,12 @@ node_js:
 
 deploy:
   - provider: script
-    script: "cp .npmrc.template .npmrc && npm publish dist"
+    script: "foobaar && cp .npmrc.template .npmrc && npm publish dist"
     skip_cleanup: true
     on:
       tags: deploy
   - provider: script
-    script: echo none
+    script: "echo none"
     skip_cleanup: true
     on:
       all_branches: true
