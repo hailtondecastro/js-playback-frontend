@@ -33,6 +33,12 @@ async function main() {
         // }
 
         buildHelperCommons.loadDashArgs();
+
+        setTimeout(() => {
+            console.error('[' + nodeModuleName + ']: timeout');
+            process.exit(1);
+        }, buildHelperCommons.argsMap['timeout']);
+
         var baseFolder = buildHelperCommons.argsMap['baseFolder'];
         var relativeSourceFolder = buildHelperCommons.argsMap['relativeSourceFolder'];
         var relativeTargetFolder = buildHelperCommons.argsMap['relativeTargetFolder'];
@@ -41,18 +47,39 @@ async function main() {
             baseFolder = path.resolve(process.cwd(), baseFolder);
         }
         var mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension);
+        const filesWriteCountDownRef = { value: mapArr.length };
+        const exitIfFilesWriteCountDownEndedFunc = () => {
+            if(filesWriteCountDownRef.value === 0) {
+                process.exit(0);
+            }
+        }
+        const filesWriteCountDownStepFunc = () => {
+            --filesWriteCountDownRef.value;
+            exitIfFilesWriteCountDownEndedFunc();
+        }
         for (let index = 0; index < mapArr.length; index++) {
             const sourceItem = mapArr[index];
             const targetItem = baseFolder + path.sep + relativeTargetFolder + path.sep + path.relative(baseFolder, sourceItem);
             const targetItemDir = path.dirname(targetItem);
-            fs.mkdirpSync(targetItemDir);
-            fs.copyFileSync(sourceItem, targetItem);
-            if (buildHelperCommons.argsMap['verbose'] === 'true') {
-                console.log('[' + nodeModuleName + ']: copy '+sourceItem+' to '+targetItem);
-            }
+            fs.mkdirp(targetItemDir, (err) => {
+                if (err) {
+                    console.error('[' + nodeModuleName + ']:'+err);
+                    process.exit(1);
+                }
+                fs.copyFile(sourceItem, targetItem, (err) => {
+                    if (err) {
+                        console.error('[' + nodeModuleName + ']:'+err);
+                        process.exit(1);
+                    }
+                    filesWriteCountDownStepFunc();
+                    if (buildHelperCommons.argsMap['verbose'] === 'true') {
+                        console.log('[' + nodeModuleName + ']: copy '+sourceItem+' to '+targetItem);
+                    }
+                });
+            });
         }
 
-        process.exit(0);
+        //process.exit(0);
     } catch (err) {
         console.error('[' + nodeModuleName + ']:'+err);
         process.exit(1);

@@ -39,7 +39,7 @@ export interface RecorderSession {
     /**
      * Manager.
      */
-    jsHbManager: RecorderManager;
+    manager: RecorderManager;
     /**
      * Process the response body literal object getted from backend.  
      * Body format: PlayerSnapshot.  
@@ -122,8 +122,8 @@ export interface RecorderSession {
      * @returns {ITape}
      */
     getLastRecordedTape(): Observable<Tape>;
-    getLastRecordedStreams(): Observable<Map<String, Stream>>;
-    getLastRecordedTapeAndStreams(): Observable<{tape: Tape, streams: Map<String, Stream>}>;
+    getLastRecordedStreams(): Observable<Map<String, NodeJS.ReadableStream>>;
+    getLastRecordedTapeAndStreams(): Observable<{tape: Tape, streams: Map<String, NodeJS.ReadableStream>}>;
     /**
      * Equivalent to {@link this#getLastRecordedTape} with recoverable
      * JSONParsable literal object return.
@@ -131,7 +131,7 @@ export interface RecorderSession {
      * @returns
      */
     getLastRecordedTapeAsLiteral(): Observable<any>;
-    getLastRecordedTapeAsLiteralAndStreams(): Observable<{tapeLiteral: any, streams: Map<String, Stream>}>;
+    getLastRecordedTapeAsLiteralAndStreams(): Observable<{tapeLiteral: any, streams: Map<String, NodeJS.ReadableStream>}>;
     /**
      * Record action equivalente to 'org.hibernate.Session.save()'.
      *
@@ -164,7 +164,7 @@ export interface RecorderSession {
      * @param entity 
      */
     switchOnNotifyAllLazyrefs(entity: object): void;
-    getLastRecordedAtaches(): Map<String, Stream>;
+    getLastRecordedAtaches(): Map<String, NodeJS.ReadableStream>;
     /**
      * Generate an Observable for waiting all internal async task.  
      * Use it be notified about completion of all inernal async tasks.

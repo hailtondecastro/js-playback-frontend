@@ -1,6 +1,6 @@
 import { RecorderConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/recorder-config';
 import { RecorderSessionDefault } from './recorder-session-default';
-import { RecorderContants } from './recorder-constants';
+import { RecorderConstants } from './recorder-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
 import { FieldEtc, IFieldProcessorCaller } from './field-etc';
 import { TypeLike } from '../typeslike';
@@ -17,20 +17,20 @@ export class RecorderManagerDefault implements RecorderManager {
 	private consoleLikeLogRxOpr: ConsoleLike;
 	private consoleLikeMerge: ConsoleLike;
     constructor(
-			private _jsHbConfig: RecorderConfig,
+			private _config: RecorderConfig,
 			private _httpLazyObservableGen: LazyObservableProvider) {
 		const thisLocal = this;
 		if (!this._httpLazyObservableGen) {
 			throw new Error('_httpLazyObservableGen can not be null');
 		}
-		if (!this._jsHbConfig) {
-			throw new Error('_jsHbConfig can not be null');
+		if (!this._config) {
+			throw new Error('_config can not be null');
 		}
 		thisLocal.consoleLike = this.config.getConsole(RecorderLogger.RecorderManagerDefault);
 
 		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
 			thisLocal.consoleLike.group('RecorderManagerDefault.constructor()');
-			thisLocal.consoleLike.debug(this._httpLazyObservableGen as any); thisLocal.consoleLike.debug(this._jsHbConfig as any as string);
+			thisLocal.consoleLike.debug(this._httpLazyObservableGen as any); thisLocal.consoleLike.debug(this._config as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
 	}	
@@ -55,7 +55,7 @@ export class RecorderManagerDefault implements RecorderManager {
 	}
 
 	public get config(): RecorderConfig {
-		return this._jsHbConfig;
+		return this._config;
 	}
 
 	public set config(value: RecorderConfig) {
@@ -65,7 +65,7 @@ export class RecorderManagerDefault implements RecorderManager {
 			thisLocal.consoleLike.debug(value as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
-		this._jsHbConfig = value;
+		this._config = value;
 	}
 
 	public static resolveFieldProcessorPropOptsEtc<P, GP>(
@@ -83,7 +83,7 @@ export class RecorderManagerDefault implements RecorderManager {
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
 			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
-				Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
+				Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
 			let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P> = {};
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
@@ -147,6 +147,18 @@ export class RecorderManagerDefault implements RecorderManager {
 										}
 										return fromLiteralValue$;
 									},
+							callFromRecordedLiteralValue:
+									!fieldProcessor || !fieldProcessor.fromRecordedLiteralValue?
+									null:
+									(value, info) => {
+										let fromRecordedLiteralValue$ = fieldProcessorConst.fromRecordedLiteralValue(value, info);
+										//console.log(propertyOptionsConst);
+										if (propertyOptionsConst.fieldProcessorEvents
+												&& propertyOptionsConst.fieldProcessorEvents.onFromLiteralValue) {
+											fromRecordedLiteralValue$ = propertyOptionsConst.fieldProcessorEvents.onFromRecordedLiteralValue(value, info, fromRecordedLiteralValue$);
+										}
+										return fromRecordedLiteralValue$;
+									},
 							callFromDirectRaw:
 								!fieldProcessor || !fieldProcessor.fromDirectRaw?
 									null:
@@ -159,7 +171,7 @@ export class RecorderManagerDefault implements RecorderManager {
 										return fromDirectRaw$;
 									},
 							callToLiteralValue: 
-								!fieldProcessor || !fieldProcessor.fromDirectRaw?
+								!fieldProcessor || !fieldProcessor.toLiteralValue?
 									null:
 									(value, info) => {
 										let toLiteralValue$ = fieldProcessorConst.toLiteralValue(value, info);
@@ -170,7 +182,7 @@ export class RecorderManagerDefault implements RecorderManager {
 										return toLiteralValue$;
 									},
 							callToDirectRaw:
-								!fieldProcessor || !fieldProcessor.fromDirectRaw?
+								!fieldProcessor || !fieldProcessor.toDirectRaw?
 								null:
 								(value, info) => {
 									let toDirectRaw$ = fieldProcessorConst.toDirectRaw(value, info);

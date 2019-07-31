@@ -1,7 +1,7 @@
 
-import { of, from, Observable, combineLatest } from "rxjs";
+import { of, from, Observable } from "rxjs";
 import { map } from "rxjs/operators";
-import { flatMapJustOnceRxOpr } from "./rxjs-util";
+import { flatMapJustOnceRxOpr, combineFirstSerial } from "./rxjs-util";
 import { CacheHandler } from "../api/recorder-config";
 const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
@@ -21,7 +21,7 @@ export namespace RecorderForDom {
                                             obsArr.push(from(cache.delete(req)));
                                         }
                                         if (obsArr.length > 0) {
-                                            return combineLatest(obsArr);
+                                            return combineFirstSerial(obsArr);
                                         } else {
                                             return of(null);
                                         }

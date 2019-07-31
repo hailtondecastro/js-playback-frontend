@@ -7,9 +7,10 @@ import { FieldInfo } from "../api/recorder-config";
 
 export interface IFieldProcessorCaller<P> {
     callFromLiteralValue?(value: any, info: FieldInfo): Observable<P>;
-    callFromDirectRaw?(rawValue: Stream, info: FieldInfo): Observable<P>;
+    callFromRecordedLiteralValue?(value: any, info: FieldInfo): Observable<P>;
+    callFromDirectRaw?(rawValue: NodeJS.ReadableStream, info: FieldInfo): Observable<P>;
     callToLiteralValue?(value: any, info: FieldInfo): Observable<any>;
-    callToDirectRaw?(value: any, info: FieldInfo): Observable<Stream>;
+    callToDirectRaw?(value: any, info: FieldInfo): Observable<NodeJS.ReadableStream>;
 }
 
 export interface FieldEtc<P, GP> {

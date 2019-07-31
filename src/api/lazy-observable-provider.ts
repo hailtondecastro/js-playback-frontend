@@ -1,9 +1,9 @@
 import { Observable } from "rxjs";
 import { ResponseLike } from "../typeslike";
-import { Stream } from "stream";
 import { TypeLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
 import { RecorderDecorators } from "./recorder-decorators";
+import { BinaryStream } from "./lazy-ref";
 
 export interface LazyInfo<L> {
 	gNode: GenericNode
@@ -16,5 +16,5 @@ export interface LazyInfo<L> {
 
 export interface LazyObservableProvider {
 	generateObservable(signatureStr: string, info: LazyInfo<any>): Observable<ResponseLike<Object>>;
-	generateObservableForDirectRaw(signatureStr: string, info: LazyInfo<any>): Observable<ResponseLike<Stream | any>>;
+	generateObservableForDirectRaw(signatureStr: string, info: LazyInfo<any>): Observable<ResponseLike<NodeJS.ReadableStream | any>>;
 }
