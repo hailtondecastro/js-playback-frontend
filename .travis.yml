@@ -7,22 +7,20 @@ install:
   - cd ./modules/json-playback-recorder-ts
   - npm install
   - cd ../..
-  - cd ./json-pr-integration-test
-  - npm install
-  - cd ../..  
 
 script:
   - cd ./modules/json-playback-recorder-ts
-  - npm install
+  - npm run test
   - cd ../..
   - cd ./json-pr-integration-test
   - npm install
+  - npm run test
   - cd ../..
 
 deploy:
   provider: script
   script:
-    - cp .npmrc.template .npmrc && npm publish ./dist/json-playback-recorder-ts  
+    - cp .npmrc.template .npmrc && npm publish ./dist/json-playback-recorder-ts
   skip_cleanup: true
   on:
     tags: true
