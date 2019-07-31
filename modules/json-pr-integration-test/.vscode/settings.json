@@ -1,0 +1,9 @@
+{
+    "typescript.check.workspaceVersion": true,
+    // Git Bash
+    "terminal.integrated.shell.windows": "bash.exe",
+    "terminal.integrated.shellArgs.windows": [        
+    ]
+,
+"typescript.tsdk": "./node_modules/typescript/lib"
+}

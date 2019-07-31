@@ -1,0 +1,67 @@
+{
+  "name": "json-pr-integration-test",
+  "description": "For integration test. Not for publish/deploy.",
+  "version": "0.0.3",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "build": "npm run clear-all && npm run build-dist-test && npm run build-dist-dev",
+    "build-dist-test": "     npm run build:prepare-dist-test-folder && tsc -p tsconfig-test.json --extendedDiagnostics && npm run embed-source-contents-dist-test && npm run copy-recusive-dist-test",
+    "build-dist-dev": "      npm run build:prepare-dist-dev-folder  && tsc                       --extendedDiagnostics && npm run embed-source-contents-dist-dev  && npm run copy-recusive-dist-dev",
+    "build-dist-dev-incr": " npm run build:prepare-dist-dev-folder  && tsc --build                                     && npm run embed-source-contents-dist-dev  && npm run copy-recusive-dist-dev",
+    "build-vscode-incr": "   npm run build-dist-dev-incr",
+    "build-vscode-rebuild": "npm run clear-dist-dev && npm run build-dist-dev",
+    "copy-recusive-dist-test": "node ./build-utils/copy-recursive -baseFolder . -relativeSourceFolder test -relativeTargetFolder dist-test -extension txt -timeout 10000 -verbose true",
+    "copy-recusive-dist-dev": " node ./build-utils/copy-recursive -baseFolder . -relativeSourceFolder test -relativeTargetFolder dist-dev  -extension txt -timeout 10000 -verbose true",
+    "clear-all": "npm run clear-dist-test && npm run clear-dist-dev",
+    "clear-dist-test": "node ./build-utils/clear-all -baseDistFolder ./dist-test -verbose true",
+    "clear-dist-dev": " node ./build-utils/clear-all -baseDistFolder ./dist-dev  -verbose true",
+    "embed-source-contents-dist-test": "node ./build-utils/embed-source-contents -baseDistFolder ./dist-test -timeout 10000 -verbose true",
+    "embed-source-contents-dist-dev": " echo 'using inline source, not embedding'",
+    "build:prepare-dist-test-folder": "node ./build-utils/prepare-dist-folder -baseDistFolder ./dist-test -verbose true",
+    "build:prepare-dist-dev-folder": " node ./build-utils/prepare-dist-folder -baseDistFolder ./dist-dev -verbose true",
+    "test": " npm run build && npm run mocha-dist-test",
+    "mocha-dist-test": "mocha dist-test/**/**.spec.js",
+    "mocha-dist-dev": " mocha dist-dev/**/**.spec.js",
+    "test2": "npm run build && mocha --grep /master-lazy-prp-over-sized-test/ dist/**/**.spec.js",
+    "browserify": "npm run build && browserify dist-dev/index.js --outfile browser.js"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/jasmine": "^2.5.43",
+    "mocha": "^6.2.0",
+    "rxjs-compat": "^6.5.2",
+    "ts-node": "^8.1.0",
+    "typescript": "3.5.3"
+  },
+  "dependencies": {
+    "@angular/common": "^6.1.10",
+    "@angular/core": "^6.1.10",
+    "@types/node": "^10.3.5",
+    "@types/rx": "^4.1.1",
+    "blob-to-stream": "^1.0.3",
+    "chai": "^4.2.0",
+    "json-playback-recorder-ts": "file:../../dist/json-playback-recorder-ts",
+    "memory-streams": "^0.1.3",
+    "rxjs": "^6.5.2",
+    "stream-to-blob": "^2.0.0",
+    "stream-to-observable": "^0.2.0"
+  },
+  "author": {
+    "name": "Hailton de Castro",
+    "email": "hailtondecastro@gmail.com"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hailtondecastro/json-playback-recorder-ts"
+  },
+  "bugs": {
+    "url": "https://github.com/hailtondecastro/json-playback-recorder-ts/issues"
+  },
+  "homepage": "https://github.com/hailtondecastro/json-playback-recorder-ts",
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
+}

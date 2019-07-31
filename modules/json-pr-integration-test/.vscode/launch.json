@@ -1,0 +1,127 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Test dist-dev",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "--timeout",
+                //"2000",
+                "600000",
+                "--grep",
+                "/.*/",
+                //"RecorderManagerDefault.master-lazy-prp-over-sized-test-async",
+                //"RecorderManagerDefault.master-a-test-async",
+                //"RecorderManagerDefault.master-a-test-sync",
+                //"RecorderManagerDefault.master-a-detail-a-test-sync",
+                //"RecorderManagerDefault.master-a-detail-a-test-async",
+                //"RecorderManagerDefault.master-a-detail-a-record-sync",
+                //"RecorderManagerDefault.master-a-detail-a-record-async",
+                //"RecorderManagerDefault.poc-observable-just-once-pipe-test",
+                //"RecorderManagerDefault.poc-observable-each-pipe-test",
+                //"ForNodeTest.StringSyncProcessor",
+                //"ForNodeTest.BufferSyncProcessor",
+                //"ForNodeTest.BinaryStreamSyncProcessor",
+                //"ForNodeTest.StringStreamSyncProcessor",
+                //"ForNodeTest.CacheHandlerSync",
+                //"ForNodeTest.StringAsyncProcessor",
+                //"ForNodeTest.StringStreamAsyncProcessor",
+                //"ForNodeTest",
+                //"RecorderManagerDefault",
+                //"RecorderManagerDefault.master-[al][-a][zd]",
+                "dist-dev/**/**.spec.js"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },{
+            "type": "node",
+            "request": "launch",
+            "name": "Launch Test dist-test",
+            "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
+            "args": [
+                "--timeout",
+                //"2000",
+                "600000",
+                "--grep",
+                //"/.*/",
+                //"/master-lazy-prp-over-sized-test-async/",
+                "/master-a-test-async/",
+                //"/master-a-test-sync/",
+                //"/master-a-detail-a-test-sync/",
+                //"/poc-observable-just-once-pipe-test/",
+                //"/poc-observable-each-pipe-test/",
+                "dist-test/**/**.spec.js"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-test/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-folder-content",
+            "program": "${workspaceFolder}/build-utils/mv-folder-content",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/typeslike/dev",
+                "-relativeSourceFolder",
+                ".",
+                "-relativeTargetFolder",
+                "..",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-file",
+            "program": "${workspaceFolder}/build-utils/mv-file",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/src",
+                "-relativeSourceFile",
+                "typeslike-dist.d.ts",
+                "-relativeTargetFile",
+                "./foo/bar/typeslike.d.ts",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch embed-source-contents",
+            "program": "${workspaceFolder}/build-utils/embed-source-contents",
+            "args": [
+                "-baseDistFolder",
+                "./dist-dev",
+                "-timeout",
+                "10000",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "paths": { 
+      "*": ["types/*"]
+    },
+    "baseUrl": ".",
+    "declaration": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./dist-test",
+    "noImplicitAny": true,
+    "noFallthroughCasesInSwitch": true,
+    "inlineSourceMap": false,
+    "sourceMap": true,
+    "lib": ["es6", "dom"],
+    "typeRoots": [
+      "node_modules/@types"
+    ],
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "target": "es5",
+    "resolveJsonModule": true,
+    "esModuleInterop": true ,
+    "rootDirs": []
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "dist-dev",
+    "dist-test",
+    "ts_src",
+    "dist/**",
+    "dist-dev/**",
+    "dist-test/**"
+  ],
+  "angularCompilerOptions": {
+    "genDir": "dist-test",
+    "skipTemplateCodegen": true
+  }
+}

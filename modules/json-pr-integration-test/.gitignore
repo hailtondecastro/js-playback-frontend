@@ -1,0 +1,11 @@
+/target/
+/node_modules/
+/dist_dev/
+/.settings/
+/.project
+/test.out.txt
+**/.jazzignore
+/dist/**/*
+/dist-dev/**/*
+/dist-test/**/*
+/README.md~

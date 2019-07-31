@@ -1,0 +1,79 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "command": "bash",
+    //"command": "type",
+    "type": "shell",
+    "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+    },
+    "args": [
+        "-c"
+    ],
+    "tasks": [
+        {
+            "group": "build",
+            "label": "build",
+            "args": [
+                //"build.out.txt"
+                "npm run build-vscode-incr"
+            ],
+            "problemMatcher": [
+                "$tsc",
+                "$tsc-watch",
+                {
+                    "owner": "build",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ]
+                }
+            ],
+        },
+        {
+            "group": "build",
+            "label": "rebuild",
+            "args": [
+                //"build.out.txt"
+                "npm run build-vscode-rebuild"
+            ],
+            "problemMatcher": [
+                "$tsc",
+                "$tsc-watch",
+                {
+                    "owner": "rebuild",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ]
+                }
+            ],
+        }
+    ]
+}
