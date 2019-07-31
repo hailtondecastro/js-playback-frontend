@@ -12,7 +12,7 @@ script:
   - cd ./modules/json-playback-recorder-ts
   - npm run test
   - cd ../..
-  - cd ./json-pr-integration-test
+  - cd ./modules/json-pr-integration-test
   - npm install
   - npm run test
   - cd ../..
