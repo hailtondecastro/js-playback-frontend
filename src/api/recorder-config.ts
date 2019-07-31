@@ -1,5 +1,4 @@
 import { IFieldProcessor } from "./field-processor";
-import { Stream } from "stream";
 import { Observable } from 'rxjs';
 import { TypeLike } from "../typeslike";
 
@@ -12,9 +11,9 @@ export interface FieldInfo {
 }
 
 export interface CacheHandler {
-    getFromCache(cacheKey: string): Observable<Stream>;
+    getFromCache(cacheKey: string): Observable<NodeJS.ReadableStream>;
     removeFromCache(cacheKey: string): Observable<void>;
-    putOnCache(cacheKey: string, stream: Stream): Observable<void>;
+    putOnCache(cacheKey: string, stream: NodeJS.ReadableStream): Observable<void>;
     clearCache(): Observable<void>;
 }
 export enum RecorderLogLevel {
@@ -39,17 +38,16 @@ export interface ConsoleLike {
 }
 
 export interface RecorderConfig {
-    jsHbCreationIdName: string;
-    jsHbMetadatasName: string;
-    //logLevel: JsHbLogLevel;
+    creationIdName: string;
+    playerMetadatasName: string;
     maxLazyRefNotificationPerSecond: number;
     lazyRefNotificationTimeMeasurement: number;
     lazyRefNotificationCountMeasurement: number;
     attachPrefix: string;
     cacheStoragePrefix: string;
     cacheHandler: CacheHandler;
-    configCreationIdName(jsHbCreationIdName: string): RecorderConfig;  
-    configMetadatasName(jsHbMetadatasName: string): RecorderConfig;
+    configCreationIdName(creationIdName: string): RecorderConfig;  
+    configMetadatasName(playerMetadatasName: string): RecorderConfig;
     configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig;
     configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): RecorderConfig;
     configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): RecorderConfig;
@@ -58,7 +56,7 @@ export interface RecorderConfig {
     configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): RecorderConfig;
     getConsole(logger: RecorderLogger): ConsoleLike;
     /**
-     * Default: "jsHbAttachPrefix_"
+     * Default: "attachPrefix_"
      * @param attachPrefix 
      */
     configAttachPrefix(attachPrefix: string): RecorderConfig;

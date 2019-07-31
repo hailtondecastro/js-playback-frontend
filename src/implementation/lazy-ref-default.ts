@@ -1,8 +1,8 @@
 import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction, PartialObserver } from 'rxjs';
 import { RecorderLogLevel, ConsoleLike } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
-import { flatMap, map, finalize } from 'rxjs/operators';
-import { RecorderContants } from './recorder-constants';
+import { flatMap, map, finalize, share } from 'rxjs/operators';
+import { RecorderConstants } from './recorder-constants';
 import { Stream, Readable } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { request } from 'http';
@@ -20,65 +20,65 @@ import { RecorderLogger } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
 
-export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
-           /**
-             * Event emitter
-             * The defined events on documents including:
-             * 1. close
-             * 2. data
-             * 3. end
-             * 4. readable
-             * 5. error
-             */
-            addListener(event: "close", listener: () => void): this;
-            addListener(event: "data", listener: (chunk: string) => void): this;
-            addListener(event: "end", listener: () => void): this;
-            addListener(event: "readable", listener: () => void): this;
-            addListener(event: "error", listener: (err: Error) => void): this;
-            addListener(event: string | symbol, listener: (...args: any[]) => void): this;
+// export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
+//            /**
+//              * Event emitter
+//              * The defined events on documents including:
+//              * 1. close
+//              * 2. data
+//              * 3. end
+//              * 4. readable
+//              * 5. error
+//              */
+//             addListener(event: "close", listener: () => void): this;
+//             addListener(event: "data", listener: (chunk: string) => void): this;
+//             addListener(event: "end", listener: () => void): this;
+//             addListener(event: "readable", listener: () => void): this;
+//             addListener(event: "error", listener: (err: Error) => void): this;
+//             addListener(event: string | symbol, listener: (...args: any[]) => void): this;
 
-            emit(event: "close"): boolean;
-            emit(event: "data", chunk: any): boolean;
-            emit(event: "end"): boolean;
-            emit(event: "readable"): boolean;
-            emit(event: "error", err: Error): boolean;
-            emit(event: string | symbol, ...args: any[]): boolean;
+//             emit(event: "close"): boolean;
+//             emit(event: "data", chunk: any): boolean;
+//             emit(event: "end"): boolean;
+//             emit(event: "readable"): boolean;
+//             emit(event: "error", err: Error): boolean;
+//             emit(event: string | symbol, ...args: any[]): boolean;
 
-            on(event: "close", listener: () => void): this;
-            on(event: "data", listener: (chunk: string) => void): this;
-            on(event: "end", listener: () => void): this;
-            on(event: "readable", listener: () => void): this;
-            on(event: "error", listener: (err: Error) => void): this;
-            on(event: string | symbol, listener: (...args: any[]) => void): this;
+//             on(event: "close", listener: () => void): this;
+//             on(event: "data", listener: (chunk: string) => void): this;
+//             on(event: "end", listener: () => void): this;
+//             on(event: "readable", listener: () => void): this;
+//             on(event: "error", listener: (err: Error) => void): this;
+//             on(event: string | symbol, listener: (...args: any[]) => void): this;
 
-            once(event: "close", listener: () => void): this;
-            once(event: "data", listener: (chunk: any) => void): this;
-            once(event: "end", listener: () => void): this;
-            once(event: "readable", listener: () => void): this;
-            once(event: "error", listener: (err: Error) => void): this;
-            once(event: string | symbol, listener: (...args: any[]) => void): this;
+//             once(event: "close", listener: () => void): this;
+//             once(event: "data", listener: (chunk: any) => void): this;
+//             once(event: "end", listener: () => void): this;
+//             once(event: "readable", listener: () => void): this;
+//             once(event: "error", listener: (err: Error) => void): this;
+//             once(event: string | symbol, listener: (...args: any[]) => void): this;
 
-            prependListener(event: "close", listener: () => void): this;
-            prependListener(event: "data", listener: (chunk: string) => void): this;
-            prependListener(event: "end", listener: () => void): this;
-            prependListener(event: "readable", listener: () => void): this;
-            prependListener(event: "error", listener: (err: Error) => void): this;
-            prependListener(event: string | symbol, listener: (...args: any[]) => void): this;
+//             prependListener(event: "close", listener: () => void): this;
+//             prependListener(event: "data", listener: (chunk: string) => void): this;
+//             prependListener(event: "end", listener: () => void): this;
+//             prependListener(event: "readable", listener: () => void): this;
+//             prependListener(event: "error", listener: (err: Error) => void): this;
+//             prependListener(event: string | symbol, listener: (...args: any[]) => void): this;
 
-            prependOnceListener(event: "close", listener: () => void): this;
-            prependOnceListener(event: "data", listener: (chunk: string) => void): this;
-            prependOnceListener(event: "end", listener: () => void): this;
-            prependOnceListener(event: "readable", listener: () => void): this;
-            prependOnceListener(event: "error", listener: (err: Error) => void): this;
-            prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this;
+//             prependOnceListener(event: "close", listener: () => void): this;
+//             prependOnceListener(event: "data", listener: (chunk: string) => void): this;
+//             prependOnceListener(event: "end", listener: () => void): this;
+//             prependOnceListener(event: "readable", listener: () => void): this;
+//             prependOnceListener(event: "error", listener: (err: Error) => void): this;
+//             prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this;
 
-            removeListener(event: "close", listener: () => void): this;
-            removeListener(event: "data", listener: (chunk: string) => void): this;
-            removeListener(event: "end", listener: () => void): this;
-            removeListener(event: "readable", listener: () => void): this;
-            removeListener(event: "error", listener: (err: Error) => void): this;
-            removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
-}
+//             removeListener(event: "close", listener: () => void): this;
+//             removeListener(event: "data", listener: (chunk: string) => void): this;
+//             removeListener(event: "end", listener: () => void): this;
+//             removeListener(event: "readable", listener: () => void): this;
+//             removeListener(event: "error", listener: (err: Error) => void): this;
+//             removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
+// }
 
 // /**
 //  * Base class to use as marker for {@link reflect-metadata#Reflect.metadata} with 
@@ -360,9 +360,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         super();
         const thisLocal = this;
         this._session = session;
-        thisLocal.consoleLike = this.session.jsHbManager.config.getConsole(RecorderLogger.LazyRef);
-        thisLocal.consoleLikeProcResp = this.session.jsHbManager.config.getConsole(RecorderLogger.LazyRefBaseProcessResponse);
-        thisLocal.consoleLikeSubs = this.session.jsHbManager.config.getConsole(RecorderLogger.LazyRefSubscribe);
+        thisLocal.consoleLike = this.session.manager.config.getConsole(RecorderLogger.LazyRef);
+        thisLocal.consoleLikeProcResp = this.session.manager.config.getConsole(RecorderLogger.LazyRefBaseProcessResponse);
+        thisLocal.consoleLikeSubs = this.session.manager.config.getConsole(RecorderLogger.LazyRefSubscribe);
         this._lazyLoadedObj = null;
     }
 
@@ -473,18 +473,18 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     public notifyModification(lazyLoadedObj: L) : void {
         this.notificationCount++;
         let currentLazyRefNotificationTimeMeasurement = Date.now() - this.notificationStartTime;
-        if (currentLazyRefNotificationTimeMeasurement > this.session.jsHbManager.config.lazyRefNotificationTimeMeasurement 
-                ||this.notificationCount > this.session.jsHbManager.config.lazyRefNotificationCountMeasurement) {
+        if (currentLazyRefNotificationTimeMeasurement > this.session.manager.config.lazyRefNotificationTimeMeasurement 
+                ||this.notificationCount > this.session.manager.config.lazyRefNotificationCountMeasurement) {
             let speedPerSecond = (this.notificationCount / currentLazyRefNotificationTimeMeasurement) * 1000;
             this.notificationStartTime = Date.now();
             this.notificationCount = 0;
-            if (speedPerSecond > this.session.jsHbManager.config.maxLazyRefNotificationPerSecond) {
+            if (speedPerSecond > this.session.manager.config.maxLazyRefNotificationPerSecond) {
                 throw new Error('Max notications per second exceded: ' +
                     speedPerSecond + '. Are you modifing any persistent '+
                     'entity or collection on subscribe() instead of '+
                     'subscribeToModify() or '+
                     'is IConfig.maxLazyRefNotificationPerSecond, '+
-                    this.session.jsHbManager.config.maxLazyRefNotificationPerSecond +
+                    this.session.manager.config.maxLazyRefNotificationPerSecond +
                     ', misconfigured? Me:\n' +
                     this);
             }
@@ -547,7 +547,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public setLazyObj(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.config);
+        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
         if (!fieldEtc.propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
@@ -592,8 +592,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 action.actionType = TapeActionType.SetField;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else if (!this._isOnLazyLoading && !mdRefererObj.$isComponentPlayerObjectId$) {
                     throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner. Me:\n' + this);
                 }
@@ -601,17 +601,31 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (lazyLoadedObj != null) {
                     if (mdLazyLoadedObj.$signature$) {
                         action.settedSignatureStr = mdLazyLoadedObj.$signature$;
-                    } else if (lodashHas(lazyLoadedObj, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                        action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                    } else if (lodashHas(lazyLoadedObj, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.manager.config.creationIdName) as number;
                     } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
-                        //nothing for now
+                        //nothing for now!
                     } else if (!this._isOnLazyLoading) {
                         throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\'.  lazyLoadedObj is not managed: \'' + lazyLoadedObj.constructor.name + '\'' + '. Me:\n' + this);
                     }
                 }
 
                 if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {                    
-                    if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
+                    if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                        isValueByFieldProcessor.value = true;
+                        let processTapeActionAttachRefId$ = thisLocal.session.processTapeActionAttachRefId({fieldEtc: fieldEtc, value: lazyLoadedObj, action: action, propertyKey: thisLocal.refererKey});
+                        //processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(thisLocal.session.addSubscribedObsRxOpr());
+                        processTapeActionAttachRefId$.subscribe(
+                            {
+                                next: (ptaariValue) => {
+                                    if(!ptaariValue.asyncAddTapeAction) {
+                                        thisLocal.session.addTapeAction(action);
+                                    }
+                                    this.mayDoNextHelper(isValueByFieldProcessor, fieldEtc, ptaariValue.newValue);
+                                }
+                            }
+                        );
+                    } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
                         isValueByFieldProcessor.value = true;
                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(action.simpleSettedValue, fieldEtc.fieldInfo);
                         toLiteralValue$ = toLiteralValue$.pipe(this.session.addSubscribedObsRxOpr());
@@ -646,30 +660,46 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             }
         } else {
         }
-        this._lazyLoadedObj = lazyLoadedObj;
+        this.mayDoNextHelper(isValueByFieldProcessor, fieldEtc, lazyLoadedObj);
         
-        if (!isValueByFieldProcessor.value && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
-            if (this.lazyLoadedObj) {
-                this.session.registerEntityAndLazyref(this.lazyLoadedObj, this);
-            }
-        }
+        // this._lazyLoadedObj = lazyLoadedObj;
+        // if (!isValueByFieldProcessor.value && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
+        //     if (this.lazyLoadedObj) {
+        //         this.session.registerEntityAndLazyref(this.lazyLoadedObj, this);
+        //     }
+        // }
 
-        if (this._needCallNextOnSetLazyObj) {
-            this.next(lazyLoadedObj);
-        }
+        // if (this._needCallNextOnSetLazyObj) {
+        //     this.next(lazyLoadedObj);
+        // }
         
-        let result$ = this.session.createAsyncTasksWaiting();
+        let createSerialAsyncTasksWaiting$ = this.session.createSerialAsyncTasksWaiting();
 
         const isSynchronouslyDone = { value: false, result: null as void};
-        result$.subscribe((result)=>{
+        createSerialAsyncTasksWaiting$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
         if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+            return of(isSynchronouslyDone.result).pipe();
         } else {
-            return result$;
+            return createSerialAsyncTasksWaiting$.pipe();
+        }
+    }
+
+    private mayDoNextHelper(isValueByFieldProcessor: {value: boolean}, fieldEtc: FieldEtc<L, any>, newLazyLoadedObj: L) {
+        if (newLazyLoadedObj !== this._lazyLoadedObj) {
+            this._lazyLoadedObj = newLazyLoadedObj;
+            if (!isValueByFieldProcessor.value && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
+                if (this.lazyLoadedObj) {
+                    this.session.registerEntityAndLazyref(this.lazyLoadedObj, this);
+                }
+            }
+
+            if (this._needCallNextOnSetLazyObj) {
+                this.next(this.lazyLoadedObj);
+            }
         }
     }
 
@@ -683,7 +713,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         } else {
             resultSubs = super.subscribe(<(value: L) => void>observerOrNext, error, complete);
         }
-        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.config);
+        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
         let observerOriginal: PartialObserver<L>;
         if ((observerOrNext as PartialObserver<L>).next
             || (observerOrNext as PartialObserver<L>).complete
@@ -822,7 +852,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         this);
                 }
                 thisLocalNextOnAsync.value = true;
-                let getFromCache$ = this.session.jsHbManager.config.cacheHandler.getFromCache(this.attachRefId);
+                let getFromCache$ = this.session.manager.config.cacheHandler.getFromCache(this.attachRefId);
                 let fromDirectRaw$: Observable<L> =
                     getFromCache$
                         .pipe(
@@ -897,11 +927,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         let playerSnapshot: PlayerSnapshot;
         let isLazyRefOfCollection = false;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
-        if (lodashHas(this.refererObj, this.session.jsHbManager.config.jsHbMetadatasName)) {
-            mdRefererObj = lodashGet(this.refererObj, this.session.jsHbManager.config.jsHbMetadatasName);
+        if (lodashHas(this.refererObj, this.session.manager.config.playerMetadatasName)) {
+            mdRefererObj = lodashGet(this.refererObj, this.session.manager.config.playerMetadatasName);
         }
         
-        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.config);
+        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
 
         let originalValueEntry: OriginalLiteralValueEntry;
 
@@ -933,7 +963,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 }
 
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
-                lodashSet(lazyLoadedColl, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                lodashSet(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
                     let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, playerSnapshot.wrappedSnapshot as any[]);
                     lazyLoadedObj$ = processResultEntityArrayInternal$
@@ -951,7 +981,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                             })
                         );
                 } finally {
-                    lodashSet(this.lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                    lodashSet(this.lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 }
             } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && isResponseBodyStream) {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
@@ -966,12 +996,12 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" and has "IFieldProcessor.fromDirectRaw".');
                     }
-                    thisLocal.attachRefId = this.session.jsHbManager.config.cacheStoragePrefix + this.session.nextMultiPurposeInstanceId().toString();
-                    let putOnCache$ = this.session.jsHbManager.config.cacheHandler.putOnCache(thisLocal.attachRefId, responselike.body as Stream);
+                    thisLocal.attachRefId = this.session.manager.config.cacheStoragePrefix + this.session.nextMultiPurposeInstanceId().toString();
+                    let putOnCache$ = this.session.manager.config.cacheHandler.putOnCache(thisLocal.attachRefId, responselike.body as NodeJS.ReadStream);
                     let getFromCache$ = 
                         putOnCache$.pipe(
                             flatMapJustOnceRxOpr( () => {
-                                return thisLocal.session.jsHbManager.config.cacheHandler.getFromCache(thisLocal.attachRefId);
+                                return thisLocal.session.manager.config.cacheHandler.getFromCache(thisLocal.attachRefId);
                             })
                         );
 
@@ -1250,7 +1280,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         complete?: () => void) {
         const thisLocal = this;
 
-        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.jsHbManager.config);
+        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
         let observerOriginal: PartialObserver<L>;
         if ((observerOrNext as PartialObserver<L>).next
             || (observerOrNext as PartialObserver<L>).complete

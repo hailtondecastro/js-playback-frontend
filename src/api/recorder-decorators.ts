@@ -1,7 +1,7 @@
 import { RecorderDecoratorsInternal } from "../implementation/recorder-decorators-internal";
 import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
 import { Stream } from "stream";
-import { StringStreamMarker } from "./lazy-ref";
+import { StringStreamMarker, BinaryStreamMarker } from "./lazy-ref";
 
 export namespace RecorderDecorators {
     /**
@@ -76,28 +76,33 @@ export namespace RecorderDecorators {
         return RecorderDecoratorsInternal.playerType(options);
     }
 
+    export const DateProcessor = RecorderDecoratorsInternal.DateProcessor;
     export const BufferProcessor = RecorderDecoratorsInternal.BufferProcessor;
     export const StringProcessor = RecorderDecoratorsInternal.StringProcessor;
-    export const StreamProcessor = RecorderDecoratorsInternal.StreamProcessor;
+    export const BinaryStreamProcessor = RecorderDecoratorsInternal.BinaryStreamProcessor;
     export const StringStreamProcessor = RecorderDecoratorsInternal.StringStreamProcessor;
 
     export const TypeProcessorEntries = 
     [ 
         {
             type: Buffer,
-            processor: RecorderDecoratorsInternal.BufferProcessor
+            processor: BufferProcessor
         },
         {                
             type: String,
-            processor: RecorderDecoratorsInternal.StringProcessor
+            processor: StringProcessor
         },
         {                
-            type: Stream,
-            processor: RecorderDecoratorsInternal.StreamProcessor
+            type: BinaryStreamMarker,
+            processor: BinaryStreamProcessor
         },
         {
             type: StringStreamMarker,
-            processor: RecorderDecoratorsInternal.StringStreamProcessor
+            processor: StringStreamProcessor
+        },
+        {
+            type: Date,
+            processor: DateProcessor
         }
     ];
 }

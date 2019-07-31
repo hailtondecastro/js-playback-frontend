@@ -1,6 +1,6 @@
 import { TapeAction, TapeActionType } from '../api/tape';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
-import { RecorderContants } from './recorder-constants';
+import { RecorderConstants } from './recorder-constants';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { RecorderSession } from '../api/session';
 import { RecorderSessionImplementor } from './recorder-session-default';
@@ -23,7 +23,7 @@ export class SetCreator<T> {
         if (!_session) {
             throw new Error('_session can not be null');
         }
-        thisLocal.consoleLike = _session.jsHbManager.config.getConsole(RecorderLogger.SetCreator);
+        thisLocal.consoleLike = _session.manager.config.getConsole(RecorderLogger.SetCreator);
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
             thisLocal.consoleLike.group('SetCreator.constructor()');
             thisLocal.consoleLike.debug(_session as any as string); thisLocal.consoleLike.debug(_refererObj as any as string); thisLocal.consoleLike.debug(_refererKey as any as string);
@@ -84,12 +84,12 @@ export class SetCreator<T> {
     }
 
     add(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -104,8 +104,8 @@ export class SetCreator<T> {
                 action.actionType = TapeActionType.CollectionAdd;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else if (!mdRefererObj.$isComponentPlayerObjectId$) {
                     throw new Error('The proprerty \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner');
                 }
@@ -113,8 +113,8 @@ export class SetCreator<T> {
                 if (value != null) {
                     if (mdValue.$signature$) {
                         action.settedSignatureStr = mdValue.$signature$;
-                    } else if (lodashHas(value, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                        action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                    } else if (lodashHas(value, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = lodashGet(value, this.session.manager.config.creationIdName) as number;
                     } else {
                         throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor.name + '\'.  value not managed owner: \'' + value.constructor.name + '\'');
                     }
@@ -125,12 +125,12 @@ export class SetCreator<T> {
     }
 
     delete(targetSet: Set<T>, value: T): void {
-        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
+        let propertyOptions: RecorderDecoratorsInternal.PropertyOptions<T> = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, this.refererObj, this.refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = lodashGet(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -145,16 +145,16 @@ export class SetCreator<T> {
                 action.actionType = TapeActionType.CollectionRemove;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else {
                     throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor + '\' has a not managed owner');
                 }
                 if (value != null) {
                     if (mdValue.$signature$) {
                         action.settedSignatureStr = mdValue.$signature$;
-                    } else if (lodashHas(value, this.session.jsHbManager.config.jsHbCreationIdName)) {
-                        action.settedCreationRefId = lodashGet(value, this.session.jsHbManager.config.jsHbCreationIdName) as number;
+                    } else if (lodashHas(value, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = lodashGet(value, this.session.manager.config.creationIdName) as number;
                     } else {
                         throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor + '\'. not managed value: \'' + value.constructor.name + '\'');
                     }

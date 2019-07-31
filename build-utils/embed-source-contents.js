@@ -31,33 +31,64 @@ async function main() {
         //     const changes = replace.sync(options);
         //     console.log('Modified files:', changes.join(', '));            
         // }
-
         buildHelperCommons.loadDashArgs();
+
+        setTimeout(() => {
+            console.error('[' + nodeModuleName + ']: timeout');
+            process.exit(1);
+        }, buildHelperCommons.argsMap['timeout']);
+
         var baseDistFolder = buildHelperCommons.argsMap['baseDistFolder'];
         if (!path.isAbsolute(baseDistFolder)) {
             baseDistFolder = path.resolve(process.cwd(), baseDistFolder);
         }
+        var consumer;
         var mapArr = glob.sync(baseDistFolder + path.sep + '**' + path.sep +'*.map');
+        const filesWriteCountDownRef = { value: mapArr.length };
+        const exitIfFilesWriteCountDownEndedFunc = () => {
+            if(filesWriteCountDownRef.value === 0) {
+                if (consumer && consumer.destroy) {
+                    consumer.destroy();
+                }
+                process.exit(0);
+            }
+        }
+        const filesWriteCountDownStepFunc = () => {
+            --filesWriteCountDownRef.value;
+            exitIfFilesWriteCountDownEndedFunc();
+        }
+
+        exitIfFilesWriteCountDownEndedFunc();
         for (let index = 0; index < mapArr.length; index++) {
             const mapItem = mapArr[index];
             const mapItemDir = path.dirname(mapItem);
             //const myfunction = async sourceMap.SourceMapConsumer;
-            var consumer = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapItem, "utf8"));
+            consumer = await new sourceMap.SourceMapConsumer(fs.readFileSync(mapItem, "utf8"));
             const generator = sourceMap.SourceMapGenerator.fromSourceMap(consumer);
+            filesWriteCountDownRef.value += (consumer.sources.length - 1);
+            exitIfFilesWriteCountDownEndedFunc();
             for (let j = 0; j < consumer.sources.length; j++) {
                 const sourceItem = consumer.sources[j];
                 if (buildHelperCommons.argsMap['verbose']) {
-                    console.log('[' + nodeModuleName + ']: embarcando fonte (sourceContent) em: ' + mapItem);
+                    console.log('[' + nodeModuleName + ']: embedding source (sourceContent) on: ' + mapItem);
                 }
                 generator.setSourceContent(sourceItem, fs.readFileSync(path.resolve(mapItemDir, sourceItem), "utf8"));
-                fs.writeFileSync(mapItem, generator.toString());
+                fs.writeFile(
+                    mapItem,
+                    generator.toString(),
+                    (err) => {
+                        if (err) {
+                            console.error('[' + nodeModuleName + ']:'+err);
+                            process.exit(1);
+                        }
+                        filesWriteCountDownStepFunc();
+                    }
+                );
             }
-            if (consumer.destroy) {
-                consumer.destroy();
-            }
+            exitIfFilesWriteCountDownEndedFunc();
         }
 
-        process.exit(0);
+        //process.exit(0);
     } catch (err) {
         console.error('[' + nodeModuleName + ']:'+err);
         process.exit(1);

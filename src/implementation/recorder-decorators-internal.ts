@@ -1,4 +1,4 @@
-import { RecorderContants } from './recorder-constants';
+import { RecorderConstants } from './recorder-constants';
 import { get as lodashGet, has } from 'lodash';
 import { Stream, Readable } from 'stream';
 import { Observable, of, from } from 'rxjs';
@@ -8,12 +8,15 @@ import * as memStreams from 'memory-streams';
 import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
 import { TypeLike } from '../typeslike-dev';
-import { LazyRef, StringStream, StringStreamMarker } from '../api/lazy-ref';
+import { LazyRef, StringStream, StringStreamMarker, BinaryStream } from '../api/lazy-ref';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
 import { RecorderSessionImplementor } from './recorder-session-default';
+import { flatMap, map, tap } from 'rxjs/operators';
+import streamToObservable from 'stream-to-observable';
+import { MemStreamReadableStreamAutoEnd } from './mem-stream-readable-stream-auto-end';
 
 export namespace RecorderDecoratorsInternal {
     /**
@@ -67,12 +70,13 @@ export namespace RecorderDecoratorsInternal {
         }
 
         let returnFunc: MethodDecorator = function<Z> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<Z>) {
-            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
+            Reflect.defineMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, optionsConst, target, propertyKey);
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
-                let session: RecorderSessionImplementor = lodashGet(this, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
-                const consoleLike = session.jsHbManager.config.getConsole(RecorderLogger.RecorderDecorators)
-                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.jsHbManager.config);
+                const thisLocal = this;
+                let session: RecorderSessionImplementor = lodashGet(this, RecorderConstants.ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
+                const consoleLike = session.manager.config.getConsole(RecorderLogger.RecorderDecorators)
+                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.manager.config);
                 if (fieldEtc.propertyOptions.persistent) {
                     if (consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                         consoleLike.group('JsonPlayback.set' +
@@ -81,13 +85,13 @@ export namespace RecorderDecoratorsInternal {
                         consoleLike.debug(value);
                         consoleLike.groupEnd();
                     }
-                    let isOnlazyLoad: any = lodashGet(this, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    let isOnlazyLoad: any = lodashGet(this, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
                         if ((target instanceof Object && !(target instanceof Date))) {
                             if (!session) {
-                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
+                                throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderConstants.ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
                             let actualValue = lodashGet(this, propertyKey);
                             if (actualValue !== value) {
@@ -112,20 +116,21 @@ export namespace RecorderDecoratorsInternal {
 
                                     if (bMd.$signature$) {
                                         action.ownerSignatureStr = bMd.$signature$;
-                                    } else if (has(this, session.jsHbManager.config.jsHbCreationIdName)) {
-                                        action.ownerCreationRefId = lodashGet(this, session.jsHbManager.config.jsHbCreationIdName) as number;
+                                    } else if (has(this, session.manager.config.creationIdName)) {
+                                        action.ownerCreationRefId = lodashGet(this, session.manager.config.creationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
                                         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + target.constructor + '\' has a not managed owner');
                                     }
             
+                                    const asyncAddTapeAction = { value: false };
+
                                     if (value != null && value != undefined) {
                                         let allMD = session.resolveMetadatas({object: value});
                                         let bMdValue = allMD.objectMd;
-
                                         if (bMdValue.$signature$) {
                                             action.settedSignatureStr = bMdValue.$signature$;
-                                        } else if (has(value, session.jsHbManager.config.jsHbCreationIdName)) {
-                                            action.settedCreationRefId = lodashGet(value, session.jsHbManager.config.jsHbCreationIdName) as number;
+                                        } else if (has(value, session.manager.config.creationIdName)) {
+                                            action.settedCreationRefId = lodashGet(value, session.manager.config.creationIdName) as number;
                                         } else {
                                             if (value instanceof Object && !(value instanceof Date)) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
@@ -137,52 +142,68 @@ export namespace RecorderDecoratorsInternal {
                                     }
 
                                     if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                                        action.attachRefId = session.jsHbManager.config.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
-                                        if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
-                                            let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
-                                            toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObsRxOpr());
-                                            toDirectRaw$.subscribe((stream) => {
-                                                if (stream) {
-                                                    let putOnCache$ = session.jsHbManager.config.cacheHandler.putOnCache(action.attachRefId, stream)
-                                                    putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
-                                                    putOnCache$.subscribe(() => {
+                                        let processTapeActionAttachRefId$ = session.processTapeActionAttachRefId({fieldEtc: fieldEtc, value: value, action: action, propertyKey: propertyKey.toString()});
+                                        //processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(session.addSubscribedObsRxOpr());
+                                        asyncAddTapeAction.value = true;
+                                        processTapeActionAttachRefId$.subscribe(
+                                            {
+                                                next: (ptaariValue) => {
+                                                    oldSet.call(thisLocal, ptaariValue.newValue);
+                                                    if(!ptaariValue.asyncAddTapeAction) {
                                                         session.addTapeAction(action);
-                                                    });
-                                                    let getFromCache$ = session.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId);
-                                                    getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
-                                                    getFromCache$.subscribe((stream) => {
-                                                        oldSet.call(this, stream);
-                                                    });
-                                                } else {
-                                                    if (value) {
-                                                        throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + value.constructor);
                                                     }
-                                                    action.simpleSettedValue = null;
-                                                    action.attachRefId = null;
-                                                    session.addTapeAction(action);
                                                 }
-                                            });
-                                        } else {
-                                            if (!((value as any as Stream).addListener && (value as any as Stream).pipe)) {
-                                                throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
-                                            } else {
-                                                let putOnCache$ = session.jsHbManager.config.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
-                                                putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
-                                                putOnCache$.subscribe(() => {
-                                                    session.addTapeAction(action);
-                                                });
-                                                let getFromCache$ = session.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId);
-                                                getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
-                                                getFromCache$.subscribe((stream) => {
-                                                    oldSet.call(this, stream);
-                                                });
                                             }
-                                        }
+                                        );
+                                        // action.attachRefId = session.manager.config.cacheStoragePrefix + session.nextMultiPurposeInstanceId();
+                                        // if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToDirectRaw) {
+                                        //     let toDirectRaw$ = fieldEtc.fieldProcessorCaller.callToDirectRaw(value, fieldEtc.fieldInfo);
+                                        //     toDirectRaw$ = toDirectRaw$.pipe(session.addSubscribedObsRxOpr());
+                                        //     asyncAddTapeAction.value = true;
+                                        //     toDirectRaw$.subscribe((stream) => {
+                                        //         if (stream) {
+                                        //             let putOnCache$ = session.manager.config.cacheHandler.putOnCache(action.attachRefId, stream)
+                                        //             putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
+                                        //             putOnCache$.subscribe(() => {
+                                        //                 session.addTapeAction(action);
+                                        //             });
+                                        //             let getFromCache$ = session.manager.config.cacheHandler.getFromCache(action.attachRefId);
+                                        //             getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
+                                        //             getFromCache$.subscribe((stream) => {
+                                        //                 oldSet.call(this, stream);
+                                        //             });
+                                        //         } else {
+                                        //             if (value) {
+                                        //                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + value.constructor);
+                                        //             }
+                                        //             action.simpleSettedValue = null;
+                                        //             action.attachRefId = null;
+                                        //             session.addTapeAction(action);
+                                        //         }
+                                        //     });
+                                        // } else {
+                                        //     if (!((value as any as Stream).addListener && (value as any as Stream).pipe)) {
+                                        //         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
+                                        //     } else {
+                                        //         let putOnCache$ = session.manager.config.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
+                                        //         putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
+                                        //         asyncAddTapeAction.value = true;
+                                        //         putOnCache$.subscribe(() => {
+                                        //             session.addTapeAction(action);
+                                        //         });
+                                        //         let getFromCache$ = session.manager.config.cacheHandler.getFromCache(action.attachRefId);
+                                        //         getFromCache$ = getFromCache$.pipe(session.addSubscribedObsRxOpr());
+                                        //         getFromCache$.subscribe((stream) => {
+                                        //             oldSet.call(this, stream);
+                                        //         });
+                                        //     }
+                                        // }
                                     } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
                                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
-                                            action.simpleSettedValue, 
+                                            value, 
                                             fieldEtc.fieldInfo);
                                         toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
+                                        asyncAddTapeAction.value = true;
                                         toLiteralValue$.subscribe(
                                             {
                                                 next: (processedValue) => {
@@ -192,6 +213,10 @@ export namespace RecorderDecoratorsInternal {
                                             }
                                         );
                                     } else {
+                                        
+                                    }
+
+                                    if (!asyncAddTapeAction.value) {
                                         session.addTapeAction(action);
                                     }
                                 }
@@ -206,7 +231,6 @@ export namespace RecorderDecoratorsInternal {
                             }
                         }
                     }
-
                     oldSet.call(this, value);
                     if (session && !isOnlazyLoad) {
                         session.notifyAllLazyrefsAboutEntityModification(this, null);
@@ -230,7 +254,7 @@ export namespace RecorderDecoratorsInternal {
     export function playerObjectId<T>(): MethodDecorator {
         return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
             let playerObjectIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
-            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, playerObjectIdType, target);
+            Reflect.defineMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, playerObjectIdType, target);
         };
     }  
 
@@ -247,7 +271,7 @@ export namespace RecorderDecoratorsInternal {
      */
     export function playerType<T>(options: RecorderDecorators.playerTypeOptions): ClassDecorator {
         return function<T> (target: T): T | void {
-            Reflect.defineMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, options, target);
+            Reflect.defineMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, options, target);
             Reflect.defineMetadata(
                 mountContructorByPlayerTypeMetadataKey(options, target as any as TypeLike<any>),
                 target,
@@ -259,12 +283,105 @@ export namespace RecorderDecoratorsInternal {
      * Internal use only! It is no a decorator!
      */
     export function mountContructorByPlayerTypeMetadataKey(options: RecorderDecorators.playerTypeOptions, entityType: TypeLike<any>): string {
-        return RecorderContants.REFLECT_METADATA_JSCONTRUCTOR_BY_PLAYER_TYPE_PREFIX +
+        return RecorderConstants.REFLECT_METADATA_JSCONTRUCTOR_BY_PLAYER_TYPE_PREFIX +
             (entityType as any).name +
             (options.disambiguationId? ':' + options.disambiguationId : '') +
             ':' + options.playerType;
     }
 
+    // export const BufferProcessor: IFieldProcessor<Buffer> = {
+    //     fromLiteralValue: (value, info) => {
+    //         if (value) {
+    //             return of(Buffer.from(value, 'base64'));
+    //         } else {
+    //             return of(null);
+    //         }
+    //     },
+    //     toLiteralValue: (value, info) => {
+    //         if (value) {
+    //             let base64Str = value.toString('base64');                            
+    //             return of(base64Str);
+    //         }
+    //     }
+    // };
+    // export const StringProcessor: IFieldProcessor<String> = {
+    //     fromLiteralValue: (value: string, info: any) => {
+    //         return of(value);
+    //     },
+    //     fromDirectRaw: (stream: Stream, info: any) => {
+    //         return from(getStream(stream, {}) as Promise<string>);
+    //     }
+    // };
+    // export const StreamProcessor: IFieldProcessor<String> = {
+    //     fromLiteralValue: (value, info) => {
+    //         if (value) {
+    //             let base64AB = Buffer.from(value, 'base64');
+    //             let ws = new memStreams.WritableStream();
+    //             ws.write(base64AB);
+    //             let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
+    //             myReadableStreamBuffer.push(base64AB);
+    //             return of(myReadableStreamBuffer);
+    //         } else {
+    //             return of(null);
+    //         }
+    //     },
+    //     fromDirectRaw: (stream, info) => {
+    //         if (stream) {
+    //             if ((stream as Stream).addListener && (stream as Stream).pipe) {
+    //                 return of(stream);
+    //             } else {
+    //                 throw new Error('Not supported');
+    //             }
+    //         } else {
+    //             return of(null);
+    //         }
+    //     }
+    // };
+    // export const StringStreamProcessor: IFieldProcessor<StringStream> = {
+    //         fromLiteralValue: (value, info) => {
+    //             if (value) {
+    //                 let base64AB = Buffer.from(value, 'base64');
+    //                 let ws = new memStreams.WritableStream();
+    //                 ws.write(base64AB);
+    //                 let myReadableStreamBuffer = new memStreams.ReadableStream(value); 
+    //                 myReadableStreamBuffer.setEncoding('utf-8');
+    //                 return of(myReadableStreamBuffer);
+    //             } else {
+    //                 return of(null);
+    //             }
+    //         },
+    //         fromDirectRaw: (stream, info) => {
+    //             if (stream) {
+    //                 if ((stream as Stream).addListener && (stream as Stream).pipe) {
+    //                     (stream as any as Readable).setEncoding('utf-8');
+    //                     return of(stream);
+    //                 } else {
+    //                     throw new Error('Not supported');
+    //                 }
+    //             } else {
+    //                 return of(null);
+    //             }
+    //         }
+    // };
+
+    export const DateProcessor: IFieldProcessor<Date> = {
+        fromLiteralValue: (value, info) => {
+            if (value instanceof Number || typeof(value) === 'number') {
+                return of(new Date(value as number));
+            } else if (value instanceof String || typeof(value) === 'string') {
+                return of(new Date(value as string));
+            } else {
+                return of(null);
+            }
+        },
+        toLiteralValue: (value, info) => {
+            if (value) {
+                return of(value.getTime());
+            } else {
+                return of(null);
+            }
+        }
+    };
     export const BufferProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {
@@ -273,28 +390,101 @@ export namespace RecorderDecoratorsInternal {
                 return of(null);
             }
         },
+        fromDirectRaw: (stream, info) => {
+            if (stream) {
+                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
+                return from(
+                    streamToObservable(stream)
+                        .forEach((chunk) => {
+                            chunkConcatArrRef.value.push(chunk as Buffer);
+                        })
+                ).pipe(
+                    map(() => {
+                        return Buffer.concat(chunkConcatArrRef.value);
+                    })
+                );
+            } else {
+                of(null);
+            }
+        },
         toLiteralValue: (value, info) => {
             if (value) {
-                let base64Str = value.toString('base64');                            
+                let base64Str = value.toString('base64');
                 return of(base64Str);
+            } else {
+                return of(null);
+            }
+        },
+        toDirectRaw: (value, info) => {
+            if (value) {
+                let ws = new memStreams.WritableStream();
+                ws.write(value);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
+                myReadableStreamBuffer.push(value);
+                return of(null);
+                // return of(null).pipe(
+                //     tap(() => {
+                //         myReadableStreamBuffer.emit('end');
+                //     }),
+                //     map(() => {
+                //         return myReadableStreamBuffer;
+                //     })
+                // );
+            } else {
+                return of(null);
             }
         }
     };
     export const StringProcessor: IFieldProcessor<String> = {
-        fromLiteralValue: (value: string, info: any) => {
+        fromLiteralValue: (value, info) => {
             return of(value);
         },
-        fromDirectRaw: (stream: Stream, info: any) => {
-            return from(getStream(stream, {}) as Promise<string>);
+        fromDirectRaw: (stream, info) => {
+            if (stream) {
+                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
+                return from(
+                    streamToObservable(stream)
+                        .forEach((chunk) => {
+                            chunkConcatArrRef.value.push(chunk as Buffer);
+                        })
+                ).pipe(
+                    map(() => {
+                        let bufferConc = Buffer.concat(chunkConcatArrRef.value);
+                        return bufferConc.toString('utf8');
+                    })
+                );
+            } else {
+                of(null);
+            }
+            // if (stream) {
+            //     if ((stream as Stream).addListener && (stream as Stream).pipe) {
+            //         let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
+            //         return from(resultPrmStr);
+            //     } else {
+            //         throw new Error('Not supported');
+            //     }
+            // } else {
+            //     return of(null);
+            // }
+        },
+        toLiteralValue: (value, info) => {
+            return of(value);
+        },
+        toDirectRaw: (value, info) => {
+            if (value) {
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
+                myReadableStreamBuffer.setEncoding('utf-8');
+                return of(myReadableStreamBuffer);
+            } else {
+                return of(null);
+            }
         }
     };
-    export const StreamProcessor: IFieldProcessor<String> = {
+    export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = {
         fromLiteralValue: (value, info) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
-                let ws = new memStreams.WritableStream();
-                ws.write(base64AB);
-                let myReadableStreamBuffer = new memStreams.ReadableStream(''); 
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
                 myReadableStreamBuffer.push(base64AB);
                 return of(myReadableStreamBuffer);
             } else {
@@ -311,15 +501,34 @@ export namespace RecorderDecoratorsInternal {
             } else {
                 return of(null);
             }
+        },
+        toDirectRaw: (value, info) => {
+            if (value) {
+                return of(value);
+            } else {
+                return of(null);
+            }
+        },
+        toLiteralValue: (value, info) => {
+            if (value) {
+                return BufferProcessor.fromDirectRaw(value, info).pipe(
+                    flatMap((buffer) => {
+                        return BufferProcessor.toLiteralValue(buffer, info);
+                    })                    
+                );
+            } else {
+                return of(null);
+            }
         }
     };
     export const StringStreamProcessor: IFieldProcessor<StringStream> = {
             fromLiteralValue: (value, info) => {
                 if (value) {
-                    let base64AB = Buffer.from(value, 'base64');
+                    let valueBuffer = Buffer.from(value, 'utf8');
                     let ws = new memStreams.WritableStream();
-                    ws.write(base64AB);
-                    let myReadableStreamBuffer = new memStreams.ReadableStream(value); 
+                    ws.write(valueBuffer);
+                    let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
+                    myReadableStreamBuffer.push(valueBuffer);
                     myReadableStreamBuffer.setEncoding('utf-8');
                     return of(myReadableStreamBuffer);
                 } else {
@@ -328,12 +537,30 @@ export namespace RecorderDecoratorsInternal {
             },
             fromDirectRaw: (stream, info) => {
                 if (stream) {
-                    if ((stream as Stream).addListener && (stream as Stream).pipe) {
+                    if (stream.addListener && stream.pipe) {
                         (stream as any as Readable).setEncoding('utf-8');
                         return of(stream);
                     } else {
                         throw new Error('Not supported');
                     }
+                } else {
+                    return of(null);
+                }
+            },
+            toDirectRaw: (value, info) => {
+                if (value) {
+                    return of(value);
+                } else {
+                    return of(null);
+                }
+            },
+            toLiteralValue: (value, info) => {
+                if (value) {
+                    return StringProcessor.fromDirectRaw(value, info).pipe(
+                        flatMap((value) => {
+                            return StringProcessor.toLiteralValue(value, info);
+                        })
+                    );
                 } else {
                     return of(null);
                 }

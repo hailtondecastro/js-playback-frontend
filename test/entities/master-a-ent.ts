@@ -1,5 +1,5 @@
 import { DetailAEnt } from './detail-a-ent';
-import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker } from '../../src/api/lazy-ref';
+import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker } from '../../src/api/lazy-ref';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { Stream } from 'stream';
@@ -16,10 +16,10 @@ export class MasterAEnt {
     private _blobB: Buffer;
     private _hbVersion: number;
     private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
-    private _blobLazyA: LazyRefPrp<Stream>;
-    private _blobLazyB: LazyRefPrp<Stream>;
+    private _blobLazyA: LazyRefPrp<BinaryStream>;
+    private _blobLazyB: LazyRefPrp<BinaryStream>;
     private _clobLazyA: LazyRefPrp<StringStream>;
-    private _clobLazyB: LazyRefPrp<StringStream>;
+	private _clobLazyB: LazyRefPrp<StringStream>;
 
 	@RecorderDecorators.property()
 	public get id(): number {
@@ -68,14 +68,14 @@ export class MasterAEnt {
 	}
 
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
-	public get blobLazyA(): LazyRefPrp<Stream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryStreamMarker).gt().tree))
+	public get blobLazyA(): LazyRefPrp<BinaryStream> {
 		return this._blobLazyA;
 	}
 
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(Stream).gt().tree))
-	public get blobLazyB(): LazyRefPrp<Stream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryStreamMarker).gt().tree))
+	public get blobLazyB(): LazyRefPrp<BinaryStream> {
 		return this._blobLazyB;
 	}
 
@@ -127,11 +127,11 @@ export class MasterAEnt {
 		this._detailAEntCol = value;
 	}
 
-	public set blobLazyA(value: LazyRefPrp<Stream>) {
+	public set blobLazyA(value: LazyRefPrp<BinaryStream>) {
 		this._blobLazyA = value;
 	}
 
-	public set blobLazyB(value: LazyRefPrp<Stream>) {
+	public set blobLazyB(value: LazyRefPrp<BinaryStream>) {
 		this._blobLazyB = value;
 	}
 

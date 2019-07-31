@@ -22,13 +22,42 @@
             "label": "build",
             "args": [
                 //"build.out.txt"
-                "npm run build-vscode"
+                "npm run build-vscode-incr"
             ],
             "problemMatcher": [
                 "$tsc",
                 "$tsc-watch",
                 {
                     "owner": "build",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ]
+                }
+            ],
+        },
+        {
+            "group": "build",
+            "label": "rebuild",
+            "args": [
+                //"build.out.txt"
+                "npm run build-vscode-rebuild"
+            ],
+            "problemMatcher": [
+                "$tsc",
+                "$tsc-watch",
+                {
+                    "owner": "rebuild",
                     "fileLocation": [
                         "relative",
                         "${workspaceRoot}"

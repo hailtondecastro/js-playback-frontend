@@ -19,7 +19,7 @@ function preRequires() {
 preRequires();
 
 var fs = require('fs-extra');
-var glob = require("glob");
+//var glob = require("glob");
 
 function main() {
     try {

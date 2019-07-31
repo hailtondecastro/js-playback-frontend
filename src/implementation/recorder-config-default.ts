@@ -80,8 +80,8 @@ export class RecorderConfigDefault implements RecorderConfig {
         return this._logLevelMap.get(logger);
     }
 
-    private _attachPrefix: string;
-    private _cacheStoragePrefix: string = 'jsCacheStoragePrefix_';
+    private _attachPrefix: string = 'attachPrefix_';
+    private _cacheStoragePrefix: string = 'cacheStoragePrefix_';
     configAttachPrefix(attachPrefix: string): RecorderConfig {
         this._attachPrefix = attachPrefix;
         return this;
@@ -97,12 +97,11 @@ export class RecorderConfigDefault implements RecorderConfig {
 		return this._cacheStoragePrefix;
 	}
 
-    private _jsHbCreationIdName: string                 = 'jsHbCreationId';
-    private _jsHbMetadatasName: string = '$jsHbMetadatas$';
+    private _creationIdName: string                 = 'creationId';
+    private _playerMetadatasName: string = '$metadatas$';
     private _maxLazyRefNotificationPerSecond: number    = 10;
     private _lazyRefNotificationTimeMeasurement: number = 5000;
     private _lazyRefNotificationCountMeasurement: number = 30;
-    //private _logLevel: JsHbLogLevel = JsHbLogLevel.Warn;
     private _fieldProcessorEntryMap: Map<TypeLike<any>, IFieldProcessor<any>> = new Map();
     private _cacheHandler: CacheHandler;
 
@@ -115,29 +114,20 @@ export class RecorderConfigDefault implements RecorderConfig {
         return this;
     }
     
-    public configCreationIdName(jsHbCreationIdName: string): RecorderConfig { this.jsHbCreationIdName = jsHbCreationIdName; return this; }
-    public configMetadatasName(jsHbMetadatasName: string): RecorderConfig { this.jsHbMetadatasName = jsHbMetadatasName; return this; }
+    public configCreationIdName(creationIdName: string): RecorderConfig { this.creationIdName = creationIdName; return this; }
+    public configMetadatasName(playerMetadatasName: string): RecorderConfig { this.playerMetadatasName = playerMetadatasName; return this; }
 
-    //public configLogLevel(logLevel: JsHbLogLevel): IConfig { this.logLevel = logLevel; return this; }
     public configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig { this.maxLazyRefNotificationPerSecond = maxLazyRefNotificationPerSecond; return this; }
     public configLazyRefNotificationTimeMeasurement(lazyRefNotificationTimeMeasurement: number): RecorderConfig { this.lazyRefNotificationTimeMeasurement = lazyRefNotificationTimeMeasurement; return this; }
     public configLazyRefNotificationCountMeasurement(value: number ): RecorderConfig { this._lazyRefNotificationCountMeasurement = value; return this;	}
 
-	public get jsHbCreationIdName(): string {
-		return this._jsHbCreationIdName;
+	public get creationIdName(): string {
+		return this._creationIdName;
 	}
 
-	public set jsHbCreationIdName(value: string) {
-		this._jsHbCreationIdName = value;
+	public set creationIdName(value: string) {
+		this._creationIdName = value;
 	}
-
-	// public get logLevel(): JsHbLogLevel {
-	// 	return this._logLevel;
-	// }
-
-	// public set logLevel(value: JsHbLogLevel) {
-	// 	this._logLevel = value;
-    // }
     
 	public get maxLazyRefNotificationPerSecond(): number{
 		return this._maxLazyRefNotificationPerSecond;
@@ -151,11 +141,11 @@ export class RecorderConfigDefault implements RecorderConfig {
 	public set maxLazyRefNotificationPerSecond(value: number) {
 		this._maxLazyRefNotificationPerSecond = value;
     }
-	public get jsHbMetadatasName(): string  {
-		return this._jsHbMetadatasName;
+	public get playerMetadatasName(): string  {
+		return this._playerMetadatasName;
 	}
-	public set jsHbMetadatasName(value: string ) {
-		this._jsHbMetadatasName = value;
+	public set playerMetadatasName(value: string ) {
+		this._playerMetadatasName = value;
     }
     public get lazyRefNotificationCountMeasurement(): number  {
 		return this._lazyRefNotificationCountMeasurement;

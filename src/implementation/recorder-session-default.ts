@@ -1,9 +1,9 @@
 import { LazyRef, LazyRefPrpMarker} from '../api/lazy-ref';
 import { RecorderManagerDefault } from './recorder-manager-default';
-import { catchError, map, flatMap, delay, finalize, mapTo } from 'rxjs/operators';
+import { catchError, map, flatMap, delay, finalize, mapTo, tap } from 'rxjs/operators';
 import { MergeWithCustomizer } from 'lodash';
-import { throwError, Observable, of, OperatorFunction, combineLatest, concat, pipe, PartialObserver, ObservableInput } from 'rxjs';
-import { RecorderContants } from './recorder-constants';
+import { throwError, Observable, of, OperatorFunction, PartialObserver, ObservableInput, combineLatest } from 'rxjs';
+import { RecorderConstants } from './recorder-constants';
 import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
@@ -87,7 +87,10 @@ export interface RecorderSessionImplementor extends RecorderSession {
     fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>;
     /** Framework internal use. */
     logRxOpr<T>(id: string): OperatorFunction<T, T>;
-    /** Framework internal use. All framework internal subscribe() is stored here.*/
+    /** Framework internal use. All framework internal subscribe() is stored here.  
+     * Note that it is piped just for Observables that are provided for framework  
+     * extension points, like IFieldProcessor.fromLiteralValue, are internaly subscribed.
+     */
     addSubscribedObsRxOpr<T>(): OperatorFunction<T, T>;
     /** Framework internal use. This Operator replace internal subscribe call.*/
     doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
@@ -115,6 +118,20 @@ export interface RecorderSessionImplementor extends RecorderSession {
                 objectMdFound: boolean,
                 playerObjectIdMdFound: boolean
             };
+    processTapeActionAttachRefId(
+        options:
+            {
+                action: TapeAction,
+                fieldEtc: FieldEtc<any, any>,
+                value: any,
+                propertyKey: string
+            }) : 
+            Observable<
+                {
+                    asyncAddTapeAction: boolean,
+                    newValue: any
+                }
+            >
 }
 
 export class RecorderSessionDefault implements RecorderSessionImplementor {
@@ -137,8 +154,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     private _nextCreationId: number = null;
     private _currentTape: Tape = null;
     private _latestTape: Array<Tape> = null;
-    private _currentRecordedAtaches: Map<String, Stream> = null;
-    private _latestRecordedAtaches: Map<String, String | Stream> = null;
+    private _currentRecordedAtaches: Map<String, NodeJS.ReadableStream> = null;
+    private _latestRecordedAtaches: Map<String, String | NodeJS.ReadableStream> = null;
     private _isOnRestoreEntireStateFromLiteral = false;
     private _sessionId: string;
     private _asyncTasksWaitingArr: Set<Observable<any>> = new Set();
@@ -176,6 +193,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     addSubscribedObsRxOpr<T>(): OperatorFunction<T, T> {
         let thisLocal = this;
+
+        //BEGIN: Used to find losted obs.subscribed()
+        const stackSubscriberRef = {value: ''};
+        try {
+            throw new Error('TRACKING');
+        } catch (error) {
+            stackSubscriberRef.value = error.stack;
+        }
+        //END: Used to find losted obs.subscribed()
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
             const isDone = { value: false };
             const result$ = source.pipe(
@@ -186,6 +212,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 })
             );
             if (!isDone.value) {
+                //BEGIN: Used to find losted obs.subscribed()
+                (result$ as any).stackSubscriberRef = stackSubscriberRef;
+                //END: Used to find losted obs.subscribed()
                 thisLocal._asyncTasksWaitingArr.add(result$);
             }
             return result$;
@@ -195,14 +224,36 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     createAsyncTasksWaiting(): Observable<void> {
         const thisLocal = this;
-        let result$: Observable<void>;
-        if (this._asyncTasksWaitingArr.size > 0) {
-            result$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
+        let combineLatest$: Observable<void>;
+        if (thisLocal._asyncTasksWaitingArr.size > 0) {
+            combineLatest$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
                 .pipe(
                     map((value)=>{
                         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
                             thisLocal.consoleLike.debug('generateAsyncTasksWaiting -> map: ' + value);
                         }
+                    }),
+                    flatMap(() => {
+                        return thisLocal.createAsyncTasksWaiting();
+                    })
+                );
+        } else {
+            combineLatest$ = of(null);
+        }
+
+        return combineLatest$;
+    }
+
+    createSerialAsyncTasksWaiting(): Observable<void> {
+        const thisLocal = this;
+        let result$: Observable<void>;
+
+        if (thisLocal._asyncTasksWaitingArr.size > 0) {
+            result$ = combineFirstSerial(Array.from(thisLocal._asyncTasksWaitingArr))
+                .pipe(
+                    thisLocal.logRxOpr('createSerialAsyncTasksWaiting'),
+                    flatMap(() => {
+                        return thisLocal.createSerialAsyncTasksWaiting();
                     })
                 );
         } else {
@@ -212,34 +263,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return result$;
     }
 
-    createSerialAsyncTasksWaiting(): Observable<void> {
-        let result$: Observable<void>;
-
-        if (this._asyncTasksWaitingArr.size > 0) {
-            return combineFirstSerial(Array.from(this._asyncTasksWaitingArr))
-                .pipe(this.logRxOpr('createSerialAsyncTasksWaiting'))
-                .pipe(map(() => undefined));
-        } else {
-            result$ = of(null);
-        }
-
-        return result$;
-    }
-
-    constructor(private _jsHbManager: RecorderManager) {
+    constructor(private _manager: RecorderManager) {
         const thisLocal = this;
-		if (!_jsHbManager) {
-			throw new Error('_jsHbManager can not be null');
+		if (!_manager) {
+			throw new Error('_manager can not be null');
         }
 
-        thisLocal.consoleLike = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefault);
-		thisLocal.consoleLikeMerge = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultMergeWithCustomizerPropertyReplection);
-        thisLocal.consoleLikeLogRxOpr = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultLogRxOpr);
-        thisLocal.consoleLikeRestoreState = _jsHbManager.config.getConsole(RecorderLogger.RecorderSessionDefaultRestoreState);
+        thisLocal.consoleLike = _manager.config.getConsole(RecorderLogger.RecorderSessionDefault);
+		thisLocal.consoleLikeMerge = _manager.config.getConsole(RecorderLogger.RecorderSessionDefaultMergeWithCustomizerPropertyReplection);
+        thisLocal.consoleLikeLogRxOpr = _manager.config.getConsole(RecorderLogger.RecorderSessionDefaultLogRxOpr);
+        thisLocal.consoleLikeRestoreState = _manager.config.getConsole(RecorderLogger.RecorderSessionDefaultRestoreState);
         
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.group('RecorderSessionDefault.constructor');
-			thisLocal.consoleLike.debug(_jsHbManager as any as string);
+			thisLocal.consoleLike.debug(_manager as any as string);
             thisLocal.consoleLike.groupEnd();
 		}
         this._objectsBySignature = new Map();
@@ -254,10 +291,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     public generateEntireStateAsLiteral(): Observable<any> {
         const thisLocal = this;
-        let createAsyncTasksWaiting$ = this.createAsyncTasksWaiting()
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting()
             .pipe(
                 map(() => {
-                    let jsHbSessionState: SessionState = {
+                    let sessionState: SessionState = {
                         sessionId: this._sessionId,
                         nextCreationId: thisLocal._nextCreationId,
                         latestPlaybackArrAsLiteral: [],
@@ -265,23 +302,23 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     };
             
                     for (const tapeItem of thisLocal._latestTape) {
-                        jsHbSessionState.latestPlaybackArrAsLiteral.push(thisLocal.getPlaybackAsLiteral(tapeItem));
+                        sessionState.latestPlaybackArrAsLiteral.push(thisLocal.getPlaybackAsLiteral(tapeItem));
                     }
                     if (thisLocal._currentTape) {
-                        jsHbSessionState.currentTapeAsLiteral = thisLocal.getPlaybackAsLiteral(thisLocal._currentTape);
+                        sessionState.currentTapeAsLiteral = thisLocal.getPlaybackAsLiteral(thisLocal._currentTape);
                     }
             
-                    return jsHbSessionState;
+                    return sessionState;
                 })
             );
 
         const isSynchronouslyDone = { value: false };
-        createAsyncTasksWaiting$.subscribe(() =>{
+        createSerialAsyncTasksWaiting$.subscribe(() => {
             isSynchronouslyDone.value = true;
         });
 
         if (!isSynchronouslyDone.value) {
-            return createAsyncTasksWaiting$;
+            return createSerialAsyncTasksWaiting$;
         } else {
             return of(isSynchronouslyDone.value);
         }
@@ -370,15 +407,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             }
 
-            let combineLatest$: Observable<any[]>;
+            let combineFirstSerial$: Observable<any[]>;
             if (lazyRefProcessResponseArr.length > 0) {
-                combineLatest$ = combineLatest(lazyRefProcessResponseArr);
+                combineFirstSerial$ = combineFirstSerial(lazyRefProcessResponseArr);
             } else {
-                combineLatest$ = of([]);
+                combineFirstSerial$ = of([]);
             }
             
             const isPipedCallbackDone = { value: false, result: null as Observable<void>};
-            return combineLatest$.pipe(
+            return combineFirstSerial$.pipe(
                 flatMap( () => {
                     if (!isPipedCallbackDone.value) {
                         isPipedCallbackDone.value = true;
@@ -408,26 +445,26 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private lazyLoadTemplateCallback<T>(lazyLoadedObj: any, originalCb: () => T|void): T|void {
         try {
-            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+            lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
             return originalCb();
         } finally {
-            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+            lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
         }
     }
 
     private createKeepAllFlagsTemplateCallback<T>(lazyLoadedObj: any): (originalCb: () => T|void) => T|void {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         return (originalCb: () => T) => {
-            const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            const asyncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
-            lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+            lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
             thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
             try {
                 return originalCb();
             } finally {
-                lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                 thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
             }
         }
@@ -444,7 +481,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             project: (value: T, index?: number) => R,
             thisArg?: any): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as R};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -452,12 +489,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -467,7 +504,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -493,7 +530,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             project: (value: T, index?: number) => ObservableInput<R>,
             concurrent?: number): OperatorFunction<T, R> {
         const thisLocal = this;
-        const syncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
         let newOp: OperatorFunction<T, R> = (source) => {
@@ -501,12 +538,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
                     isPipedCallbackDone.value = true;
 
-                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    const asyncIsOn = lodashGet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     const asyncIsOn2 = thisLocal._isOnRestoreEntireStateFromLiteral;
                     if (!turnOnMode || turnOnMode.lazyLoad === 'none') {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
                     } else {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, turnOnMode.lazyLoad);
                     }
                     if (!turnOnMode || turnOnMode.restoreStare === 'none') {
                         thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
@@ -518,7 +555,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     try {
                         isPipedCallbackDone.result = project(value, index);
                     } finally {
-                        lodashSet(lazyLoadedObj, RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
+                        lodashSet(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOn);
                         thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2;
                     }
                 }
@@ -603,8 +640,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
         if (action.settedCreationRefId) {
             resolvedSettedValue$ = of(this._objectsByCreationId.get(action.settedCreationRefId) as P);
-        } else if (fieldEtc.lazyRefGenericParam === LazyRefPrpMarker){
-            if(action.simpleSettedValue) {
+        } else if (fieldEtc.lazyRefGenericParam === LazyRefPrpMarker) {
+            if(!action.attachRefId) {
                 if(fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                     resolvedSettedValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(
                         action.simpleSettedValue,
@@ -612,14 +649,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             } else if (action.attachRefId) {
                 if (fieldEtc.fieldProcessorCaller.callFromDirectRaw) {
-                    resolvedSettedValue$ = thisLocal.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId)
+                    resolvedSettedValue$ = thisLocal.manager.config.cacheHandler.getFromCache(action.attachRefId)
                         .pipe(
                             flatMapJustOnceRxOpr((stream) => {
                                 return fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
                             })
                         );
                 } else {
-                    resolvedSettedValue$ = thisLocal.jsHbManager.config.cacheHandler.getFromCache(action.attachRefId) as any as Observable<P>;
+                    resolvedSettedValue$ = thisLocal.manager.config.cacheHandler.getFromCache(action.attachRefId) as any as Observable<P>;
                 }
             } else {
                 throw new Error('Invalid action. LazyRefPrp invalid values: ' + JSON.stringify(action));                
@@ -627,23 +664,30 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         } else if (action.settedSignatureStr) {
             resolvedSettedValue$ = of(thisLocal._objectsBySignature.get(action.settedSignatureStr) as P);
         } else if (action.fieldName) {
-            resolvedSettedValue$ = of(action.simpleSettedValue as P);
+            if (fieldEtc.fieldProcessorCaller.callFromRecordedLiteralValue) {
+                resolvedSettedValue$ = fieldEtc.fieldProcessorCaller.callFromRecordedLiteralValue(action.simpleSettedValue, fieldEtc.fieldInfo);
+            } else if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
+                resolvedSettedValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(action.simpleSettedValue, fieldEtc.fieldInfo);
+            } else {
+                resolvedSettedValue$ = of(action.simpleSettedValue as P);
+            }
         }
         
         const isSynchronouslyDone = { value: false, result: null as P};
+        resolvedSettedValue$ = resolvedSettedValue$.pipe(thisLocal.addSubscribedObsRxOpr());
         resolvedSettedValue$.subscribe((resolvedSettedValue)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = resolvedSettedValue;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return resolvedSettedValue$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
     /**
-     * Based on '[JsHbReplayable.java].replay()'
+     * Based on '[ReplayableDefault.java].replay()'
      */
     private rerunByPlaybacksIgnoreCreateInstance(): Observable<void> {
         const thisLocal = this;
@@ -661,7 +705,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(
                         thisLocal.fielEtcCacheMap,
                         resolvedOwnerValue, resolvedFieldName,
-                        thisLocal.jsHbManager.config);
+                        thisLocal.manager.config);
                     let resolvedSettedValue$: Observable<any> = thisLocal.actionResolveSettedValue(action, fieldEtc);
 
                     resolvedSettedValue$.subscribe((resolvedSettedValue) => {
@@ -707,7 +751,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 case TapeActionType.SetField:
                                     if (resolvedOwnerValue[resolvedFieldName] && (resolvedOwnerValue[resolvedFieldName] as LazyRef<any, any>).iAmLazyRef) {
                                         let setLazyObjNoNext$ = (resolvedOwnerValue[resolvedFieldName] as LazyRefImplementor<any, any>).setLazyObjNoNext(resolvedSettedValue);
-                                        setLazyObjNoNext$ = setLazyObjNoNext$.pipe(thisLocal.addSubscribedObsRxOpr());
+                                        //setLazyObjNoNext$ = setLazyObjNoNext$.pipe(thisLocal.addSubscribedObsRxOpr());
                                         setLazyObjNoNext$.subscribe(() => {});
                                     } else {
                                         thisLocal.restoreEntireStateCallbackTemplate(()=> {
@@ -730,14 +774,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
         }
 
-        let createAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting();
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting();
         const isSynchronouslyDone = { value: false };
-        createAsyncTasksWaiting$.subscribe(() =>{
+        createSerialAsyncTasksWaiting$.subscribe(() =>{
             isSynchronouslyDone.value = true;
         });
 
         if (!isSynchronouslyDone.value) {
-            return createAsyncTasksWaiting$;
+            return createSerialAsyncTasksWaiting$;
         } else {
             return of(null);
         }
@@ -761,6 +805,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     objectMdFound: boolean,
                     playerObjectIdMdFound: boolean
                 } {
+        const thisLocal = this;
         let valueOrliteral = options.object || options.literalObject || {};
         let refererObjectOrLiteral = options.refererObject || options.refererLiteralObject || {};
         
@@ -771,44 +816,74 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let objectMdFound: boolean = false;
         let playerObjectIdMdFound: boolean = false;
 
-        if (lodashHas(valueOrliteral, this.jsHbManager.config.jsHbMetadatasName)) {
+        if (lodashHas(valueOrliteral, this.manager.config.playerMetadatasName)) {
             objectMdFound =true;
-            objectMd = lodashGet(valueOrliteral, this.jsHbManager.config.jsHbMetadatasName);
+            objectMd = lodashGet(valueOrliteral, this.manager.config.playerMetadatasName);
         }
-        if (lodashHas(refererObjectOrLiteral, this.jsHbManager.config.jsHbMetadatasName)) {
+        if (lodashHas(refererObjectOrLiteral, this.manager.config.playerMetadatasName)) {
             refererObjMdFound = true;
-            refererObjMd = lodashGet(refererObjectOrLiteral, this.jsHbManager.config.jsHbMetadatasName);
+            refererObjMd = lodashGet(refererObjectOrLiteral, this.manager.config.playerMetadatasName);
         }
         //we are processing the metadata
-        if (options.key === this.jsHbManager.config.jsHbMetadatasName 
+        if (options.key === this.manager.config.playerMetadatasName 
                 && (valueOrliteral as PlayerMetadatas).$iAmPlayerMetadatas$
-                && lodashHas((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.jsHbManager.config.jsHbMetadatasName)) {
-            if (lodashHas((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.jsHbManager.config.jsHbMetadatasName)) {
+                && lodashHas((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.manager.config.playerMetadatasName)) {
+            if (lodashHas((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.manager.config.playerMetadatasName)) {
                 playerObjectIdMdFound = true;
-                playerObjectIdMd = lodashGet((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.jsHbManager.config.jsHbMetadatasName);
+                playerObjectIdMd = lodashGet((valueOrliteral as PlayerMetadatas).$playerObjectId$, this.manager.config.playerMetadatasName);
             }
         }
 
         if (options.refMap) {
             if (refererObjMd.$id$ && refererObjMd.$isLazyUninitialized$ && !options.refMap.has(refererObjMd.$id$)) {
-                options.refMap.set(refererObjMd.$id$, refererObjMd);
-            } else if (refererObjMd.$idRef$
-                    && (options.refMap.get(refererObjMd.$idRef$) as PlayerMetadatas).$iAmPlayerMetadatas$) {
-                refererObjMd = options.refMap.get(refererObjMd.$idRef$);
+                const dummySignatureInstance = {};
+                (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = refererObjMd;
+                options.refMap.set(refererObjMd.$id$, dummySignatureInstance);
+            } else if (refererObjMd.$idRef$) {
+                const trackedInstance = options.refMap.get(refererObjMd.$idRef$);
+                let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
+                if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
+                    throw new Error('There is something wrong with:\n' + 
+                        JSON.stringify(trackedInstance, null, '\t'));
+                }
+                //here sign ref to another isLazyUninitialized metadata, this shrink the json.
+                if (trackedInstanceMd.$isLazyUninitialized$) {
+                    refererObjMd = trackedInstanceMd;
+                }
             }
 
             if (objectMd.$id$ && objectMd.$isLazyUninitialized$ && !options.refMap.has(objectMd.$id$)) {
-                options.refMap.set(objectMd.$id$, objectMd);
-            } else if (objectMd.$idRef$
-                    && (options.refMap.get(objectMd.$idRef$) as PlayerMetadatas).$iAmPlayerMetadatas$) {
-                objectMd = options.refMap.get(objectMd.$idRef$);
+                const dummySignatureInstance = {};
+                (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = objectMd;
+                options.refMap.set(objectMd.$id$, dummySignatureInstance);
+            } else if (objectMd.$idRef$) {
+                const trackedInstance = options.refMap.get(objectMd.$idRef$);
+                let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
+                if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
+                    throw new Error('There is something wrong with:\n' + 
+                        JSON.stringify(trackedInstance, null, '\t'));
+                }
+                //here sign ref to another isLazyUninitialized metadata, this shrink the json.
+                if (trackedInstanceMd.$isLazyUninitialized$) {
+                    objectMd = trackedInstanceMd;
+                }
             }
 
             if (playerObjectIdMd.$id$ && playerObjectIdMd.$isLazyUninitialized$ && !options.refMap.has(playerObjectIdMd.$id$)) {
-                options.refMap.set(playerObjectIdMd.$id$, playerObjectIdMd);
-            } else if (playerObjectIdMd.$idRef$
-                    && (options.refMap.get(playerObjectIdMd.$idRef$) as PlayerMetadatas).$iAmPlayerMetadatas$) {
-                playerObjectIdMd = options.refMap.get(playerObjectIdMd.$idRef$);
+                const dummySignatureInstance = {};
+                (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = playerObjectIdMd;
+                options.refMap.set(playerObjectIdMd.$id$, dummySignatureInstance);
+            } else if (playerObjectIdMd.$idRef$) {
+                const trackedInstance = options.refMap.get(playerObjectIdMd.$idRef$);
+                let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
+                if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
+                    throw new Error('There is something wrong with:\n' + 
+                        JSON.stringify(trackedInstance, null, '\t'));
+                }
+                //here sign ref to another isLazyUninitialized metadata, this shrink the json.
+                if (trackedInstanceMd.$isLazyUninitialized$) {
+                    playerObjectIdMd = trackedInstanceMd;
+                }
             }
         }
 
@@ -827,56 +902,56 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             throw new Error('realEntity can not be null');
         }
         let allMD = this.resolveMetadatas({ object: realEntity });
-        let jsHbEntityRefReturn: EntityRef;
+        let entityRefReturn: EntityRef;
         let bMd: PlayerMetadatas = allMD.objectMd;
 
         if (bMd.$signature$) {
-            jsHbEntityRefReturn = {
+            entityRefReturn = {
                 signatureStr: bMd.$signature$,
                 iAmAnEntityRef: true
             }
-        } else if (lodashHas(realEntity, this.jsHbManager.config.jsHbCreationIdName)) {
-            jsHbEntityRefReturn = {
-                creationId: lodashGet(realEntity, this.jsHbManager.config.jsHbCreationIdName),
+        } else if (lodashHas(realEntity, this.manager.config.creationIdName)) {
+            entityRefReturn = {
+                creationId: lodashGet(realEntity, this.manager.config.creationIdName),
                 iAmAnEntityRef: true
             }
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + realEntity.constructor + '\'');
         }
-        return jsHbEntityRefReturn;
+        return entityRefReturn;
     }
 
     public getEntityInstanceFromLiteralRef<T>(literalRef: any): T {
-        let jsHbEntityRef: EntityRef = literalRef;
-        if (jsHbEntityRef.iAmAnEntityRef && jsHbEntityRef.signatureStr) {
-            return this._objectsBySignature.get(jsHbEntityRef.signatureStr);
-        } else if (jsHbEntityRef.iAmAnEntityRef && jsHbEntityRef.creationId) {
-            return this._objectsByCreationId.get(jsHbEntityRef.creationId);
+        let entityRef: EntityRef = literalRef;
+        if (entityRef.iAmAnEntityRef && entityRef.signatureStr) {
+            return this._objectsBySignature.get(entityRef.signatureStr);
+        } else if (entityRef.iAmAnEntityRef && entityRef.creationId) {
+            return this._objectsByCreationId.get(entityRef.creationId);
         } else {
             throw new Error('Invalid operation. Not managed entity. literalRef: \'' + literalRef + '\'');
         }
     }
 
     /**
-     * Getter jsHbManager
+     * Getter manager
      * @return {RecorderManager}
      */
-    public get jsHbManager(): RecorderManager {
-        return this._jsHbManager;
+    public get manager(): RecorderManager {
+        return this._manager;
     }
 
     /**
-     * Setter jsHbManager
+     * Setter manager
      * @param {RecorderManager} value
      */
-    public set jsHbManager(value: RecorderManager) {
+    public set manager(value: RecorderManager) {
         const thisLocal = this;
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
-            thisLocal.consoleLike.group('RecorderSessionDefault.jsHbManager set');
+            thisLocal.consoleLike.group('RecorderSessionDefault.manager set');
 			thisLocal.consoleLike.debug(value as any as string);
             thisLocal.consoleLike.groupEnd();
 		}
-        this._jsHbManager = value;
+        this._manager = value;
     }
 
     public processPlayerSnapshot<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<L> {
@@ -884,9 +959,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let result$: Observable<L>;
 
         if (!playerSnapshot.wrappedSnapshot) {
-            throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
+            throw new Error('playerSnapshot.result exists: ' + JSON.stringify(playerSnapshot));
         }
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -928,10 +1003,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -940,7 +1015,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!playerSnapshot.wrappedSnapshot) {
             throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
         }
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -969,18 +1044,18 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             thisLocal.consoleLike.debug(resultObsArr);
             thisLocal.consoleLike.groupEnd();
         }
-        let result$ = combineLatest(resultObsArr);
+        let combineFirstSerial$ = combineFirstSerial(resultObsArr);
 
         const isSynchronouslyDone = { value: false, result: null as L[]};
-        result$.subscribe((result)=>{
+        combineFirstSerial$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+        if (!isSynchronouslyDone.value) {
+            return combineFirstSerial$;
         } else {
-            return result$;
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -991,7 +1066,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
         this.validatingMetaFieldsExistence(entityType);
         let entityObj = new entityType();
-        lodashSet(entityObj, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
         let realKeys: string[] = Object.keys(Object.getPrototypeOf(entityObj));
         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
             thisLocal.consoleLike.debug('entityType: ' + entityType.name);
@@ -1067,7 +1142,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
 
         this._objectsByCreationId.set(creationId, entityObj);
-        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
+        let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
             throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
         }
@@ -1083,8 +1158,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 });
         }
         
-        lodashSet(entityObj, this.jsHbManager.config.jsHbCreationIdName, creationId);
-        lodashSet(entityObj, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
+        lodashSet(entityObj, this.manager.config.creationIdName, creationId);
+        lodashSet(entityObj, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
 
         if (!this.isOnRestoreEntireStateFromLiteral()) {
             //recording tape
@@ -1092,7 +1167,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             action.fieldName = null;
             action.actionType = TapeActionType.Create;
             
-            let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_TYPE, entityType);
+            let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
             if (!playerTypeOptions) {
                 throw new Error('the classe \'' + entityType + ' is not using the decorator \'RecorderDecorators.playerType\'');
             }
@@ -1101,7 +1176,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             this.addTapeAction(action);
         }
 
-        let result$ = this.createAsyncTasksWaiting()
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting()
             .pipe(
                 map(() => {
                     return entityObj;
@@ -1109,15 +1184,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             );
 
         const isSynchronouslyDone = { value: false, result: null as T};
-        result$.subscribe((result)=>{
+        createSerialAsyncTasksWaiting$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+        if (!isSynchronouslyDone.value) {
+            return createSerialAsyncTasksWaiting$;
         } else {
-            return result$;
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1142,10 +1217,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1182,9 +1257,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: RecorderSession = lodashGet(entity, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderConstants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor.name + '\' not managed. \'' + RecorderConstants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor.name + '\' managed by another session.');
         }
@@ -1196,8 +1271,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         action.actionType = TapeActionType.Save;
         if (bMd.$signature$) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' has a signature, that is, it has persisted');
-        } else if (lodashHas(entity, this.jsHbManager.config.jsHbCreationIdName)) {
-            action.ownerCreationRefId = lodashGet(entity, this.jsHbManager.config.jsHbCreationIdName) as number;
+        } else if (lodashHas(entity, this.manager.config.creationIdName)) {
+            action.ownerCreationRefId = lodashGet(entity, this.manager.config.creationIdName) as number;
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
         }
@@ -1217,9 +1292,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording. entity: \'' + entity.constructor.name + '\'. Is this Error correct?!');
         }
-        let session: RecorderSession = lodashGet(entity, RecorderContants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
+        let session: RecorderSession = lodashGet(entity, RecorderConstants.ENTITY_SESION_PROPERTY_NAME) as RecorderSession;
         if (!session) {
-            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderContants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
+            throw new Error('Invalid operation. \'' + entity.constructor + '\' not managed. \'' + RecorderConstants.ENTITY_SESION_PROPERTY_NAME + '\' estah null');
         } else if (session !== this) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' managed by another session.');
         }
@@ -1230,7 +1305,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         action.actionType = TapeActionType.Delete;
         if (bMd.$signature$) {
             action.ownerSignatureStr = bMd.$signature$;
-        } else if (lodashHas(entity, this.jsHbManager.config.jsHbCreationIdName)) {
+        } else if (lodashHas(entity, this.manager.config.creationIdName)) {
             throw new Error('Invalid operation. \'' + entity.constructor + '\' has id of creation, that is, is not persisted.');
         } else {
             throw new Error('Invalid operation. Not managed entity. Entity: \'' + entity.constructor + '\'');
@@ -1241,8 +1316,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         this.addTapeAction(action);
     }
 
-    recordAtache(attach: Stream): string {
-        let name = this.jsHbManager.config.attachPrefix + this.nextMultiPurposeInstanceId();
+    recordAtache(attach: NodeJS.ReadableStream): string {
+        let name = this.manager.config.attachPrefix + this.nextMultiPurposeInstanceId();
         this._currentRecordedAtaches.set(name, attach);
         return name;
     }
@@ -1268,31 +1343,31 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         this._originalLiteralValueEntries = [];
         this._latestTape = [];
         
-        let clearCache$: Observable<void> = this.jsHbManager.config.cacheHandler.clearCache();
+        let clearCache$: Observable<void> = this.manager.config.cacheHandler.clearCache();
         clearCache$ = clearCache$.pipe(this.addSubscribedObsRxOpr());
         clearCache$.subscribe(() => {});
     }
 
     getLastRecordedTape(): Observable<Tape> {
         const thisLocal = this;
-        let result$ = this.createAsyncTasksWaiting().pipe(map(() => {
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting().pipe(map(() => {
             return thisLocal._latestTape.length > 0? thisLocal._latestTape[thisLocal._latestTape.length - 1] : null;
         }));
 
         const isSynchronouslyDone = { value: false, result: null as Tape};
-        result$.subscribe((result)=>{
+        createSerialAsyncTasksWaiting$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+        if (!isSynchronouslyDone.value) {
+            return createSerialAsyncTasksWaiting$;
         } else {
-            return result$;
+            return of(isSynchronouslyDone.result);
         }
     }
 
-    getLastRecordedStreams(): Observable<Map<String, Stream>> {
+    getLastRecordedStreams(): Observable<Map<String, NodeJS.ReadableStream>> {
         const thisLocal = this;
         let result$ = this.getLastRecordedTape()
             .pipe(
@@ -1302,7 +1377,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         for (const actionItem of tape.actions) {
                             if (actionItem.attachRefId) {
                                 let idAndStream$: Observable<{attachRefId: String, stream: Stream}> = 
-                                    thisLocal.jsHbManager.config.cacheHandler.getFromCache(actionItem.attachRefId)
+                                    thisLocal.manager.config.cacheHandler.getFromCache(actionItem.attachRefId)
                                         .pipe(
                                             mapJustOnceRxOpr((streamValue) => {
                                                 return {
@@ -1315,7 +1390,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             }
                         }
                         if (idAndStreamObsArr.length > 0) {
-                            return combineLatest(idAndStreamObsArr);
+                            return combineFirstSerial(idAndStreamObsArr);
                         } else {
                             return of([]);
                         }
@@ -1326,7 +1401,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             )
             .pipe(
                 map((idAndStreamArr) => {
-                    const resultMap: Map<String, Stream> = new Map();
+                    const resultMap: Map<String, NodeJS.ReadableStream> = new Map();
                     for (const idAndStreamItem of idAndStreamArr) {
                         resultMap.set(idAndStreamItem.attachRefId, idAndStreamItem.stream);
                     }
@@ -1334,20 +1409,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 })
             );
 
-        const isSynchronouslyDone = { value: false, result: null as Map<String, Stream>};
+        const isSynchronouslyDone = { value: false, result: null as Map<String, NodeJS.ReadableStream>};
         result$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
-    getLastRecordedTapeAndStreams(): Observable<{tape: Tape, streams: Map<String, Stream>}> {
+    getLastRecordedTapeAndStreams(): Observable<{tape: Tape, streams: Map<String, NodeJS.ReadableStream>}> {
         const thisLocal = this;
         let result$ = this.getLastRecordedTape()
             .pipe(
@@ -1364,20 +1439,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 })
             );
 
-        const isSynchronouslyDone = { value: false, result: null as {tape: Tape, streams: Map<String, Stream>}};
+        const isSynchronouslyDone = { value: false, result: null as {tape: Tape, streams: Map<String, NodeJS.ReadableStream>}};
         result$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
-    getLastRecordedTapeAsLiteralAndStreams(): Observable<{tapeLiteral: any, streams: Map<String, Stream>}> {
+    getLastRecordedTapeAsLiteralAndStreams(): Observable<{tapeLiteral: any, streams: Map<String, NodeJS.ReadableStream>}> {
         const thisLocal = this;
         let result$ = this.getLastRecordedTapeAsLiteral()
             .pipe(
@@ -1394,16 +1469,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 })
             );
 
-        const isSynchronouslyDone = { value: false, result: null as {tapeLiteral: any, streams: Map<String, Stream>}};
+        const isSynchronouslyDone = { value: false, result: null as {tapeLiteral: any, streams: Map<String, NodeJS.ReadableStream>}};
         result$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1446,14 +1521,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
-    getLastRecordedAtaches(): Map<String, Stream> {
+    getLastRecordedAtaches(): Map<String, NodeJS.ReadableStream> {
         return new Map(this._currentRecordedAtaches);
     }
 
@@ -1501,10 +1576,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private validatingMetaFieldsExistence(entityType: TypeLike<any>): void {
         const camposControleArr = [
-            this.jsHbManager.config.jsHbCreationIdName,
-            this.jsHbManager.config.jsHbMetadatasName,
-            RecorderContants.ENTITY_IS_ON_LAZY_LOAD_NAME,
-            RecorderContants.ENTITY_SESION_PROPERTY_NAME];
+            this.manager.config.creationIdName,
+            this.manager.config.playerMetadatasName,
+            RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME,
+            RecorderConstants.ENTITY_SESION_PROPERTY_NAME];
         for (let index = 0; index < camposControleArr.length; index++) {
             const internalKeyItem = camposControleArr[index];
             if (Object.keys(entityType.prototype).lastIndexOf(internalKeyItem.toString()) >= 0) {
@@ -1540,10 +1615,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1557,10 +1632,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1569,7 +1644,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!snapshotField) {
             throw new Error('snapshotField can not be null');
         }
-        let allMD = this.resolveMetadatas({literalObject: snapshotField, })
+        let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
         let bMd = allMD.objectMd;
         let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
 
@@ -1585,7 +1660,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
-            lodashSet(entityValue as any, RecorderContants.ENTITY_SESION_PROPERTY_NAME, this);
+            lodashSet(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
             this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
 
             if (bMd.$id$) {
@@ -1609,22 +1684,22 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
         }
 
-        let result$ = this.createSerialAsyncTasksWaiting().pipe(
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting().pipe(
             map(() => {
                 return entityValue;
             })
         );
 
         const isSynchronouslyDone = { value: false, result: null as L};
-        result$.subscribe((result)=>{
+        createSerialAsyncTasksWaiting$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+        if (!isSynchronouslyDone.value) {
+            return createSerialAsyncTasksWaiting$;
         } else {
-            return result$;
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1633,16 +1708,26 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             literalLazyObj: any,
             refMap: Map<Number, any>,
             refererObj: any,
-            refererKey: string,): Observable<LazyRef<L, I>> {
+            refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
         let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(genericNode, literalLazyObj, refererObj, refererKey, refMap);
-        
+        let allMD = thisLocal.resolveMetadatas({ literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap });
+
         let trySetPlayerObjectIdentifier$ = this.trySetPlayerObjectIdentifier(lr, genericNode, literalLazyObj, refMap);
         let tryGetFromObjectsBySignature$ = this.tryGetFromObjectsBySignature(lr, literalLazyObj);
         let setLazyObjOnLazyLoading$: Observable<void> = of(null);
-        let lazyLoadedObj$: Observable<void> = of(null);
-
+        //let lazyLoadedObj$: Observable<void> = of(null);
         const isValueByFieldProcessor: {value: boolean} = { value: false };
+
+        if (allMD.objectMd.$iAmPlayerMetadatas$) {
+            if (allMD.objectMd.$idRef$) {
+                let referedInstance = refMap.get(allMD.objectMd.$idRef$);
+                if (!literalLazyObj) {
+                    throw new Error('literalLazyObj.$iAmPlayerMetadatas$ and $idRef$ not found: \'' + refererKey + '\' on ' + refererObj.constructor);
+                }
+                setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoading(referedInstance);
+            }
+        }
 
         if (lr.lazyLoadedObj) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1695,7 +1780,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         );
                 });
             } else {
-                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.jsHbManager.config);
+                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.manager.config);
                 if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
                     if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                         isValueByFieldProcessor.value = true;
@@ -1730,27 +1815,27 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             }
         }
-        let result$ = this.createSerialAsyncTasksWaiting()
-            .pipe(
-                flatMap(() => {
-                    return trySetPlayerObjectIdentifier$;
-                })
-            )
-            .pipe(
-                flatMap(() => {
-                    return tryGetFromObjectsBySignature$;
-                })
-            )
-            .pipe(
-                flatMap(() => {
-                    return setLazyObjOnLazyLoading$
-                })
-            )
-            .pipe(
-                flatMap(() => {
-                    return lazyLoadedObj$;
-                })
-            )
+        let createSerialAsyncTasksWaiting$ = this.createSerialAsyncTasksWaiting()
+            // .pipe(
+            //     flatMap(() => {
+            //         return trySetPlayerObjectIdentifier$;
+            //     })
+            // )
+            // .pipe(
+            //     flatMap(() => {
+            //         return tryGetFromObjectsBySignature$;
+            //     })
+            // )
+            // .pipe(
+            //     flatMap(() => {
+            //         return setLazyObjOnLazyLoading$
+            //     })
+            // )
+            // .pipe(
+            //     flatMap(() => {
+            //         return lazyLoadedObj$;
+            //     })
+            // )
             .pipe(
                 map(() => {
                     return lr;
@@ -1758,15 +1843,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             );
 
         const isSynchronouslyDone = { value: false, result: null as LazyRef<L, I>};
-        result$.subscribe((result)=>{
+        createSerialAsyncTasksWaiting$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
+        if (!isSynchronouslyDone.value) {
+            return createSerialAsyncTasksWaiting$;
         } else {
-            return result$;
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1801,7 +1886,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refererObj: any,
             refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
-        let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, refererObj, refererKey);
+        let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, refererObj, refererKey);
         if (!propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
         }
@@ -1826,36 +1911,36 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             
             if (!propertyOptions.lazyDirectRawRead) {
-                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo)
+                lr.respObs = this.manager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.manager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );
             } else {
-                lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo)
+                lr.respObs = this.manager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.jsHbManager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.manager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );
             }
         }
         let result$ = this.createSerialAsyncTasksWaiting()
-            .pipe(
-                flatMap(() => {
-                    return trySetPlayerObjectIdentifier$;
-                })
-            )
-            .pipe(
-                flatMap(() => {
-                    return tryGetFromObjectsBySignature$;
-                })
-            )
+            // .pipe(
+            //     flatMap(() => {
+            //         return trySetPlayerObjectIdentifier$;
+            //     })
+            // )
+            // .pipe(
+            //     flatMap(() => {
+            //         return tryGetFromObjectsBySignature$;
+            //     })
+            // )
             .pipe(
                 map(() => {
                     return lr;
@@ -1868,10 +1953,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1897,15 +1982,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
 
         const isSynchronouslyDone = { value: false, result: null as void};
+        //result$ = result$.pipe(this.addSubscribedObsRxOpr());
         result$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(isSynchronouslyDone.result);
         }
     }
 
@@ -1916,9 +2002,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap});
         let bMd = allMD.objectMd;
 
-        let jsHbPlayerObjectIdLiteral: any = bMd.$playerObjectId$;
+        let playerObjectIdLiteral: any = bMd.$playerObjectId$;
         let lazyRef: LazyRefDefault<L, any> = null;
-        if (jsHbPlayerObjectIdLiteral) {
+        if (playerObjectIdLiteral) {
             lazyRef = new LazyRefDefault<L, I>(this);
         } else {
             lazyRef = new LazyRefDefault<L, undefined>(this);
@@ -1938,7 +2024,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     private isLiteralObjMetadataKey(keyName: string): boolean {
         if (this.metadaKeys == null) {
             this.metadaKeys = new Set<string>()
-                .add(this.jsHbManager.config.jsHbMetadatasName);
+                .add(this.manager.config.playerMetadatasName);
                 
         }
         return this.metadaKeys.has(keyName);
@@ -1965,11 +2051,24 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!literalLazyObj){
             throw new Error('literalLazyObj nao pode ser nula');
         }
-        let allMD = this.resolveMetadatas({literalObject: literalLazyObj});
+        let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refMap: refMap});
         let bMd = allMD.objectMd;
 
-        let jsHbPlayerObjectIdLiteral: any = bMd.$playerObjectId$;
-        if (jsHbPlayerObjectIdLiteral instanceof Object && !(jsHbPlayerObjectIdLiteral instanceof Date)) {
+        const playerObjectIdLiteralRef = { value: undefined as any };
+
+        if (bMd.$idRef$) {
+            let referedInstance = refMap.get(bMd.$idRef$);
+            let referedInstanceMd = lodashGet(referedInstance, thisLocal.manager.config.playerMetadatasName) as PlayerMetadatas;
+            if (!referedInstanceMd.$iAmPlayerMetadatas$) {
+                throw new Error('Where is the metadatas:\n' + 
+                    JSON.stringify(referedInstance, null, '\t'));
+            }
+            playerObjectIdLiteralRef.value = referedInstanceMd.$playerObjectId$;
+        } else {
+            playerObjectIdLiteralRef.value = bMd.$playerObjectId$;            
+        }
+
+        if (playerObjectIdLiteralRef.value instanceof Object && !(playerObjectIdLiteralRef.value instanceof Date)) {
             let playerObjectIdType: TypeLike<any> = null;
             if (genericNode.gParams[1] instanceof GenericNode) {
                 playerObjectIdType = (<GenericNode>genericNode.gParams[1]).gType;
@@ -1981,7 +2080,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.consoleLike.debug('There is a playerObjectIdType on LazyRef. Is it many-to-one LazyRef?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
                 }
                 this.validatingMetaFieldsExistence(playerObjectIdType);
-                result$ = this.processResultEntityPriv(playerObjectIdType, jsHbPlayerObjectIdLiteral, refMap)
+                result$ = this.processResultEntityPriv(playerObjectIdType, playerObjectIdLiteralRef.value, refMap)
                     .pipe(
                         map((playerObjectId) => {
                             lr.playerObjectId = playerObjectId;
@@ -1992,27 +2091,28 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.consoleLike.debug('Thre is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
                 }
             }
-        } else if (jsHbPlayerObjectIdLiteral) {
+        } else if (playerObjectIdLiteralRef.value) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
+                thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + playerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
             }
-            lr.playerObjectId = jsHbPlayerObjectIdLiteral;
+            lr.playerObjectId = playerObjectIdLiteralRef.value;
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('The player object Id is null! Is it a collection?!: ' + jsHbPlayerObjectIdLiteral + '. genericNode:'+ genericNode);
+                thisLocal.consoleLike.debug('The player object Id is null! Is it a collection?!: ' + playerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
             }
         }
 
         const isSynchronouslyDone = { value: false, result: null as void};
+        //result$ = result$.pipe(this.addSubscribedObsRxOpr());
         result$.subscribe((result)=>{
             isSynchronouslyDone.value = true;
             isSynchronouslyDone.result = result;
         });
 
-        if (isSynchronouslyDone.value) {
-            return of(null);
-        } else {
+        if (!isSynchronouslyDone.value) {
             return result$;
+        } else {
+            return of(null);
         }
     }
 
@@ -2036,7 +2136,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let thisLocal = this;
         const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable jsHbTraceId: ' + (source as any).jsHbTraceId);
+                thisLocal.consoleLike.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable traceId: ' + (source as any).traceId);
             }
 
             let observerOriginal: PartialObserver<T>;
@@ -2079,10 +2179,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     
             result$.subscribe(observerNew);
 
-            if (isSynchronouslyDone.value) {
-                return of(isSynchronouslyDone.result);
-            } else {
+            if (!isSynchronouslyDone.value) {
                 return result$;
+            } else {
+                return of(isSynchronouslyDone.result);
             }
         };
 
@@ -2147,14 +2247,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             let mdSrcValue = allMD.objectMd;
             let mdPlayerObjectId = allMD.playerObjectIdMd;
             let mdSrcValueFound = allMD.objectMdFound;
-            let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.jsHbManager.config);
+            let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.manager.config);
+            const isLazyRefField = 
+                (!fieldEtc )
+                    || (!fieldEtc.prpGenType)
+                    || fieldEtc.prpGenType.gType === LazyRef
+                    || fieldEtc.prpGenType.gType === LazyRefPrpMarker;
+
             if (mdPlayerObjectId.$isComponent$) {
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: bMdPlayerObjectId.isComponent. bMdSrcValue.$playerObjectId$:');
                     thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
-                fieldEtc.prpType = Reflect.getMetadata(RecorderContants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
+                fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
                 if (!fieldEtc.prpType) {
                     throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                 }
@@ -2166,10 +2272,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
             }
             const correctSrcValueRef = { value: srcValue };
-            if (key === thisLocal.jsHbManager.config.jsHbMetadatasName) {
+            if (key === thisLocal.manager.config.playerMetadatasName) {
                 correctSrcValueRef.value = mdSource;
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.jsHbManager.config.jsHbMetadatasName). srcValue and mdSource:');
+                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). srcValue and mdSource:');
                     thisLocal.consoleLikeMerge.debug(srcValue);
                     thisLocal.consoleLikeMerge.debug(mdSource);
                     thisLocal.consoleLikeMerge.groupEnd();
@@ -2191,7 +2297,24 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         // nothing
                     });
                 } 
-            } else if (mdSrcValue.$idRef$) {
+            } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
+                correctSrcValueRef.value = new UndefinedForMergeAsync();
+                let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo)
+                    .pipe(
+                        thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, () => {
+                            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                thisLocal.consoleLikeMerge.debug('(Async) mergeWithCustomizerPropertyReplection => function =>'+
+                                    ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
+                                    ' Object resolved by fieldEtc.fieldProcessorCaller.callFromLiteralValue:\n' + 
+                                    JSON.stringify(srcValue, null, '\t'));
+                            }
+                            lodashSet(object, key, correctSrcValueRef.value);
+                        })
+                    );
+                callFromLiteralValue$.subscribe(() => {
+                    //nothing
+                });
+            } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
                 correctSrcValueRef.value = new UndefinedForMergeAsync();
                 let createSerialAsyncTasksWaiting$ = thisLocal.createSerialAsyncTasksWaiting()
                     .pipe(
@@ -2212,7 +2335,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     );
                 createSerialAsyncTasksWaiting$.subscribe(() => {
                     //nothing
-                })
+                });
             } else if (fieldEtc.prpType) {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
@@ -2251,8 +2374,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         if (!mdSource.$id$) {
                             throw new Error('There is no mdSource.$id$ on ' + JSON.stringify(srcValue));
                         }
-                        if (mdSrcValueFound && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
-                            throw new Error('Receiving object that is non associative an no lazy property but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
+                        if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
+                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
                             correctSrcValueRef.value = new UndefinedForMergeAsync();
@@ -2483,6 +2606,105 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     /** Framework internal use. */
     nextMultiPurposeInstanceId(): number {
         return this._nextMultiPurposeInstanceId++;
+    }
+
+    processTapeActionAttachRefId(
+        options:
+            {
+                action: TapeAction,
+                fieldEtc: FieldEtc<any, any>,
+                value: any,
+                propertyKey: string
+            }) : 
+            Observable<
+                {
+                    asyncAddTapeAction: boolean,
+                    newValue: any
+                }
+            > {
+        const thisLocal = this;
+        const resultObservableValue = {
+            asyncAddTapeAction: false,
+            newValue: undefined as any
+        }
+        //let putOnCache$: Observable<void> = of(undefined);
+        //let toDirectRaw$: Observable<Stream> = of(null);
+        //let getFromCache$: Observable<Stream> = of(null);
+        options.action.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+        if (options.fieldEtc.fieldProcessorCaller && options.fieldEtc.fieldProcessorCaller.callToDirectRaw) {
+            let toDirectRaw$ = options.fieldEtc.fieldProcessorCaller.callToDirectRaw(options.value, options.fieldEtc.fieldInfo);
+            toDirectRaw$ = toDirectRaw$.pipe(thisLocal.addSubscribedObsRxOpr());
+            resultObservableValue.asyncAddTapeAction = true;
+            toDirectRaw$.subscribe(
+                {
+                    next: (stream) => {
+                        if (stream) {
+                            let putOnCache$ = thisLocal.manager.config.cacheHandler.putOnCache(options.action.attachRefId, stream);
+                            putOnCache$ = putOnCache$.pipe(thisLocal.addSubscribedObsRxOpr());
+                            putOnCache$.subscribe(() => {
+                                thisLocal.addTapeAction(options.action);
+                                let getFromCache$ = thisLocal.manager.config.cacheHandler.getFromCache(options.action.attachRefId);
+                                getFromCache$ = getFromCache$.pipe(thisLocal.addSubscribedObsRxOpr());
+                                getFromCache$.subscribe((stream) => {
+                                    // oldSet.call(this, stream);
+                                    resultObservableValue.newValue = stream;
+                                });
+                            });
+                        } else {
+                            if (options.value) {
+                                throw new Error('The property \'' + options.propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + options.value.constructor);
+                            }
+                            options.action.simpleSettedValue = null;
+                            options.action.attachRefId = null;
+                            thisLocal.addTapeAction(options.action);
+                        }
+                    }
+                }
+            );
+        } else {
+            if (!((options.value as any as Stream).addListener && (options.value as any as Stream).pipe)) {
+                throw new Error('The property \'' + options.propertyKey.toString() +
+                    ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw"' + 
+                    ' defined and value is not a Stream. value: ' + options.value.constructor);
+            } else {
+                let putOnCache$ = thisLocal.manager.config.cacheHandler.putOnCache(options.action.attachRefId, options.value as any as NodeJS.ReadStream);
+                putOnCache$ = putOnCache$.pipe(thisLocal.addSubscribedObsRxOpr());
+                resultObservableValue.asyncAddTapeAction = true;
+                putOnCache$.subscribe(() => {
+                    thisLocal.addTapeAction(options.action);
+                });
+                let getFromCache$ = thisLocal.manager.config.cacheHandler.getFromCache(options.action.attachRefId);
+                getFromCache$ = getFromCache$.pipe(thisLocal.addSubscribedObsRxOpr());
+                getFromCache$.subscribe(
+                    {
+                        next: (stream) => {
+                            //oldSet.call(this, stream);
+                            resultObservableValue.newValue = stream;
+                        }
+                    }
+                );
+            }
+        }
+
+        let createSerialAsyncTasksWaitings$ = this.createSerialAsyncTasksWaiting()
+            .pipe(
+                map(() => {
+                    return resultObservableValue;
+                })
+            );
+
+        const isSynchronouslyDone = { value: false, result: null as any};
+        //result$ = result$.pipe(thisLocal.addSubscribedObsRxOpr());
+        createSerialAsyncTasksWaitings$.subscribe((result)=> {
+            isSynchronouslyDone.value = true;
+            isSynchronouslyDone.result = resultObservableValue;
+        });
+
+        if (!isSynchronouslyDone.value) {
+            return createSerialAsyncTasksWaitings$;
+        } else {
+            return of(resultObservableValue);
+        }
     }
 }
 
