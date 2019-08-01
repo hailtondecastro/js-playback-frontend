@@ -13,7 +13,7 @@
     "rootDir": ".",
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
-    "inlineSourceMap": true,
+    "inlineSourceMap": true,  
     "lib": ["es6", "dom"],
     "typeRoots": [
       "node_modules/@types"

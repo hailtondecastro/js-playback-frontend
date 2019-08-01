@@ -1,0 +1,70 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-folder-content",
+            "cwd": "${workspaceFolder}/../modules/json-playback-recorder-ts",
+            "program": "${workspaceFolder}/build-utils/mv-folder-content",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/typeslike/dev",
+                "-relativeSourceFolder",
+                ".",
+                "-relativeTargetFolder",
+                "..",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch mv-file",
+            "cwd": "${workspaceFolder}/../modules/json-playback-recorder-ts",
+            "program": "${workspaceFolder}/build-utils/mv-file",
+            "args": [
+                "-baseFolder",
+                "./dist-dev/src",
+                "-relativeSourceFile",
+                "typeslike-dist.d.ts",
+                "-relativeTargetFile",
+                "./foo/bar/typeslike.d.ts",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Launch embed-source-contents",
+            "cwd": "${workspaceFolder}/../modules/json-playback-recorder-ts",
+            "program": "${workspaceFolder}/build-utils/embed-source-contents",
+            "args": [
+                "-baseDistFolder",
+                "./dist-dev",
+                "-timeout",
+                "10000",
+                "-verbose",
+                "true"
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-dev/**/*.js"
+            ]
+        }
+    ]
+}

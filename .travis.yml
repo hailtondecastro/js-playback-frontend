@@ -13,7 +13,7 @@ script:
   - npm run test
   - cd ../..
   - cd ./modules/json-pr-integration-test
-  - npm install
+  - npm install --no-package-lock
   - npm run test
   - cd ../..
 
