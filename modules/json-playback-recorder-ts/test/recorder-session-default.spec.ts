@@ -22,7 +22,6 @@ import { StringStream, BinaryStream, NonWritableStreamExtraMethods } from '../sr
 import { RecorderManager } from '../src/api/recorder-manager.js';
 import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default.js';
 import { TapeActionType } from '../src/api/tape.js';
-import getStream = require('get-stream');
 import { AsyncCountdown } from './async-countdown.js';
 import { AsyncCount } from './async-count.js';
 import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';

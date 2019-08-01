@@ -4,7 +4,6 @@ const toStream = require('blob-to-stream');
 const toBlob = require('stream-to-blob');
 import * as memStreams from 'memory-streams';
 import { Readable, Stream } from "stream";
-import getStream from 'get-stream';
 import streamToObservable from 'stream-to-observable';
 import { IFieldProcessor } from '../src/api/field-processor';
 import { StringStream, StringStreamMarker, BinaryStreamMarker, BinaryStream } from '../src/api/lazy-ref';

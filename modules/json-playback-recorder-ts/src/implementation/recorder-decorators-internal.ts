@@ -1,11 +1,11 @@
 import { RecorderConstants } from './recorder-constants';
 import { get as lodashGet, has } from 'lodash';
 import { Stream, Readable } from 'stream';
-import { Observable, of, from } from 'rxjs';
+import { of, from } from 'rxjs';
 import { RecorderManagerDefault } from './recorder-manager-default';
-import getStream = require("get-stream");
+//import getStream = require("get-stream");
 import * as memStreams from 'memory-streams';
-import * as readline from 'readline';
+//import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
 import { TypeLike } from '../typeslike-dev';
 import { LazyRef, StringStream, StringStreamMarker, BinaryStream } from '../api/lazy-ref';

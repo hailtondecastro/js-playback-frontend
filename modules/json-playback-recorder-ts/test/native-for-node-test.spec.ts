@@ -5,11 +5,8 @@ import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, conca
 import resultMasterLiteral from './master-a-test.json';
 import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
 import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
-import { MasterAEnt } from './entities/master-a-ent';
-import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
 import * as fs from 'fs';
-import getStream = require('get-stream');
 import { AsyncCountdown } from './async-countdown.js';
 import { AsyncCount } from './async-count.js';
 import { ForNodeTest } from './native-for-node-test.js';
