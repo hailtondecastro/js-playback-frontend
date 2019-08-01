@@ -20,7 +20,9 @@ script:
 deploy:
   provider: script
   script:
-    - cp .npmrc.template .npmrc && npm publish ./dist/json-playback-recorder-ts
+    - cd ./modules/json-playback-recorder-ts
+    - cp .npmrc.template .npmrc && npm publish ../../dist/json-playback-recorder-ts
+    - cd ../..
   skip_cleanup: true
   on:
     tags: true
