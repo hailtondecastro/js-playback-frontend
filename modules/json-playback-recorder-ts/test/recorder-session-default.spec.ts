@@ -326,8 +326,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                 );
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -341,7 +340,11 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+            );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -487,8 +490,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                 );
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -502,7 +504,11 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -653,8 +659,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                 );
             };
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -669,6 +674,10 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         return of(responseResult).pipe(delay(10));
                     }
                 });
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -840,9 +849,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -856,7 +863,11 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -944,8 +955,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -974,7 +984,12 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                                 asyncCount.registerRxOpr()
                             );
                     }
-                });
+                }
+                );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
@@ -1203,9 +1218,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -1219,7 +1232,11 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config, 
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -1444,9 +1461,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -1460,7 +1475,11 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config, 
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');

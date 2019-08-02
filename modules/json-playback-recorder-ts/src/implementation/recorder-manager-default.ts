@@ -15,10 +15,9 @@ import { RecorderManager } from '../api/recorder-manager';
 export class RecorderManagerDefault implements RecorderManager {
 	private consoleLike: ConsoleLike;
     constructor(
-			private _config: RecorderConfig,
-			private _httpLazyObservableGen: LazyObservableProvider) {
+			private _config: RecorderConfig) {
 		const thisLocal = this;
-		if (!this._httpLazyObservableGen) {
+		if (!this._config.lazyObservableProvider) {
 			throw new Error('_httpLazyObservableGen can not be null');
 		}
 		if (!this._config) {
@@ -28,7 +27,7 @@ export class RecorderManagerDefault implements RecorderManager {
 
 		if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
 			thisLocal.consoleLike.group('RecorderManagerDefault.constructor()');
-			thisLocal.consoleLike.debug(this._httpLazyObservableGen as any); thisLocal.consoleLike.debug(this._config as any as string);
+			thisLocal.consoleLike.debug(this.config as any); thisLocal.consoleLike.debug(this._config as any as string);
 			thisLocal.consoleLike.groupEnd();
 		}
 	}	
@@ -42,14 +41,6 @@ export class RecorderManagerDefault implements RecorderManager {
 			thisLocal.consoleLike.groupEnd();
 		}
 		return result;
-	}
-
-	public get httpLazyObservableGen(): LazyObservableProvider {
-		return this._httpLazyObservableGen;
-	}
-
-	public set httpLazyObservableProvider(value: LazyObservableProvider) {
-		this._httpLazyObservableGen = value;
 	}
 
 	public get config(): RecorderConfig {

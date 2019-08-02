@@ -13,6 +13,7 @@ import { AsyncCount } from './async-count.js';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr, RecorderConfigDefault, RecorderSession, RecorderConfig, RecorderLogger, RecorderLogLevel, RecorderDecorators, StringStream, RecorderConstants, BinaryStream, RecorderManager, RecorderManagerDefault, MemStreamReadableStreamAutoEnd, NonWritableStreamExtraMethods } from 'json-playback-recorder-ts';
 import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
 
+
 {
     describe('RecorderManagerDefault', () => {
         it('RecorderManagerDefault.poc-observable-just-once-pipe-test', (done) => {
@@ -313,8 +314,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                 );
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -328,7 +328,11 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+            );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -474,8 +478,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                 );
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -489,7 +492,11 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -640,8 +647,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                 );
             };
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -656,6 +662,10 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         return of(responseResult).pipe(delay(10));
                     }
                 });
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -827,9 +837,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -843,7 +851,11 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -931,8 +943,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
             }
 
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -961,7 +972,12 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                                 asyncCount.registerRxOpr()
                             );
                     }
-                });
+                }
+                );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
             let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
@@ -1190,9 +1206,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -1206,7 +1220,11 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config, 
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
@@ -1431,9 +1449,7 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                     asyncCount.registerRxOpr()
                 );
             };
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config, 
+            config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
                         let responseResult: ResponseLike<Object> = {
@@ -1447,7 +1463,11 @@ import { ResponseLike } from 'json-playback-recorder-ts/src/typeslike';
                         }
                         return of(responseResult).pipe(delay(10));
                     }
-                });
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config, 
+                );
 
             let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
                 Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');

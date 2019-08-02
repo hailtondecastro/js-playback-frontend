@@ -14,8 +14,4 @@ export interface RecorderManager {
 	 * Creates a new session.
 	 */
 	createSession(): RecorderSession;
-	/**
-	 * Adapter for your application.
-	 */
-	httpLazyObservableGen: LazyObservableProvider;
 }

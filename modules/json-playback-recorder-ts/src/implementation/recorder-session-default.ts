@@ -1911,20 +1911,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             
             if (!propertyOptions.lazyDirectRawRead) {
-                lr.respObs = this.manager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo)
+                lr.respObs = this.manager.config.lazyObservableProvider.generateObservable(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.manager.httpLazyObservableGen.generateObservable(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.manager.config.lazyObservableProvider.generateObservable(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );
             } else {
-                lr.respObs = this.manager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo)
+                lr.respObs = this.manager.config.lazyObservableProvider.generateObservableForDirectRaw(lr.signatureStr, lazyInfo)
                     .pipe(
                         //In case of an error, this allows you to try again
                         catchError((err) => {
-                            lr.respObs = this.manager.httpLazyObservableGen.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
+                            lr.respObs = this.manager.config.lazyObservableProvider.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
                             return throwError(err);
                         })
                     );

@@ -2,6 +2,7 @@ import { TypeLike } from '../typeslike';
 import { IFieldProcessor } from "../api/field-processor";
 import { RecorderDecorators } from "../api/recorder-decorators";
 import { RecorderLogger, ConsoleLike, RecorderLogLevel, CacheHandler, TypeProcessorEntry, RecorderConfig } from "../api/recorder-config";
+import { LazyObservableProvider } from '../api/lazy-observable-provider';
 
 export class ConsoleLikeBase implements ConsoleLike {
     constructor(private logger: RecorderLogger, private level: RecorderLogLevel) {}
@@ -57,6 +58,12 @@ export class RecorderConfigDefault implements RecorderConfig {
                     throw new Error('CacheHandler not defined!');
                 }
             });
+    }
+
+    lazyObservableProvider: LazyObservableProvider;
+    configLazyObservableProvider(provider: LazyObservableProvider): RecorderConfig {
+        this.lazyObservableProvider = provider;
+        return this;
     }
 
     private _logLevelMap: Map<RecorderLogger, ConsoleLike> = new Map();

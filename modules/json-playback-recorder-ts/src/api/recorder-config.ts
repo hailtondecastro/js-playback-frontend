@@ -1,6 +1,7 @@
 import { IFieldProcessor } from "./field-processor";
 import { Observable } from 'rxjs';
 import { TypeLike } from "../typeslike";
+import { LazyObservableProvider } from "./lazy-observable-provider";
 
 export interface TypeProcessorEntry<T, TM> {type: TypeLike<TM>, processor: IFieldProcessor<T>}
 export interface FieldInfo {
@@ -46,6 +47,7 @@ export interface RecorderConfig {
     attachPrefix: string;
     cacheStoragePrefix: string;
     cacheHandler: CacheHandler;
+    lazyObservableProvider: LazyObservableProvider;
     configCreationIdName(creationIdName: string): RecorderConfig;  
     configMetadatasName(playerMetadatasName: string): RecorderConfig;
     configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig;
@@ -53,6 +55,7 @@ export interface RecorderConfig {
     configLazyRefNotificationCountMeasurement(lazyRefNotificationCountMeasurement: number): RecorderConfig;
     configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): RecorderConfig;
     configCacheHandler(cacheHandler: CacheHandler): RecorderConfig;
+    configLazyObservableProvider(provider: LazyObservableProvider): RecorderConfig;
     configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): RecorderConfig;
     getConsole(logger: RecorderLogger): ConsoleLike;
     /**
