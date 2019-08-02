@@ -1,4 +1,4 @@
-import { HttpHeaders, HttpResponse } from "@angular/common/http";
+import { HttpHeaders } from "@angular/common/http";
 import { Type } from "@angular/core";
 
 export declare class HeadersLike extends HttpHeaders {

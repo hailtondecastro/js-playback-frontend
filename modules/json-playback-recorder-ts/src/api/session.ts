@@ -1,7 +1,6 @@
 import { RecorderManager } from "./recorder-manager";
 import { TypeLike } from "../typeslike";
 import { Observable } from "rxjs";
-import { Stream } from "stream";
 import { Tape } from "./tape";
 
 export interface PlayerSnapshot {

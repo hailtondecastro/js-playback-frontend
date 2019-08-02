@@ -14,7 +14,7 @@ import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
 import { RecorderSessionImplementor } from './recorder-session-default';
-import { flatMap, map, tap } from 'rxjs/operators';
+import { flatMap, map } from 'rxjs/operators';
 import streamToObservable from 'stream-to-observable';
 import { MemStreamReadableStreamAutoEnd } from './mem-stream-readable-stream-auto-end';
 

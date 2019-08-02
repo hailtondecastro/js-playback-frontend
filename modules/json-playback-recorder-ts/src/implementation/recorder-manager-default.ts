@@ -2,7 +2,7 @@ import { RecorderConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogge
 import { RecorderSessionDefault } from './recorder-session-default';
 import { RecorderConstants } from './recorder-constants';
 import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
-import { FieldEtc, IFieldProcessorCaller } from './field-etc';
+import { FieldEtc } from './field-etc';
 import { TypeLike } from '../typeslike';
 import { RecorderSession } from '../api/session';
 import { LazyObservableProvider } from '../api/lazy-observable-provider';
@@ -14,8 +14,6 @@ import { RecorderManager } from '../api/recorder-manager';
 
 export class RecorderManagerDefault implements RecorderManager {
 	private consoleLike: ConsoleLike;
-	private consoleLikeLogRxOpr: ConsoleLike;
-	private consoleLikeMerge: ConsoleLike;
     constructor(
 			private _config: RecorderConfig,
 			private _httpLazyObservableGen: LazyObservableProvider) {

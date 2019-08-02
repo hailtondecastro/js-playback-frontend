@@ -1,4 +1,4 @@
-import { RecorderConfig, ConsoleLike, RecorderLogLevel, RecorderLogger } from "./recorder-config";
+import { RecorderConfig } from "./recorder-config";
 import { RecorderSession } from "./session";
 import { LazyObservableProvider } from "./lazy-observable-provider";
 

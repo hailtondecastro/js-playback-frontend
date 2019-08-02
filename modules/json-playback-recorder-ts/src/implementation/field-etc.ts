@@ -1,5 +1,4 @@
 import { Observable } from "rxjs";
-import { Stream } from "stream";
 import { TypeLike } from '../typeslike';
 import { GenericNode } from "../api/generic-tokenizer";
 import { RecorderDecorators } from "../api/recorder-decorators";

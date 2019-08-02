@@ -1,11 +1,10 @@
-import { Observable, Subscription, Subject, Subscriber, of as observableOf, of, OperatorFunction, PartialObserver } from 'rxjs';
-import { RecorderLogLevel, ConsoleLike } from '../api/recorder-config';
+import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver } from 'rxjs';
+import { RecorderLogLevel } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
-import { flatMap, map, finalize, share } from 'rxjs/operators';
+import { flatMap, map, finalize } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
-import { Stream, Readable } from 'stream';
+import { Stream } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
-import { request } from 'http';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
 import { TypeLike } from '../typeslike';

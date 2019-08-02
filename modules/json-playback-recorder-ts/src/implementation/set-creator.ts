@@ -1,8 +1,7 @@
 import { TapeAction, TapeActionType } from '../api/tape';
-import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
+import { get as lodashGet, has as lodashHas } from 'lodash';
 import { RecorderConstants } from './recorder-constants';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
-import { RecorderSession } from '../api/session';
 import { RecorderSessionImplementor } from './recorder-session-default';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionDefault } from './tape-default';
@@ -33,7 +32,7 @@ export class SetCreator<T> {
 
     public createByProxy(): Set<T> {
         const thisLocal = this;
-        let getFunction: (target: Set<T>, p: PropertyKey, receiver: any) => any = (target: Set<T>, p: PropertyKey, receiver: any) => {
+        let getFunction: (target: Set<T>, p: PropertyKey, receiver: any) => any = (target: Set<T>, p: PropertyKey) => {
             if (p) {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.group('SetCreator => getFunction. Intercepting:');
