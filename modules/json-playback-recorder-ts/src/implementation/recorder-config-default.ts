@@ -111,6 +111,23 @@ export class RecorderConfigDefault implements RecorderConfig {
     private _lazyRefNotificationCountMeasurement: number = 30;
     private _fieldProcessorEntryMap: Map<TypeLike<any>, IFieldProcessor<any>> = new Map();
     private _cacheHandler: CacheHandler;
+    private _maxJsonStringifyForDiagnostic: number = 300;
+    /**
+     * Max size of JSON.stringfy for error and log purpose. Default: 300.
+     * @param maxJsonStringifyForDiagnostic 
+     */
+    configMaxJsonStringifyForDiagnostic(maxJsonStringifyForDiagnostic: number): RecorderConfig {
+        this._maxJsonStringifyForDiagnostic = maxJsonStringifyForDiagnostic;
+        return this;
+    }
+
+	public get maxJsonStringifyForDiagnostic(): number  {
+		return this._maxJsonStringifyForDiagnostic;
+	}
+
+	public set maxJsonStringifyForDiagnostic(value: number ) {
+		this._maxJsonStringifyForDiagnostic = value;
+	}
 
 	public get cacheHandler(): CacheHandler {
 		return this._cacheHandler;

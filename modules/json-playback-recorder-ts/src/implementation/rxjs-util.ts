@@ -1,9 +1,9 @@
-import { OperatorFunction, ObservableInput, Observable } from "rxjs";
+import { OperatorFunction, ObservableInput, Observable, of } from "rxjs";
 import { map, flatMap } from "rxjs/operators";
 
 export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
     const resutlArr: T[] = new Array<T>(array.length);
-    const resutltObsArrRef = {value: null as Observable<T>};
+    const resutltObsArrRef = { value: null as Observable<any> };
 
     for (let index = 0; index < array.length; index++) {
         const element$ = array[index];
@@ -22,6 +22,9 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
                 })
             );
         }
+    }
+    if (!resutltObsArrRef.value) {
+        resutltObsArrRef.value = of(null) as Observable<T>;
     }
     return resutltObsArrRef.value.pipe(
         mapJustOnceRxOpr((resultT) => {

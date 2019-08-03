@@ -3,7 +3,6 @@ import { RecorderLogLevel } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
 import { flatMap, map, finalize } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
-import { Stream } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
@@ -257,7 +256,7 @@ export class LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
      * TODO:  
      * Framework internal use.
      */
-    processResponse(responselike: { body: any }): Observable<L> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>): Observable<L> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
     get genericNode(): GenericNode {
 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
@@ -845,7 +844,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             }
         } else {
             if (this.attachRefId) {
-                //providing new readable (flipped) Stream from cache
+                //providing new readable (flipped) NodeJS.ReadableStream from cache
                 if (fieldEtc.prpGenType.gType !== LazyRefPrpMarker || !fieldEtc.propertyOptions.lazyDirectRawRead) {
                     throw new Error('LazyRefBase.subscribe: LazyRefPrp has attachRefId bute has is no "lazyDirectRawRead" nor "LazyRefPrpMarker". Me:\n' +
                         this);
@@ -920,12 +919,14 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         this.session.notifyAllLazyrefsAboutEntityModification(this.lazyLoadedObj, this);
     }
 
-    public processResponse(responselike: { body: any }): Observable<L> {
+    public processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>): Observable<L> {
         const thisLocal = this;
         let lazyLoadedObj$: Observable<L>;
-        let playerSnapshot: PlayerSnapshot;
         let isLazyRefOfCollection = false;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
+        thisLocal.session.validatePlayerSideResponseLike(responselike);
+        let playerSnapshot: PlayerSnapshot | NodeJS.ReadStream;
+        playerSnapshot = responselike.body;
         if (lodashHas(this.refererObj, this.session.manager.config.playerMetadatasName)) {
             mdRefererObj = lodashGet(this.refererObj, this.session.manager.config.playerMetadatasName);
         }
@@ -934,9 +935,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
         let originalValueEntry: OriginalLiteralValueEntry;
 
-        let isResponseBodyStream = (responselike.body as Stream).pipe && (responselike.body as Stream);
+        let isResponseBodyStream = (responselike.body as NodeJS.ReadableStream).pipe && (responselike.body as NodeJS.ReadableStream);
         if (this.lazyLoadedObj == null) {
-            playerSnapshot = responselike.body;
+            let allRespMD = thisLocal.session.resolveMetadatas({literalObject: responselike});
             if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef.lazyLoadedObj is not setted yet: Me:\n' + this);
             }
@@ -964,7 +965,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
                 lodashSet(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
-                    let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, playerSnapshot.wrappedSnapshot as any[]);
+                    let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, (playerSnapshot as PlayerSnapshot).wrappedSnapshot as any[]);
                     lazyLoadedObj$ = processResultEntityArrayInternal$
                         .pipe(
                             thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, () => {
@@ -987,7 +988,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead". Me:\n' + this);
                 }
                 if (!isResponseBodyStream) {
-                    throw new Error('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" but "responselike.body" is not a Stream. Me:\n' +
+                    throw new Error('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" but "responselike.body" is not a NodeJS.ReadableStream. Me:\n' +
                         this + '\nresponselike.body.constructor.name: ' +
                         (responselike && responselike.body && responselike.body.constructor.name? responselike.body.constructor.name: 'null'));
                 }
@@ -1066,7 +1067,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         this.setLazyObjOnLazyLoadingNoNext(responselike.body as L)
                             .pipe(
                                 map(() => {
-                                    return responselike.body;
+                                    return responselike.body as L;
                                 })
                             );
                 }
@@ -1075,7 +1076,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     || (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && !isResponseBodyStream)) {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: (LazyRefPrp is NOT "lazyDirectRawRead") or '+
-                        '(LazyRefPrp is "lazyDirectRawRead" and "responseLike.body" is not a Stream). Is it rigth?! Me:\n' + this);
+                        '(LazyRefPrp is "lazyDirectRawRead" and "responseLike.body" is not a NodeJS.ReadableStream). Is it rigth?! Me:\n' + this);
                 }
                 if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
@@ -1092,7 +1093,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
                                     mdRefererObj,
                                     fieldEtc,
-                                    playerSnapshot);
+                                    playerSnapshot as PlayerSnapshot);
                                 return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
                                     .pipe(
                                         map( () => {
@@ -1106,16 +1107,16 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has NO "IFieldProcessor.fromLiteralValue". Using "responselike.body"');
                     }
                     lazyLoadedObj$ = 
-                        this.setLazyObjOnLazyLoadingNoNext(responselike.body)
+                        this.setLazyObjOnLazyLoadingNoNext(responselike.body as L)
                             .pipe(map(() => {
-                                return responselike.body;
+                                return responselike.body as L;
                             }));
                 }
             } else {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
-                let processedEntity = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, playerSnapshot.wrappedSnapshot)
+                let processedEntity = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, (playerSnapshot as PlayerSnapshot).wrappedSnapshot);
                 lazyLoadedObj$ = 
                     this.setLazyObjOnLazyLoadingNoNext(processedEntity as L)
                         .pipe(
@@ -1147,7 +1148,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
                         ownerFieldName: this.refererKey,
-                        playerSnapshot: playerSnapshot,
+                        playerSnapshot: playerSnapshot as PlayerSnapshot,
                         ref: {
                             iAmAnEntityRef: true,
                             signatureStr: thisLocal.signatureStr
@@ -1164,7 +1165,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 this.session.tryCacheInstanceBySignature(
                     {
                         realInstance: this.lazyLoadedObj,
-                        playerSnapshot: playerSnapshot,
+                        playerSnapshot: playerSnapshot as PlayerSnapshot,
                         lazySignature: this.signatureStr
                     }
                 );
@@ -1309,6 +1310,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 setLazyObjOnLazyLoadingNoNext$.subscribe(
                     {
                         next: () => {
+                            // AAAAASYNCHRONOUS OF AAAAASYNCHRONOUS!!!
                             //propety set and collection add will call session.notifyAllLazyrefsAboutEntityModification()
                             // this will cause infinit recursion, so call session.switchOffNotifyAllLazyrefs
                             thisLocal.session.switchOffNotifyAllLazyrefs(thisLocal.lazyLoadedObj);
@@ -1334,10 +1336,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 thisLocal.consoleLikeSubs.debug('Keeping Subscription from this.subscribe(observerOrNextNovo) on this.subscriptionToChange to make an unsubscribe() at the end of modifiedNext callback\n' + this);
             }
             this.subscriptionToChange = this.subscribe(observerNew);
-            this.subscriptionToChangeUnsubscribe();
-            thisLocal.next(thisLocal.lazyLoadedObj);
+            //this.subscriptionToChangeUnsubscribe();
+            //thisLocal.next(thisLocal.lazyLoadedObj);
 
-            // //AAAAASYNCHRONOUS!!!
+            //AAAAASYNCHRONOUS!!!
         } else {
             //SSSSSYNCHRONOUS!!!
             if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {

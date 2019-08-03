@@ -7,7 +7,6 @@ import { RecorderConstants } from './recorder-constants';
 import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
 import { set as lodashSet, get as lodashGet, has as lodashHas, mergeWith as lodashMergeWith, keys as lodashKeys, clone as lodashClone } from 'lodash';
-import { Stream } from 'stream';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from './field-etc';
 import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
@@ -24,6 +23,7 @@ import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { TapeAction, Tape, TapeActionType } from '../api/tape';
 import { TapeActionDefault, TapeDefault } from './tape-default';
+import { ResponseLike } from '../typeslike';
 
 declare type prptype = any;
 
@@ -57,6 +57,8 @@ export interface RecorderSessionImplementor extends RecorderSession {
                 playerSnapshot: PlayerSnapshot,
                 lazySignature?: string
             }): void;
+    validatePlayerSideLiteralObject(literalObject: {}): void;
+    validatePlayerSideResponseLike(responseLike: ResponseLike<{} | NodeJS.ReadableStream>): void;
     /**
      * Framework internal use.
      */
@@ -82,7 +84,7 @@ export interface RecorderSessionImplementor extends RecorderSession {
     /** Framework internal use. */
     notifyAllLazyrefsAboutEntityModification(entity: object, lazyRef: LazyRefImplementor<any, any>): void;
     /** Framework internal use. */
-    recordAtache(attach: Stream): string;
+    recordAtache(attach: NodeJS.ReadableStream): string;
     /** Framework internal use. */
     fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>;
     /** Framework internal use. */
@@ -131,7 +133,8 @@ export interface RecorderSessionImplementor extends RecorderSession {
                     asyncAddTapeAction: boolean,
                     newValue: any
                 }
-            >
+            >;
+    jsonStringfyWithMax(literalObj: any): string;
 }
 
 export class RecorderSessionDefault implements RecorderSessionImplementor {
@@ -361,7 +364,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         || originalLiteralValueEntry.method === 'newEntityInstance') {
                     let jsType: TypeLike<any> = Reflect.getMetadata(originalLiteralValueEntry.reflectFunctionMetadataTypeKey, Function);
                     if (!jsType) {
-                        throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'RecorderDecorators.playerType\'. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                        throw new Error('the classe \'' + originalLiteralValueEntry.reflectFunctionMetadataTypeKey + ' is not using the decorator \'RecorderDecorators.playerType\'. Entry:\n' + this.jsonStringfyWithMax(originalLiteralValueEntry));
                     }
                     if (originalLiteralValueEntry.method === 'processResultEntity') {
                         lazyRefProcessResponseArr.push(thisLocal.processPlayerSnapshot(jsType, originalLiteralValueEntry.playerSnapshot));
@@ -376,7 +379,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     originalLiteralValueEntry.ownerSignatureStr
                     if (originalLiteralValueEntry.ownerSignatureStr) {
                         if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
-                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a player side component. Entry:\n' + JSON.stringify(originalLiteralValueEntry, null, 2));
+                            thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (ownerSignatureStr): ownerSignatureStr found for original literal value entry, the owner must be a player side component. Entry:\n' + this.jsonStringfyWithMax(originalLiteralValueEntry));
                         }
                         let ownerEnt = this._objectsBySignature.get(originalLiteralValueEntry.ownerSignatureStr);
                         if (!ownerEnt) {
@@ -399,7 +402,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 'player side component. Doing nothing, in any next literal value entry\n'+
                                 'there will exist an action with type \'processResultEntity\' that will\n'+
                                 'put the entity on cache. Entry:\n' +
-                                JSON.stringify(originalLiteralValueEntry, null, 2));
+                                this.jsonStringfyWithMax(originalLiteralValueEntry));
                         }
                     }
                 } else {
@@ -598,7 +601,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         } else if (action.ownerCreationRefId) {
             return this._objectsByCreationId.get(action.ownerCreationRefId);
         } else {
-            throw new Error('This should not happen. Action: ' + JSON.stringify(action));
+            throw new Error('This should not happen. Action: ' + this.jsonStringfyWithMax(action));
         }
     }
 
@@ -619,7 +622,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 			try {
 				return this.actionResolveOwnerValue(action)[this.actionResolveFieldName(action)];
 			} catch (e) {
-                let newErr: any = new Error('This should not happen. action. Action ' + JSON.stringify(action));
+                let newErr: any = new Error('This should not happen. action. Action ' + this.jsonStringfyWithMax(action));
                 newErr.reason = e;
                 throw newErr;
 			}
@@ -659,7 +662,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     resolvedSettedValue$ = thisLocal.manager.config.cacheHandler.getFromCache(action.attachRefId) as any as Observable<P>;
                 }
             } else {
-                throw new Error('Invalid action. LazyRefPrp invalid values: ' + JSON.stringify(action));                
+                throw new Error('Invalid action. LazyRefPrp invalid values: ' + this.jsonStringfyWithMax(action));                
             }
         } else if (action.settedSignatureStr) {
             resolvedSettedValue$ = of(thisLocal._objectsBySignature.get(action.settedSignatureStr) as P);
@@ -725,7 +728,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         wasCollectionAsyncronousModified.value = false;
                                     }
                                     if (wasCollectionAsyncronousModified.value) {
-                                        throw new Error('Invalid action. Collection was not loaded on current state: ' + JSON.stringify(action));
+                                        throw new Error('Invalid action. Collection was not loaded on current state: ' + this.jsonStringfyWithMax(action));
                                     }
                                     break;
                                 case TapeActionType.CollectionRemove:
@@ -745,7 +748,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         wasCollectionAsyncronousModified.value = false;
                                     }
                                     if (wasCollectionAsyncronousModified.value) {
-                                        throw new Error('Invalid action. Collection was not loaded on current state: ' + JSON.stringify(action));
+                                        throw new Error('Invalid action. Collection was not loaded on current state: ' + this.jsonStringfyWithMax(action));
                                     }
                                     break;
                                 case TapeActionType.SetField:
@@ -844,7 +847,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
                     throw new Error('There is something wrong with:\n' + 
-                        JSON.stringify(trackedInstance, null, '\t'));
+                    this.jsonStringfyWithMax(trackedInstance));
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -861,7 +864,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
                     throw new Error('There is something wrong with:\n' + 
-                        JSON.stringify(trackedInstance, null, '\t'));
+                        this.jsonStringfyWithMax(trackedInstance));
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -878,7 +881,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 let trackedInstanceMd = lodashGet(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
                     throw new Error('There is something wrong with:\n' + 
-                        JSON.stringify(trackedInstance, null, '\t'));
+                        this.jsonStringfyWithMax(trackedInstance));
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -957,9 +960,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     public processPlayerSnapshot<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<L> {
         const thisLocal = this;
         let result$: Observable<L>;
-
+        thisLocal.validatePlayerSideLiteralObject(playerSnapshot);
         if (!playerSnapshot.wrappedSnapshot) {
-            throw new Error('playerSnapshot.result exists: ' + JSON.stringify(playerSnapshot));
+            throw new Error('playerSnapshot.result exists: ' + this.jsonStringfyWithMax(playerSnapshot));
         }
         let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
@@ -1013,7 +1016,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     public processPlayerSnapshotArray<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Observable<Array<L>> {
         const thisLocal = this;
         if (!playerSnapshot.wrappedSnapshot) {
-            throw new Error('playerSnapshot.result existe' + JSON.stringify(playerSnapshot));
+            throw new Error('playerSnapshot.result existe' + this.jsonStringfyWithMax(playerSnapshot));
         }
         let playerTypeOptions: RecorderDecorators.playerTypeOptions = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, entityType);
         if (!playerTypeOptions) {
@@ -1372,11 +1375,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let result$ = this.getLastRecordedTape()
             .pipe(
                 flatMapJustOnceRxOpr((tape) => {
-                    const idAndStreamObsArr: Observable<{attachRefId: String, stream: Stream}>[] = [];
+                    const idAndStreamObsArr: Observable<{attachRefId: String, stream: NodeJS.ReadableStream}>[] = [];
                     if (tape && tape.actions){
                         for (const actionItem of tape.actions) {
                             if (actionItem.attachRefId) {
-                                let idAndStream$: Observable<{attachRefId: String, stream: Stream}> = 
+                                let idAndStream$: Observable<{attachRefId: String, stream: NodeJS.ReadableStream}> = 
                                     thisLocal.manager.config.cacheHandler.getFromCache(actionItem.attachRefId)
                                         .pipe(
                                             mapJustOnceRxOpr((streamValue) => {
@@ -1588,12 +1591,30 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
 
-    public processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, snapshotField: any[]): Observable<void> {
-        let thisLocal = this;
-        let refMap: Map<Number, any> = new Map();
+    validatePlayerSideLiteralObject(literalObject: {}): void {
+        let allMD = this.resolveMetadatas({literalObject: literalObject});
+        if (!allMD.objectMd) {
+            throw new Error('Invalid player side literal object: \n' + this.jsonStringfyWithMax(literalObject));
+        }
+    }
+    validatePlayerSideResponseLike(responseLike: ResponseLike<{} | NodeJS.ReadableStream>): void {
+        let isResponseBodyStream = !responseLike.body && (responseLike.body as NodeJS.ReadableStream).pipe && (responseLike.body as NodeJS.ReadableStream);
+        if (!isResponseBodyStream) {
+            if (!responseLike || !responseLike.body || !(responseLike.body as PlayerSnapshot).wrappedSnapshot) {
+                throw new Error('Invalid player side responseLike body object: \n' + this.jsonStringfyWithMax(responseLike.body));
+            }
+        }
+    }
 
+    public processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, wrappedSnapshotField: any[]): Observable<void> {
+        const thisLocal = this;
+        let refMap: Map<Number, any> = new Map();
+        
         let realItemObsArr: Observable<L>[] = []
-        for (const literalItem of snapshotField) {                               
+        if (!Array.isArray(wrappedSnapshotField)) {
+            throw new Error('wrappedSnapshotField is not an Array:\n' + this.jsonStringfyWithMax(wrappedSnapshotField));
+        }
+        for (const literalItem of wrappedSnapshotField) {                               
             let realItem$: Observable<L> = this.processResultEntityPriv(entityType, literalItem, refMap);
             realItemObsArr.push(realItem$);
         }
@@ -1639,12 +1660,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
 
-    private processResultEntityPriv<L>(entityType: TypeLike<L>, snapshotField: any, refMap: Map<Number, any>): Observable<L> {
+    private processResultEntityPriv<L>(entityType: TypeLike<L>, wrappedSnapshotField: any, refMap: Map<Number, any>): Observable<L> {
         const thisLocal = this;
-        if (!snapshotField) {
+        if (!wrappedSnapshotField) {
             throw new Error('snapshotField can not be null');
         }
-        let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
+        this.validatePlayerSideLiteralObject(wrappedSnapshotField);
+
+        let allMD = this.resolveMetadatas({literalObject: wrappedSnapshotField, refMap: refMap});
         let bMd = allMD.objectMd;
         let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
 
@@ -1661,7 +1684,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             this.validatingMetaFieldsExistence(entityType);
             entityValue = new entityType();
             lodashSet(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
-            this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
+            this.removeNonUsedKeysFromLiteral(entityValue as any, wrappedSnapshotField);
 
             if (bMd.$id$) {
                 refMap.set(bMd.$id$, entityValue);
@@ -1673,10 +1696,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 this.tryCacheInstanceBySignature(
                     {
                         realInstance: entityValue, 
-                        playerSnapshot: { wrappedSnapshot: snapshotField }
+                        playerSnapshot: { wrappedSnapshot: wrappedSnapshotField }
                     }
                 );
-                lodashMergeWith(entityValue as any, snapshotField, this.mergeWithCustomizerPropertyReplection(refMap));
+                lodashMergeWith(entityValue as any, wrappedSnapshotField, this.mergeWithCustomizerPropertyReplection(refMap));
             });
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -2061,7 +2084,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             let referedInstanceMd = lodashGet(referedInstance, thisLocal.manager.config.playerMetadatasName) as PlayerMetadatas;
             if (!referedInstanceMd.$iAmPlayerMetadatas$) {
                 throw new Error('Where is the metadatas:\n' + 
-                    JSON.stringify(referedInstance, null, '\t'));
+                this.jsonStringfyWithMax(referedInstance));
             }
             playerObjectIdLiteralRef.value = referedInstanceMd.$playerObjectId$;
         } else {
@@ -2306,7 +2329,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.consoleLikeMerge.debug('(Async) mergeWithCustomizerPropertyReplection => function =>'+
                                     ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
                                     ' Object resolved by fieldEtc.fieldProcessorCaller.callFromLiteralValue:\n' + 
-                                    JSON.stringify(srcValue, null, '\t'));
+                                    this.jsonStringfyWithMax(srcValue));
                             }
                             lodashSet(object, key, correctSrcValueRef.value);
                         })
@@ -2372,10 +2395,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         //nothing for now
                     } else if (fieldEtc.prpGenType.gType === LazyRef || fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
                         if (!mdSource.$id$) {
-                            throw new Error('There is no mdSource.$id$ on ' + JSON.stringify(srcValue));
+                            throw new Error('There is no mdSource.$id$ on ' + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
-                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
+                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
                             correctSrcValueRef.value = new UndefinedForMergeAsync();
@@ -2628,8 +2651,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             newValue: undefined as any
         }
         //let putOnCache$: Observable<void> = of(undefined);
-        //let toDirectRaw$: Observable<Stream> = of(null);
-        //let getFromCache$: Observable<Stream> = of(null);
+        //let toDirectRaw$: Observable<NodeJS.ReadableStream> = of(null);
+        //let getFromCache$: Observable<NodeJS.ReadableStream> = of(null);
         options.action.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
         if (options.fieldEtc.fieldProcessorCaller && options.fieldEtc.fieldProcessorCaller.callToDirectRaw) {
             let toDirectRaw$ = options.fieldEtc.fieldProcessorCaller.callToDirectRaw(options.value, options.fieldEtc.fieldInfo);
@@ -2652,7 +2675,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             });
                         } else {
                             if (options.value) {
-                                throw new Error('The property \'' + options.propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + options.value.constructor);
+                                throw new Error('The property \'' + options.propertyKey.toString() + ' of \'' + this.constructor + '\'. NodeJS.ReadableStream is null but value is not null. value: ' + options.value.constructor);
                             }
                             options.action.simpleSettedValue = null;
                             options.action.attachRefId = null;
@@ -2662,10 +2685,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             );
         } else {
-            if (!((options.value as any as Stream).addListener && (options.value as any as Stream).pipe)) {
+            if (!((options.value as any as NodeJS.ReadableStream).addListener && (options.value as any as NodeJS.ReadableStream).pipe)) {
                 throw new Error('The property \'' + options.propertyKey.toString() +
                     ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw"' + 
-                    ' defined and value is not a Stream. value: ' + options.value.constructor);
+                    ' defined and value is not a NodeJS.ReadableStream. value: ' + options.value.constructor);
             } else {
                 let putOnCache$ = thisLocal.manager.config.cacheHandler.putOnCache(options.action.attachRefId, options.value as any as NodeJS.ReadStream);
                 putOnCache$ = putOnCache$.pipe(thisLocal.addSubscribedObsRxOpr());
@@ -2705,6 +2728,19 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         } else {
             return of(resultObservableValue);
         }
+    }
+    
+    jsonStringfyWithMax(literalObj: any): string {
+        let result = '';
+        if (literalObj) {
+            let literalObjStr = JSON.stringify(literalObj, null, 2);
+            if (literalObjStr.length > this.manager.config.maxJsonStringifyForDiagnostic) {
+                result += literalObjStr.substr(0, this.manager.config.maxJsonStringifyForDiagnostic) + '\n...';
+            } else {
+                result += literalObjStr.substr(0, this.manager.config.maxJsonStringifyForDiagnostic) + '\n...';
+            }
+        }
+        return result;
     }
 }
 

@@ -1,5 +1,4 @@
 import { Observable } from "rxjs";
-import { Stream } from "stream";
 
 export = index;
 export interface StreamToObservableOptions {
@@ -8,4 +7,4 @@ export interface StreamToObservableOptions {
     errorEvent?: String | false,
     dataEvent?: String
 }
-declare function index<T>(stream: Stream, opts?: StreamToObservableOptions): Observable<T>;
+declare function index<T>(stream: NodeJS.ReadableStream, opts?: StreamToObservableOptions): Observable<T>;
