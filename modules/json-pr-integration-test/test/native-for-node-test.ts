@@ -10,7 +10,7 @@ export namespace ForNodeTest {
         {
             clearCache: () => {
                 CacheMap.clear();
-                return of();
+                return of(null);
             },
             getFromCache: (cacheKey) => {
                 let buffer = CacheMap.get(cacheKey);
