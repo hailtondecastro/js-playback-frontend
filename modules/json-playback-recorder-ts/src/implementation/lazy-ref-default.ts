@@ -1,7 +1,7 @@
 import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver } from 'rxjs';
 import { RecorderLogLevel } from '../api/recorder-config';
 import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
-import { flatMap, map, finalize } from 'rxjs/operators';
+import { flatMap, map, finalize, tap } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
 import { Stream } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
@@ -1115,14 +1115,18 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
-                let processedEntity = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, playerSnapshot.wrappedSnapshot)
-                lazyLoadedObj$ = 
-                    this.setLazyObjOnLazyLoadingNoNext(processedEntity as L)
-                        .pipe(
-                            map(() => {
-                                return processedEntity as L;
-                            })
-                        );
+                let processedEntity$ = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, playerSnapshot.wrappedSnapshot)
+                const processedEntityRef = {value: null as L};
+                lazyLoadedObj$ = processedEntity$
+                    .pipe(
+                        flatMap((processedEntity) => {
+                            processedEntityRef.value = processedEntity;
+                            return this.setLazyObjOnLazyLoadingNoNext(processedEntity as L);
+                        }),
+                        map(() => {
+                            return processedEntityRef.value;
+                        })
+                    );
                 //was the only way I found to undock the Observable<L> from the Observable<Response>
                 //  The side effect of this is that map() called before this exchange is
                 //  not piped with new Observable.

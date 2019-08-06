@@ -2,9 +2,10 @@ import {HttpResponse, HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
-import resultMasterLiteral from './master-a-test.json';
-import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
-import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
+import pSnapshotMasterLiteral from './master-a-test.json';
+import pSnapshotMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
+import pSnapshotMasterADetailATestLiteral from './master-a-detail-a-test.json';
+import pSnapshotDetailALiteral from './detail-a-by-sig.json';
 import { MasterAEnt } from './entities/master-a-ent';
 import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
@@ -25,6 +26,7 @@ import { TapeActionType } from '../src/api/tape.js';
 import { AsyncCountdown } from './async-countdown.js';
 import { AsyncCount } from './async-count.js';
 import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';
+import { DetailAEnt } from './entities/detail-a-ent.js';
 
 {
     describe('RecorderManagerDefault', () => {
@@ -361,7 +363,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             }
 
             recorderSession = manager.createSession();
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -525,7 +527,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             }
 
             recorderSession = manager.createSession();
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -559,6 +561,160 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
+                done();
+            });
+        });
+
+        it('RecorderManagerDefault.detail-a-master-a-async', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
+
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown(2);
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'vcharA' || fieldName === 'vcharB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr()
+                );
+            };
+
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr()
+                );
+            };
+
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                                }
+                            );
+                        return source;
+                    }
+                ).pipe(
+                    asyncCount.registerRxOpr()
+                );
+            }
+
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobA' || fieldName === 'blobB';
+                                }
+                            );
+                        return source;
+                    }
+                ).pipe(
+                    asyncCount.registerRxOpr()
+                );
+            }
+
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: pSnapshotMasterLiteral
+                        }
+                        return of(responseResult).pipe(delay(10));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(10));
+                    }
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
+
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+
+            propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr()
+                );
+            }
+
+            recorderSession = manager.createSession();
+            let detailAArr$: Observable<DetailAEnt[]> = recorderSession.processPlayerSnapshotArray(DetailAEnt, pSnapshotDetailALiteral)
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    asyncCountdown.registerRxOpr()
+                );
+            detailAArr$.subscribe(
+                {
+                    next: (detailAArr) => {
+                        detailAArr[0].compId.masterA.asObservable().pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        ).subscribe((masteeA) => {
+                            chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
+                        });
+                    }
+                }
+            );
+
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createAsyncTasksWaiting()
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(79, 'asyncCount');
                 done();
             });
         });
@@ -695,7 +851,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             }
 
             recorderSession = manager.createSession();
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterADetailATestLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -728,9 +884,9 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                             let detailAEntArr = Array.from(coll);
                             for (let index = 0; index < detailAEntArr.length; index++) {
                                 const detailAItem = detailAEntArr[index];
-                                chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharA)
+                                chai.expect(pSnapshotMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharA)
                                     .to.eq(detailAItem.detailAComp.vcharA);
-                                chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharB)
+                                chai.expect(pSnapshotMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharB)
                                     .to.eq(detailAItem.detailAComp.vcharB);
                                 let compIdMasterA$ = detailAItem.compId.masterA.asObservable()
                                     .pipe(
@@ -885,7 +1041,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             }
 
             recorderSession = manager.createSession();
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterADetailATestLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -911,9 +1067,9 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
                     let detailAEntArr = Array.from(coll);
                     for (let index = 0; index < detailAEntArr.length; index++) {
                         const detailAItem = detailAEntArr[index];
-                        chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharA)
+                        chai.expect(pSnapshotMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharA)
                             .to.eq(detailAItem.detailAComp.vcharA);
-                        chai.expect(resultMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharB)
+                        chai.expect(pSnapshotMasterADetailATestLiteral.wrappedSnapshot.detailAEntCol[index].detailAComp.vcharB)
                             .to.eq(detailAItem.detailAComp.vcharB);
                         let compIdMasterA$ = detailAItem.compId.masterA.asObservable()
                             .pipe(
@@ -1068,7 +1224,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
 
             recorderSession = manager.createSession();
 
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterLazyPrpOverSizedLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -1256,7 +1412,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             let dataAsyncCountdown = new AsyncCountdown(3);
             let tapeAsyncCountdown = new AsyncCountdown(3);
 
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterADetailATestLiteral);
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             masterA$ = masterA$.pipe(dataAsyncCountdown.registerRxOpr());
             masterA$.subscribe(
                 {
@@ -1499,7 +1655,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
             let dataAsyncCountdown = new AsyncCountdown(3);
             let tapeAsyncCountdown = new AsyncCountdown(3);
 
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterADetailATestLiteral);
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             masterA$ = masterA$.pipe(dataAsyncCountdown.registerRxOpr());
             masterA$.subscribe(
                 {
