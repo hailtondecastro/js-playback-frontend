@@ -27,6 +27,7 @@ import { AsyncCountdown } from './async-countdown.js';
 import { AsyncCount } from './async-count.js';
 import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';
 import { DetailAEnt } from './entities/detail-a-ent.js';
+import { RecorderSessionImplementor } from '../src/implementation/recorder-session-default.js';
 
 {
     describe('RecorderManagerDefault', () => {
@@ -34,9 +35,9 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
             // let subTest1 = new Subject<number>();
             // let subTest2 = new Subject<number>();
             // let subTest1$ = subTest1.asObservable()
-            //     .pipe(delay(10));
+            //     .pipe(delay(1));
             // let subTest2$ = subTest2.asObservable()
-            //     .pipe(delay(10));
+            //     .pipe(delay(1));
 
             // subTest1$ = subTest1$.pipe(
             //     map((value) => {
@@ -112,13 +113,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             //let asyncCount = 0;
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(4);
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
 
-            let obs1$: Observable<void> = of(undefined).pipe(delay(10)).pipe(
+            let obs1$: Observable<void> = of(undefined).pipe(delay(1)).pipe(
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             );
-            let obs2$: Observable<void> = of(undefined).pipe(delay(10)).pipe(
+            let obs2$: Observable<void> = of(undefined).pipe(delay(1)).pipe(
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             );
@@ -171,10 +172,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
         it('RecorderManagerDefault.poc-observable-each-pipe-test', (done) => {
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(8);            
+            let asyncCountdown = new AsyncCountdown({ count: 8, timeOut: 1000});            
 
-            let obs1$: Observable<void> = of(undefined).pipe(delay(10));
-            let obs2$: Observable<void> = of(undefined).pipe(delay(10));
+            let obs1$: Observable<void> = of(undefined).pipe(delay(1));
+            let obs2$: Observable<void> = of(undefined).pipe(delay(1));
 
             obs1$ = obs1$
                 .pipe(
@@ -247,7 +248,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(2);
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -334,13 +335,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
             );
@@ -393,10 +394,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(69, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
         });
@@ -411,7 +412,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(2);
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -498,13 +499,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
             );
@@ -557,10 +558,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
         });
@@ -575,7 +576,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(2);
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -662,13 +663,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: pSnapshotMasterLiteral
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
             );
@@ -711,10 +712,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(79, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
         });
@@ -729,7 +730,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(7);
+            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -821,13 +822,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 });
 
@@ -905,10 +906,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
                 done();
             });
         });
@@ -923,7 +924,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(15);
+            let asyncCountdown = new AsyncCountdown({ count: 15, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1011,13 +1012,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
                 );
@@ -1085,12 +1086,190 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
             });
 
             asyncCountdown.createCountdownEnds().pipe(
-                delay(1000),
+                delay(1),
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(76, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(59, 'asyncCount');
+                done();
+            });
+        });
+
+        it('RecorderManagerDefault.detail-a-arr-master-test-async', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
+                
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'vcharA' || fieldName === 'vcharB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    share()
+                );
+            };
+
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    share()
+                );
+            };
+
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    share()
+                );;
+            };
+
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        chai.expect(info.fieldName)
+                            .to.satisfy(
+                                (fieldName: string) => {
+                                    return fieldName === 'blobA' || fieldName === 'blobB';
+                                }
+                            );
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    share()
+                );
+            };
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        if (!signature) {
+                            throw new Error('Signature not found');
+                        }
+                        let responseResult: ResponseLike<Object> = {
+                            body: pSnapshotMasterLiteral
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+                );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
+
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+
+            propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
+                return obs.pipe(
+                    (source) => {
+                        return source;
+                    }
+                )
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    asyncCountdown.registerRxOpr(),
+                    share()
+                );;
+            }
+
+            recorderSession = manager.createSession();
+            let detailAArr$: Observable<DetailAEnt[]> = recorderSession.processPlayerSnapshotArray(DetailAEnt, pSnapshotDetailALiteral)
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    asyncCountdown.registerRxOpr()
+                );
+            const firstMasterARef = {value: null as MasterAEnt};
+            const subs = detailAArr$.subscribe((detailAArr) => {
+                for (let index = 0; index < detailAArr.length; index++) {
+                    const detailAItem = detailAArr[index];
+                    chai.expect(pSnapshotDetailALiteral.wrappedSnapshot[index].detailAComp.vcharA)
+                        .to.eq(detailAItem.detailAComp.vcharA);
+                    chai.expect(pSnapshotDetailALiteral.wrappedSnapshot[index].detailAComp.vcharB)
+                        .to.eq(detailAItem.detailAComp.vcharB);
+                    let compIdMasterA$ = detailAItem.compId.masterA.asObservable()
+                        .pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        );
+
+                    const subs2 = compIdMasterA$.subscribe( (detMasterA) => {
+                        if (!firstMasterARef.value) {
+                            firstMasterARef.value = detMasterA;
+                        } else {
+                            chai.expect(firstMasterARef.value).to.eq(detMasterA);
+                        }
+                        subs2.unsubscribe();
+                    });
+                }
+                subs.unsubscribe();
+            });
+            
+            asyncCountdown.createCountdownEnds().pipe(
+                delay(1),
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting();
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(12, 'asyncCount');
                 done();
             });
         });
@@ -1105,7 +1284,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(17);
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1117,7 +1296,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<NodeJS.ReadableStream> = {
@@ -1135,7 +1314,7 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                             responseResult.headers = new HttpHeaders().append('Content-Type', 'text/plain; charset=utf-8');
                         }
                         return of(responseResult)
-                            .pipe(delay(10))
+                            .pipe(delay(1))
                             .pipe(
                                 asyncCount.registerRxOpr()
                             );
@@ -1223,6 +1402,15 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
             }
 
             recorderSession = manager.createSession();
+            (recorderSession as RecorderSessionImplementor).decorateCreateNotLoadedLazyRef(
+                (options) => {
+                    if (options.refererKey === 'blobLazyA') {
+                        return options.originalResult.pipe(delay(200));
+                    } else {
+                        return options.originalResult;
+                    }
+                }
+            );
 
             let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral)
                 .pipe(
@@ -1268,11 +1456,11 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             )
             .subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(45, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
         });
@@ -1380,13 +1568,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
                 );
@@ -1409,8 +1597,8 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
             recorderSession = manager.createSession();
             recorderSession.startRecording();
 
-            let dataAsyncCountdown = new AsyncCountdown(3);
-            let tapeAsyncCountdown = new AsyncCountdown(3);
+            let dataAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 500});
+            let tapeAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 700});
 
             let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             masterA$ = masterA$.pipe(dataAsyncCountdown.registerRxOpr());
@@ -1512,10 +1700,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             tapeAsyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(11, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
                 done();
             });
         });
@@ -1623,13 +1811,13 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(10));
+                        return of(responseResult).pipe(delay(1));
                     }
                 }
                 );
@@ -1652,8 +1840,8 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
             recorderSession = manager.createSession();
             recorderSession.startRecording();
 
-            let dataAsyncCountdown = new AsyncCountdown(3);
-            let tapeAsyncCountdown = new AsyncCountdown(3);
+            let dataAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 500});
+            let tapeAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
 
             let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             masterA$ = masterA$.pipe(dataAsyncCountdown.registerRxOpr());
@@ -1755,10 +1943,10 @@ import { DetailAEnt } from './entities/detail-a-ent.js';
 
             tapeAsyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(80, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(63, 'asyncCount');
                 done();
             });
         });

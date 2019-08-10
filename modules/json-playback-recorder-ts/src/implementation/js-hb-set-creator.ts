@@ -1,10 +1,10 @@
 import { TapeAction, TapeActionType } from '../api/tape';
-import { get as lodashGet, has as lodashHas } from 'lodash';
 import { RecorderConstants } from './recorder-constants';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { RecorderSessionImplementor } from './recorder-session-default';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionDefault } from './tape-default';
+import { LodashLike } from './lodash-like';
 
 export class SetCreator<T> {
 
@@ -88,7 +88,7 @@ export class SetCreator<T> {
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = LodashLike.get(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -103,8 +103,8 @@ export class SetCreator<T> {
                 action.actionType = TapeActionType.CollectionAdd;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
+                } else if (LodashLike.has(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = LodashLike.get(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else if (!mdRefererObj.$isComponentPlayerObjectId$) {
                     throw new Error('The proprerty \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner');
                 }
@@ -112,8 +112,8 @@ export class SetCreator<T> {
                 if (value != null) {
                     if (mdValue.$signature$) {
                         action.settedSignatureStr = mdValue.$signature$;
-                    } else if (lodashHas(value, this.session.manager.config.creationIdName)) {
-                        action.settedCreationRefId = lodashGet(value, this.session.manager.config.creationIdName) as number;
+                    } else if (LodashLike.has(value, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = LodashLike.get(value, this.session.manager.config.creationIdName) as number;
                     } else {
                         throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor.name + '\'.  value not managed owner: \'' + value.constructor.name + '\'');
                     }
@@ -129,7 +129,7 @@ export class SetCreator<T> {
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
         }
         if (propertyOptions.persistent) {
-            let isOnlazyLoad: any = lodashGet(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            let isOnlazyLoad: any = LodashLike.get(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
             if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
@@ -144,16 +144,16 @@ export class SetCreator<T> {
                 action.actionType = TapeActionType.CollectionRemove;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
+                } else if (LodashLike.has(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = LodashLike.get(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else {
                     throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor + '\' has a not managed owner');
                 }
                 if (value != null) {
                     if (mdValue.$signature$) {
                         action.settedSignatureStr = mdValue.$signature$;
-                    } else if (lodashHas(value, this.session.manager.config.creationIdName)) {
-                        action.settedCreationRefId = lodashGet(value, this.session.manager.config.creationIdName) as number;
+                    } else if (LodashLike.has(value, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = LodashLike.get(value, this.session.manager.config.creationIdName) as number;
                     } else {
                         throw new Error('The proprerty \'' + this.refererKey + ' of \'' + this.refererObj.constructor + '\'. not managed value: \'' + value.constructor.name + '\'');
                     }

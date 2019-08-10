@@ -1,5 +1,4 @@
 import { RecorderConstants } from './recorder-constants';
-import { get as lodashGet, has } from 'lodash';
 import { Stream, Readable } from 'stream';
 import { of, from } from 'rxjs';
 import { RecorderManagerDefault } from './recorder-manager-default';
@@ -14,9 +13,10 @@ import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
 import { RecorderSessionImplementor } from './recorder-session-default';
-import { flatMap, map } from 'rxjs/operators';
+import { flatMap, map, tap, share } from 'rxjs/operators';
 import streamToObservable from 'stream-to-observable';
 import { MemStreamReadableStreamAutoEnd } from './mem-stream-readable-stream-auto-end';
+import { LodashLike } from './lodash-like';
 
 export namespace RecorderDecoratorsInternal {
     /**
@@ -74,7 +74,7 @@ export namespace RecorderDecoratorsInternal {
             const oldSet = descriptor.set;
             descriptor.set = function(value) {
                 const thisLocal = this;
-                let session: RecorderSessionImplementor = lodashGet(this, RecorderConstants.ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
+                let session: RecorderSessionImplementor = LodashLike.get(this, RecorderConstants.ENTITY_SESION_PROPERTY_NAME) as RecorderSessionImplementor;
                 const consoleLike = session.manager.config.getConsole(RecorderLogger.RecorderDecorators)
                 let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<Z, any>(session.fielEtcCacheMap, target, propertyKey.toString(), session.manager.config);
                 if (fieldEtc.propertyOptions.persistent) {
@@ -85,7 +85,7 @@ export namespace RecorderDecoratorsInternal {
                         consoleLike.debug(value);
                         consoleLike.groupEnd();
                     }
-                    let isOnlazyLoad: any = lodashGet(this, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+                    let isOnlazyLoad: any = LodashLike.get(this, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
@@ -93,7 +93,7 @@ export namespace RecorderDecoratorsInternal {
                             if (!session) {
                                 throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderConstants.ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
-                            let actualValue = lodashGet(this, propertyKey);
+                            let actualValue = LodashLike.get(this, propertyKey.toString());
                             if (actualValue !== value) {
                                 if (!isOnlazyLoad && !session.isOnRestoreEntireStateFromLiteral()) {
                                     if (!session.isRecording()){
@@ -116,8 +116,8 @@ export namespace RecorderDecoratorsInternal {
 
                                     if (bMd.$signature$) {
                                         action.ownerSignatureStr = bMd.$signature$;
-                                    } else if (has(this, session.manager.config.creationIdName)) {
-                                        action.ownerCreationRefId = lodashGet(this, session.manager.config.creationIdName) as number;
+                                    } else if (LodashLike.has(this, session.manager.config.creationIdName)) {
+                                        action.ownerCreationRefId = LodashLike.get(this, session.manager.config.creationIdName) as number;
                                     } else if (!this._isOnInternalSetLazyObjForCollection) {
                                         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + target.constructor + '\' has a not managed owner');
                                     }
@@ -129,8 +129,8 @@ export namespace RecorderDecoratorsInternal {
                                         let bMdValue = allMD.objectMd;
                                         if (bMdValue.$signature$) {
                                             action.settedSignatureStr = bMdValue.$signature$;
-                                        } else if (has(value, session.manager.config.creationIdName)) {
-                                            action.settedCreationRefId = lodashGet(value, session.manager.config.creationIdName) as number;
+                                        } else if (LodashLike.has(value, session.manager.config.creationIdName)) {
+                                            action.settedCreationRefId = LodashLike.get(value, session.manager.config.creationIdName) as number;
                                         } else {
                                             if (value instanceof Object && !(value instanceof Date)) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
@@ -145,9 +145,13 @@ export namespace RecorderDecoratorsInternal {
                                         let processTapeActionAttachRefId$ = session.processTapeActionAttachRefId({fieldEtc: fieldEtc, value: value, action: action, propertyKey: propertyKey.toString()});
                                         //processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(session.addSubscribedObsRxOpr());
                                         asyncAddTapeAction.value = true;
+                                        processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(
+                                            session.registerProvidedObservablesRxOpr(),
+                                            share()
+                                        );
                                         processTapeActionAttachRefId$.subscribe(
                                             {
-                                                next: (ptaariValue) => {
+                                                next: (ptaariValue: any) => {
                                                     oldSet.call(thisLocal, ptaariValue.newValue);
                                                     if(!ptaariValue.asyncAddTapeAction) {
                                                         session.addTapeAction(action);
@@ -202,15 +206,19 @@ export namespace RecorderDecoratorsInternal {
                                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
                                             value, 
                                             fieldEtc.fieldInfo);
-                                        toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
+                                        // toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
                                         asyncAddTapeAction.value = true;
-                                        toLiteralValue$.subscribe(
-                                            {
-                                                next: (processedValue) => {
-                                                    action.simpleSettedValue = processedValue;
-                                                    session.addTapeAction(action);
+                                        toLiteralValue$ = toLiteralValue$.pipe(
+                                            tap(
+                                                {
+                                                    next: (processedValue: any) => {
+                                                        action.simpleSettedValue = processedValue;
+                                                        session.addTapeAction(action);
+                                                    }
                                                 }
-                                            }
+                                            ),
+                                            session.registerProvidedObservablesRxOpr(),
+                                            share()
                                         );
                                     } else {
                                         

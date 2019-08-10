@@ -1,27 +1,48 @@
-import { OperatorFunction, ObservableInput, Observable } from "rxjs";
-import { map, flatMap } from "rxjs/operators";
+import { OperatorFunction, ObservableInput, Observable, of } from "rxjs";
+import { map, flatMap, tap } from "rxjs/operators";
+
+class DummyMarker {
+
+}
+
+const dummyMarker = new DummyMarker();
 
 export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
     const resutlArr: T[] = new Array<T>(array.length);
-    const resutltObsArrRef = {value: null as Observable<T>};
+    const resutltObsArrRef = {value: of(dummyMarker) as Observable<T>};
 
     for (let index = 0; index < array.length; index++) {
         const element$ = array[index];
-        if (!resutltObsArrRef.value) {
-            resutltObsArrRef.value = element$.pipe(
-                flatMapJustOnceRxOpr((resultT) => {
-                    resutlArr[index] = resultT;
-                    return element$;
-                })
-            );
-        } else {
-            resutltObsArrRef.value = resutltObsArrRef.value.pipe(
-                flatMapJustOnceRxOpr((resultT) => {
-                    resutlArr[index] = resultT;
-                    return element$;
-                })
-            );
-        }
+        const indexRef = {value: index};
+        resutltObsArrRef.value = resutltObsArrRef.value.pipe(
+            flatMapJustOnceRxOpr((resultT) => {
+                return element$;
+            }),
+            tap((resultT) => {
+                if (resultT != dummyMarker) {
+                    //console.log(array.length);
+                    resutlArr[indexRef.value] = resultT;
+                }
+            })
+        );
+
+        // if (!resutltObsArrRef.value) {
+        //     resutltObsArrRef.value = element$.pipe(
+        //         flatMapJustOnceRxOpr((resultT) => {
+        //             console.log(array.length);
+        //             resutlArr[indexRef.value] = resultT;
+        //             return element$;
+        //         })
+        //     );
+        // } else {
+        //     resutltObsArrRef.value = resutltObsArrRef.value.pipe(
+        //         flatMapJustOnceRxOpr((resultT) => {
+        //             console.log(array.length);
+        //             resutlArr[indexRef.value] = resultT;
+        //             return element$;
+        //         })
+        //     );
+        // }
     }
     return resutltObsArrRef.value.pipe(
         mapJustOnceRxOpr((resultT) => {
@@ -33,10 +54,10 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
 export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
     const isPipedCallbackDone = { value: false, result: null as R};
     let rxOpr: OperatorFunction<T, R> = (source) => {
-        let projectExtentend = (value: T, index: number) => {
+        let projectExtentend = (valueA: T, index: number) => {
             if (!isPipedCallbackDone.value) {
                 isPipedCallbackDone.value = true;
-                isPipedCallbackDone.result = project(value, index);
+                isPipedCallbackDone.result = project(valueA, index);
             }
             return isPipedCallbackDone.result;
         }
@@ -51,10 +72,10 @@ export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R,
 export function flatMapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
     const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
     let rxOpr: OperatorFunction<T, R> = (source) => {
-        let projectExtentend = (value: T, index: number) => {
+        let projectExtentend = (valueB: T, index: number) => {
             if (!isPipedCallbackDone.value) {
                 isPipedCallbackDone.value = true;
-                isPipedCallbackDone.result = project(value, index);
+                isPipedCallbackDone.result = project(valueB, index);
             }
             return isPipedCallbackDone.result;
         }

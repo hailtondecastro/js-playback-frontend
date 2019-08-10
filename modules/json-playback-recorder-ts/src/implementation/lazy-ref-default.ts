@@ -1,12 +1,11 @@
 import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver } from 'rxjs';
 import { RecorderLogLevel } from '../api/recorder-config';
-import { get as lodashGet, has as lodashHas, set as lodashSet } from 'lodash';
-import { flatMap, map, finalize, tap } from 'rxjs/operators';
+import { flatMap, map, finalize, tap, share } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
 import { Stream } from 'stream';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { FieldEtc } from './field-etc';
-import { flatMapJustOnceRxOpr } from './rxjs-util';
+import { flatMapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
 import { TypeLike } from '../typeslike';
 import { ResponseLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
@@ -18,6 +17,7 @@ import { RecorderSessionImplementor } from './recorder-session-default';
 import { RecorderLogger } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
+import { LodashLike } from './lodash-like';
 
 // export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
 //            /**
@@ -410,18 +410,23 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         let result$ = this.lazyLoadingCallbackAsyncTemplate( () => {
             return thisLocal.setLazyObj(lazyLoadedObj);
         });
+        return result$.pipe(
+            share());
 
-        const isSynchronouslyDone = { value: false, result: null as void};
-        result$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(
+        //     tap((result)=>{
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = result;
+        //     })
+        // );
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
-            return result$;
-        }
+
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     public isLazyLoaded(): boolean { 
@@ -437,17 +442,23 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 return thisLocal.setLazyObj(lazyLoadedObj);
             });
         });
-        const isSynchronouslyDone = { value: false, result: null as void};
-        result$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
+        return result$.pipe(
+            share()
+        );
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(
+        //     tap((result)=>{
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = result;
+        //     })
+        // );
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
-            return result$;
-        }
+        
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     public setLazyObjNoNext(lazyLoadedObj: L): Observable<void> {
@@ -456,17 +467,22 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             return thisLocal.setLazyObj(lazyLoadedObj);
         });
 
-        const isSynchronouslyDone = { value: false, result: null as void};
-        result$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
+        return result$.pipe(
+            share()
+        )
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // result$ = result$.pipe(
+        //     tap((result)=>{
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = result;
+        //     })
+        // );
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
-            return result$;
-        }
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     public notifyModification(lazyLoadedObj: L) : void {
@@ -497,17 +513,23 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             return thisLocal.processResponse(responselike);
         })
 
-        const isSynchronouslyDone = { value: false, result: null as L};
-        result$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
+        return result$.pipe(
+            share()
+        )
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
-            return result$;
-        }
+        // const isSynchronouslyDone = { value: false, result: null as L};
+        // result$ = result$.pipe(
+        //     tap((result)=>{
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = result;
+        //     })
+        // );
+
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     private lazyLoadingCallbackTemplate<R>(callback: () => R): R {
@@ -546,6 +568,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public setLazyObj(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
+        const asyncCombineObsArr: Observable<any>[] = [];
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
         if (!fieldEtc.propertyOptions){
             throw new Error('@RecorderDecorators.property() not defined for ' + this.refererObj.constructor.name + '.' + this.refererKey);
@@ -591,8 +614,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 action.actionType = TapeActionType.SetField;
                 if (mdRefererObj.$signature$) {
                     action.ownerSignatureStr = mdRefererObj.$signature$;
-                } else if (lodashHas(this.refererObj, this.session.manager.config.creationIdName)) {
-                    action.ownerCreationRefId = lodashGet(this.refererObj, this.session.manager.config.creationIdName) as number;
+                } else if (LodashLike.has(this.refererObj, this.session.manager.config.creationIdName)) {
+                    action.ownerCreationRefId = LodashLike.get(this.refererObj, this.session.manager.config.creationIdName) as number;
                 } else if (!this._isOnLazyLoading && !mdRefererObj.$isComponentPlayerObjectId$) {
                     throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' has a not managed owner. Me:\n' + this);
                 }
@@ -600,8 +623,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (lazyLoadedObj != null) {
                     if (mdLazyLoadedObj.$signature$) {
                         action.settedSignatureStr = mdLazyLoadedObj.$signature$;
-                    } else if (lodashHas(lazyLoadedObj, this.session.manager.config.creationIdName)) {
-                        action.settedCreationRefId = lodashGet(lazyLoadedObj, this.session.manager.config.creationIdName) as number;
+                    } else if (LodashLike.has(lazyLoadedObj, this.session.manager.config.creationIdName)) {
+                        action.settedCreationRefId = LodashLike.get(lazyLoadedObj, this.session.manager.config.creationIdName) as number;
                     } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
                         //nothing for now!
                     } else if (!this._isOnLazyLoading) {
@@ -614,28 +637,32 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         isValueByFieldProcessor.value = true;
                         let processTapeActionAttachRefId$ = thisLocal.session.processTapeActionAttachRefId({fieldEtc: fieldEtc, value: lazyLoadedObj, action: action, propertyKey: thisLocal.refererKey});
                         //processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(thisLocal.session.addSubscribedObsRxOpr());
-                        processTapeActionAttachRefId$.subscribe(
-                            {
-                                next: (ptaariValue) => {
-                                    if(!ptaariValue.asyncAddTapeAction) {
-                                        thisLocal.session.addTapeAction(action);
-                                    }
-                                    this.mayDoNextHelper(isValueByFieldProcessor, fieldEtc, ptaariValue.newValue);
+                        processTapeActionAttachRefId$ = processTapeActionAttachRefId$.pipe(
+                            tap((ptaariValue) => {
+                                if(!ptaariValue.asyncAddTapeAction) {
+                                    thisLocal.session.addTapeAction(action);
                                 }
-                            }
+                                this.mayDoNextHelper(isValueByFieldProcessor, fieldEtc, ptaariValue.newValue);
+                            })
                         );
+                        asyncCombineObsArr.push(processTapeActionAttachRefId$);
                     } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
                         isValueByFieldProcessor.value = true;
                         let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(action.simpleSettedValue, fieldEtc.fieldInfo);
-                        toLiteralValue$ = toLiteralValue$.pipe(this.session.addSubscribedObsRxOpr());
-                        toLiteralValue$.subscribe(
-                            {
-                                next: value => {
-                                    action.simpleSettedValue = value;
-                                    thisLocal.session.addTapeAction(action);
+                        // toLiteralValue$ = toLiteralValue$.pipe(this.session.addSubscribedObsRxOpr());
+                        toLiteralValue$ = toLiteralValue$.pipe(
+                            tap(
+                                {
+                                    next: value => {
+                                        action.simpleSettedValue = value;
+                                        thisLocal.session.addTapeAction(action);
+                                    }
                                 }
-                            }
+                            ),
+                            thisLocal.session.registerProvidedObservablesRxOpr(),
+                            share()
                         );
+                        asyncCombineObsArr.push(toLiteralValue$);
                     } else {
                         this.session.addTapeAction(action);
                     }
@@ -672,19 +699,45 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         //     this.next(lazyLoadedObj);
         // }
         
-        let createSerialAsyncTasksWaiting$ = this.session.createSerialAsyncTasksWaiting();
+        let asyncCombineArr$ = thisLocal.session.combineFirstSerialPreserveAllFlags(asyncCombineObsArr);
+        return asyncCombineArr$.pipe(
+            map(() => {
+                return undefined;
+            }),
+            share()
+        )
 
-        const isSynchronouslyDone = { value: false, result: null as void};
-        createSerialAsyncTasksWaiting$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
+        // const isSynchronouslyDone = { value: false, result: null as any};
+        // let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        //     map(() => {
+        //         return isSynchronouslyDone.result;
+        //     })
+        // );
+        // asyncCombineArr$ = asyncCombineArr$.pipe(
+        //     tap((result)=> {
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = undefined;
+        //     })
+        // );
+        // if (!isSynchronouslyDone.value) {
+        //     return asyncCombineArr$;
+        // } else {
+        //     return of(isSynchronouslyDone.result);
+        // }
 
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result).pipe();
-        } else {
-            return createSerialAsyncTasksWaiting$.pipe();
-        }
+        // let createSerialAsyncTasksWaiting$ = this.session.createSerialAsyncTasksWaiting();
+
+        // const isSynchronouslyDone = { value: false, result: null as void};
+        // createSerialAsyncTasksWaiting$.subscribe((result)=>{
+        //     isSynchronouslyDone.value = true;
+        //     isSynchronouslyDone.result = result;
+        // });
+
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result).pipe();
+        // } else {
+        //     return createSerialAsyncTasksWaiting$.pipe();
+        // }
     }
 
     private mayDoNextHelper(isValueByFieldProcessor: {value: boolean}, fieldEtc: FieldEtc<L, any>, newLazyLoadedObj: L) {
@@ -757,33 +810,35 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 thisLocal.respObs = null;
                 thisLocalNextOnAsync.value = true;
                 setLazyObjOnLazyLoading$ = thisLocal.setLazyObjOnLazyLoading(<L> this.session.getCachedBySignature(this.signatureStr));
-                setLazyObjOnLazyLoading$.subscribe(
-                    {
-                        next: () => {
-                            if (!observerNew.closed) {
-                                observerNew.closed = true;
-                                if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                    thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                    thisLocal.consoleLikeSubs.groupEnd();
+                setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
+                    tap(
+                        {
+                            next: () => {
+                                if (!observerNew.closed) {
+                                    observerNew.closed = true;
+                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). !observerNew.closed');
+                                        thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                        thisLocal.consoleLikeSubs.groupEnd();
+                                    }
+                                    //aqui o metodo original sera chamado
+                                    thisLocal.next(thisLocal.lazyLoadedObj);
+                                } else {
+                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
+                                        thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                        thisLocal.consoleLikeSubs.groupEnd();
+                                    }
                                 }
-                                //aqui o metodo original sera chamado
-                                thisLocal.next(thisLocal.lazyLoadedObj);
-                            } else {
-                                if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                    thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                    thisLocal.consoleLikeSubs.groupEnd();
-                                }
-                            }
-                        },
-                        error: observerNew.error,
-                        closed: observerNew.closed,
-                        complete: observerNew.complete
-                    }                    
-                    // () => {                    
-                    //     thisLocal.next(thisLocal.lazyLoadedObj);
-                    // }
+                            },
+                            error: observerNew.error,
+                            closed: observerNew.closed,
+                            complete: observerNew.complete
+                        }                    
+                        // () => {                    
+                        //     thisLocal.next(thisLocal.lazyLoadedObj);
+                        // }
+                        )
                     );
             } else {
                 if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -794,7 +849,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         +'there is already an inscription in the Response Observable, and we '+
                         'will not make two trips to the server');
                 }
-                let localObs: Observable<L> = 
+                let localObs$: Observable<L> = 
                     thisLocal.respObs
                         .pipe(thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'))
                         .pipe(
@@ -814,34 +869,47 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     setLazyObjOnLazyLoading$ = thisLocal.setLazyObjOnLazyLoadingNoNext(value);
                     // setLazyObjOnLazyLoading$ = this.session.addSubscribedObservableForWaiting(setLazyObjOnLazyLoading$);
                     // setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(this.session.addSubscribedObsRxOpr());
-                    setLazyObjOnLazyLoading$.subscribe(
-                        {
-                            next: () => {
-                                if (!observerNew.closed) {
-                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                        thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                        thisLocal.consoleLikeSubs.groupEnd();
+                    setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
+                        tap(
+                            {
+                                next: () => {
+                                    if (!observerNew.closed) {
+                                        if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                            thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). !observerNew.closed');
+                                            thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                            thisLocal.consoleLikeSubs.groupEnd();
+                                        }
+                                        observerNew.closed = true;
+                                        //here the original method will be called
+                                        thisLocal.next(thisLocal.lazyLoadedObj);
+                                    } else {
+                                        if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                            thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
+                                            thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                            thisLocal.consoleLikeSubs.groupEnd();
+                                        }
                                     }
-                                    observerNew.closed = true;
-                                    //here the original method will be called
-                                    thisLocal.next(thisLocal.lazyLoadedObj);
-                                } else {
-                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => observerNew.next => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                        thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                        thisLocal.consoleLikeSubs.groupEnd();
-                                    }
-                                }
-                            },
-                            error: observerNew.error,
-                            closed: observerNew.closed,
-                            complete: observerNew.complete
-                        });
+                                },
+                                error: observerNew.error,
+                                closed: observerNew.closed,
+                                complete: observerNew.complete
+                            }
+                        )
+                    );
+                    setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
+                        share()
+                    )
+                    setLazyObjOnLazyLoading$.subscribe(() => {
+                        //completed
+                    })
                 }
 
                 thisLocalNextOnAsync.value = true;
-                localObs.subscribe(observerNew);
+                localObs$ = localObs$.pipe(
+                    thisLocal.session.registerProvidedObservablesRxOpr(),
+                    share()
+                );
+                localObs$.subscribe(observerNew);
             }
         } else {
             if (this.attachRefId) {
@@ -859,40 +927,52 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 return fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
                             })
                         );
-                fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
-                fromDirectRaw$.subscribe(
-                    {
-                        next: (fromDirectRawValue: L) => {
-                            setLazyObjOnLazyLoading$ = thisLocal.setLazyObjOnLazyLoadingNoNext(fromDirectRawValue);
-                            setLazyObjOnLazyLoading$.subscribe(
-                                {
-                                    next: () => {
-                                        if (!observerNew.closed) {
-                                            if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                                thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). !observerNew.closed');
-                                                thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                                thisLocal.consoleLikeSubs.groupEnd();
-                                            }
-                                            observerNew.closed = true;
-                                            thisLocal.next(thisLocal.lazyLoadedObj);
-                                        } else {
-                                            if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                                                thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.subscribe(). observerNew.closed');
-                                                thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
-                                                thisLocal.consoleLikeSubs.groupEnd();
-                                            }
+                // fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
+                fromDirectRaw$ = fromDirectRaw$.pipe(
+                    tap(
+                        {
+                            next: (fromDirectRawValue: L) => {
+                                setLazyObjOnLazyLoading$ = thisLocal.setLazyObjOnLazyLoadingNoNext(fromDirectRawValue);
+                                setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
+                                    tap(
+                                        {
+                                            next: () => {
+                                                if (!observerNew.closed) {
+                                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). !observerNew.closed');
+                                                        thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                                        thisLocal.consoleLikeSubs.groupEnd();
+                                                    }
+                                                    observerNew.closed = true;
+                                                    thisLocal.next(thisLocal.lazyLoadedObj);
+                                                } else {
+                                                    if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+                                                        thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
+                                                        thisLocal.consoleLikeSubs.debug('NOT calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
+                                                        thisLocal.consoleLikeSubs.groupEnd();
+                                                    }
+                                                }
+                                            },
+                                            error: observerNew.error,
+                                            closed: observerNew.closed,
+                                            complete: observerNew.complete
                                         }
-                                    },
-                                    error: observerNew.error,
-                                    closed: observerNew.closed,
-                                    complete: observerNew.complete
-                                });
-                        },
-                        error: observerNew.error,
-                        complete: observerNew.complete,
-                        closed: observerNew.closed
-                    }
+                                    )
+                                );
+                            },
+                            error: observerNew.error,
+                            complete: observerNew.complete,
+                            closed: observerNew.closed
+                        }
+                    )
                 );
+                fromDirectRaw$ = fromDirectRaw$.pipe(
+                    thisLocal.session.registerProvidedObservablesRxOpr(),
+                    share()
+                );
+                fromDirectRaw$.subscribe(() => {
+                    //completed
+                })
             }
 
             if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -922,12 +1002,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public processResponse(responselike: { body: any }): Observable<L> {
         const thisLocal = this;
+        const asyncCombineObsArr: Observable<any>[] = [];
         let lazyLoadedObj$: Observable<L>;
         let playerSnapshot: PlayerSnapshot;
         let isLazyRefOfCollection = false;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
-        if (lodashHas(this.refererObj, this.session.manager.config.playerMetadatasName)) {
-            mdRefererObj = lodashGet(this.refererObj, this.session.manager.config.playerMetadatasName);
+        if (LodashLike.has(this.refererObj, this.session.manager.config.playerMetadatasName)) {
+            mdRefererObj = LodashLike.get(this.refererObj, this.session.manager.config.playerMetadatasName);
         }
         
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
@@ -962,7 +1043,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 }
 
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
-                lodashSet(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
+                LodashLike.set(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
                     let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, playerSnapshot.wrappedSnapshot as any[]);
                     lazyLoadedObj$ = processResultEntityArrayInternal$
@@ -980,7 +1061,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                             })
                         );
                 } finally {
-                    lodashSet(this.lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
+                    LodashLike.set(this.lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 }
             } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && isResponseBodyStream) {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
@@ -1010,20 +1091,24 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                             .pipe(
                                 flatMapJustOnceRxOpr( (cacheStream) => {
                                     return fieldEtc.fieldProcessorCaller.callFromDirectRaw(cacheStream, fieldEtc.fieldInfo);
-                                })
+                                }),
+                                thisLocal.session.registerProvidedObservablesRxOpr(),
+                                share()
                             );
                     
                     const isSynchronouslyDone = { value: false, result: null as L};
-                    fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
-                    fromDirectRaw$.subscribe((fromDirectRaw) => {
-                        isSynchronouslyDone.value = true;
-                        isSynchronouslyDone.result = fromDirectRaw;
-                    });
-                    if (isSynchronouslyDone.value) {
-                        fromDirectRaw$ = of(isSynchronouslyDone.result);
-                    } else {
-                        fromDirectRaw$ = fromDirectRaw$;
-                    }
+                    // fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
+                    // fromDirectRaw$ = fromDirectRaw$.pipe(
+                    //     tap((fromDirectRaw) => {
+                    //         isSynchronouslyDone.value = true;
+                    //         isSynchronouslyDone.result = fromDirectRaw;
+                    //     })
+                    // );
+                    // if (isSynchronouslyDone.value) {
+                    //     fromDirectRaw$ = of(isSynchronouslyDone.result);
+                    // } else {
+                    //     fromDirectRaw$ = fromDirectRaw$;
+                    // }
 
                     lazyLoadedObj$ = 
                         fromDirectRaw$
@@ -1212,20 +1297,24 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         return of(thisLocal.lazyLoadedObj);
                     })
                 );
+        return lazyLoadedObj$.pipe(
+            share()
+        );
+        // let result$ = lazyLoadedObj$;
 
-        let result$ = lazyLoadedObj$;
+        // const isSynchronouslyDone = { value: false, result: null as L};
+        // result$ = result$.pipe(
+        //     tap((result)=>{
+        //         isSynchronouslyDone.value = true;
+        //         isSynchronouslyDone.result = result;
+        //     })
+        // );
 
-        const isSynchronouslyDone = { value: false, result: null as L};
-        result$.subscribe((result)=>{
-            isSynchronouslyDone.value = true;
-            isSynchronouslyDone.result = result;
-        });
-
-        if (isSynchronouslyDone.value) {
-            return of(isSynchronouslyDone.result);
-        } else {
-            return result$;
-        }
+        // if (isSynchronouslyDone.value) {
+        //     return of(isSynchronouslyDone.result);
+        // } else {
+        //     return result$;
+        // }
     }
 
     private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: PlayerMetadatas, fieldEtc: FieldEtc<L, any>, playerSnapshot: PlayerSnapshot): void {
@@ -1310,6 +1399,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     thisLocal.consoleLikeSubs.groupEnd();
                 }
                 let setLazyObjOnLazyLoadingNoNext$ = thisLocal.setLazyObjOnLazyLoadingNoNext(value);
+                setLazyObjOnLazyLoadingNoNext$ = setLazyObjOnLazyLoadingNoNext$.pipe(
+                    share()
+                );
                 setLazyObjOnLazyLoadingNoNext$.subscribe(
                     {
                         next: () => {
@@ -1331,7 +1423,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         complete: observerNew.complete,
                         error: observerNew.error,
                         closed: observerNew.closed
-                    });
+                    }
+                );
             };
 
             if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -1397,7 +1490,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     private createFlatMapCallback(): (response: ResponseLike<L>) => Observable<L> {
         const thisLocal = this;
         return (response) => {
-            return this.processResponseOnLazyLoading(response);
+            if (!response || !response.body) {
+                throw new Error('response or response.body is null');
+            }
+            return thisLocal.processResponseOnLazyLoading(response);
         };
     }
     

@@ -1,6 +1,5 @@
-import { MergeWithCustomizer } from 'lodash';
-import { has as lodashHas, mergeWith as lodashMergeWith } from 'lodash';
 import { TypeLike } from '../typeslike';
+import { LodashLike } from './lodash-like';
 
 
 /**
@@ -12,49 +11,49 @@ export class JSONHelper {
      * @param k 
      * @param v 
      */
-    public static resolveRefs(jsonObj: any, removeJsId: boolean): any {
-        let resolveRefMap: Map<number, any> = new Map<number, any>();
-        JSONHelper.resolveRefsRecursivo(resolveRefMap, jsonObj, removeJsId);
+    // public static resolveRefs(jsonObj: any, removeJsId: boolean): any {
+    //     let resolveRefMap: Map<number, any> = new Map<number, any>();
+    //     JSONHelper.resolveRefsRecursivo(resolveRefMap, jsonObj, removeJsId);
 
-        return jsonObj;
-    }
+    //     return jsonObj;
+    // }
 
-    private static resolveRefsRecursivo(resolveRefMap: Map<number, any>, jsonObj: any, removeJsId: boolean) {
-        let currParent: any = jsonObj;
-        let array = Object.getOwnPropertyNames(jsonObj);
-        array.forEach(fieldName => {
-            let fieldValue: any = currParent[fieldName];
-            if (typeof fieldValue !== 'object') {
-                if (fieldName === 'jsId') {
-                    (resolveRefMap as any)[fieldValue] = currParent;
-                    if (removeJsId) {
-                        delete currParent['jsId'];
-                    }
-                } else {
-                    //nada
-                }
-            } else if (lodashHas(fieldValue, 'rJsId')) {
-                let refJsId: any = fieldValue['rJsId'];
-                currParent[fieldName] = (resolveRefMap as any)[refJsId];
-            } else {
-                JSONHelper.resolveRefsRecursivo(resolveRefMap, fieldValue, removeJsId);
-            } 
-        });
-    }
+    // private static resolveRefsRecursivo(resolveRefMap: Map<number, any>, jsonObj: any, removeJsId: boolean) {
+    //     let currParent: any = jsonObj;
+    //     let array = Object.getOwnPropertyNames(jsonObj);
+    //     array.forEach(fieldName => {
+    //         let fieldValue: any = currParent[fieldName];
+    //         if (typeof fieldValue !== 'object') {
+    //             if (fieldName === 'jsId') {
+    //                 (resolveRefMap as any)[fieldValue] = currParent;
+    //                 if (removeJsId) {
+    //                     delete currParent['jsId'];
+    //                 }
+    //             } else {
+    //                 //nada
+    //             }
+    //         } else if (LodashLike.has(fieldValue, 'rJsId')) {
+    //             let refJsId: any = fieldValue['rJsId'];
+    //             currParent[fieldName] = (resolveRefMap as any)[refJsId];
+    //         } else {
+    //             JSONHelper.resolveRefsRecursivo(resolveRefMap, fieldValue, removeJsId);
+    //         } 
+    //     });
+    // }
 
     private static MergeWithCustomizerClass = class {
         constructor(){
             this.visitedMap = new Map();
         }
         private visitedMap: Map<any, any>;
-        customizer: MergeWithCustomizer = (value: any, srcValue: any) => {
+        customizer: LodashLike.MergeWithCustomizer = (value: any, srcValue: any) => {
             if (this.visitedMap.get(srcValue) != null) {
                 return this.visitedMap.get(srcValue);
             } else if (srcValue != null && JSONHelper.isCollection(srcValue.constructor)) {
                 let valueColl: any = JSONHelper.createCollection(srcValue.constructor);
                 for (const item of srcValue) {
                     if (item instanceof Object && !(item instanceof Date)) {
-                        JSONHelper.addOnCollection(valueColl, lodashMergeWith(<any>{}, item, this.customizer));
+                        JSONHelper.addOnCollection(valueColl, LodashLike.mergeWith(<any>{}, item, this.customizer));
                     } else {
                         JSONHelper.addOnCollection(valueColl, item);
                     }
@@ -62,7 +61,7 @@ export class JSONHelper {
                 this.visitedMap.set(srcValue, valueColl);
                 return valueColl;
             } else if (srcValue instanceof Object && !(srcValue instanceof Date)) {
-                this.visitedMap.set(srcValue, lodashMergeWith(<any>{}, srcValue, this.customizer));
+                this.visitedMap.set(srcValue, LodashLike.mergeWith(<any>{}, srcValue, this.customizer));
                 return this.visitedMap.get(srcValue);
             } else {
                 return srcValue;
@@ -119,7 +118,7 @@ export class JSONHelper {
             }
             result = valueColl;
         } else if (sourceObject instanceof Object && !(sourceObject instanceof Date)) {
-            result = lodashMergeWith({}, sourceObject, customizerObj.customizer);
+            result = LodashLike.mergeWith({}, sourceObject, customizerObj.customizer);
             if (removeDashFields) {
                 JSONHelper.deepRemoveDashFields(result, new Set());
             }

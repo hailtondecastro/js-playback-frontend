@@ -17,7 +17,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
 {
     describe('ForNodeTest', () => {
         it('ForNodeTest.StringSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(3);
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -62,7 +62,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.BufferSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(5);
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -127,7 +127,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.BinaryStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(7);
+            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -211,7 +211,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.StringStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(7);
+            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -298,7 +298,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.StringAsyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(3);
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -342,7 +342,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.BufferAsyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(5);
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -406,7 +406,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.BinaryStreamAsyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(7);
+            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -489,7 +489,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.StringStreamAsyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown(7);
+            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -575,7 +575,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
         });
 
         it('ForNodeTest.CacheHandlerSync', (done) => {
-            let asyncCountdown = new AsyncCountdown(3);
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             // let fieldInfo: FieldInfo = {

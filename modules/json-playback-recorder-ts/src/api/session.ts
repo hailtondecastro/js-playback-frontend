@@ -130,6 +130,9 @@ export interface RecorderSession {
      * @returns
      */
     getLastRecordedTapeAsLiteral(): Observable<any>;
+    /**
+     * 
+     */
     getLastRecordedTapeAsLiteralAndStreams(): Observable<{tapeLiteral: any, streams: Map<String, NodeJS.ReadableStream>}>;
     /**
      * Record action equivalente to 'org.hibernate.Session.save()'.
@@ -146,7 +149,7 @@ export interface RecorderSession {
     /**
      * Clear/release all data for the session including cached e modifications recorded.
      */
-    clear(): void;
+    clear(): Observable<void>;
     /**
      * Switch off the the modifying notification for this entity.  
      * Each entity property set trigger {@link LazyRef#next} for all related 
@@ -164,15 +167,23 @@ export interface RecorderSession {
      */
     switchOnNotifyAllLazyrefs(entity: object): void;
     getLastRecordedAtaches(): Map<String, NodeJS.ReadableStream>;
-    /**
-     * Generate an Observable for waiting all internal async task.  
-     * Use it be notified about completion of all inernal async tasks.
-     */
-    createAsyncTasksWaiting(): Observable<void>;
+    // /**
+    //  * Generate an Observable for waiting all internal async task.  
+    //  * Use it be notified about completion of all inernal async tasks.
+    //  */
+    // createAsyncTasksWaiting(): Observable<void>;
+    // /**
+    //  * Generate an Observable for waiting all internal async task.  
+    //  * Each observable is just started after before.  
+    //  * Use it be notified about completion of all inernal async tasks.
+    //  */
+    // createSerialAsyncTasksWaiting(): Observable<void>;
     /**
      * Generate an Observable for waiting all internal async task.  
      * Each observable is just started after before.  
-     * Use it be notified about completion of all inernal async tasks.
+     * Use it be notified about completion of all inernal async tasks.  
+     *   
+     * IMPORTANT.:
      */
-    createSerialAsyncTasksWaiting(): Observable<void>;
+    createSerialPendingTasksWaiting(): Observable<void>;
 }

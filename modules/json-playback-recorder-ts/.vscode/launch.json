@@ -26,6 +26,7 @@
                 //"RecorderManagerDefault.poc-observable-just-once-pipe-test",
                 //"RecorderManagerDefault.poc-observable-each-pipe-test",
                 //"RecorderManagerDefault.detail-a-master-a-async",
+                //"RecorderManagerDefault.detail-a-arr-master-test-async",
                 //"ForNodeTest.StringSyncProcessor",
                 //"ForNodeTest.BufferSyncProcessor",
                 //"ForNodeTest.BinaryStreamSyncProcessor",
@@ -41,7 +42,8 @@
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceFolder}/dist-dev/**/*.js"
-            ]
+            ],
+            "outputCapture": "std"
         },{
             "type": "node",
             "request": "launch",

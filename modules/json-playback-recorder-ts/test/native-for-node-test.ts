@@ -81,16 +81,16 @@ export namespace ForNodeTest {
     export const CacheHandlerAsync: CacheHandler = 
         {
             clearCache: () => {
-                return CacheHandlerSync.clearCache().pipe(delay(10));
+                return CacheHandlerSync.clearCache().pipe(delay(1));
             },
             getFromCache: (cacheKey) => {
-                return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(10));
+                return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(1));
             },
             putOnCache: (cacheKey, stream) => {
-                return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(10));
+                return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(1));
             },
             removeFromCache: (cacheKey) => {
-                return CacheHandlerSync.removeFromCache(cacheKey).pipe(delay(10));
+                return CacheHandlerSync.removeFromCache(cacheKey).pipe(delay(1));
             }
         };
 
@@ -338,32 +338,32 @@ export namespace ForNodeTest {
     };
 
     export const BufferAsyncProcessor: IFieldProcessor<Buffer> = {
-        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info).pipe(delay(1)); },
+        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info).pipe(delay(1)); }
     };
     export const StringAsyncProcessor: IFieldProcessor<String> = {
-            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info).pipe(delay(1)); },
+            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info).pipe(delay(1)); }
     };
     export const BinaryStreamAsyncProcessor: IFieldProcessor<BinaryStream> = {
-            fromLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return BinaryStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return BinaryStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(1)); },
+            fromDirectRaw: (stream, info) => { return BinaryStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return BinaryStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(1)); }
     };
     export const StringStreamAsyncProcessor: IFieldProcessor<StringStream> = {
-            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(1)); },
+            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(1)); }
     };
     export const DateAsyncProcessor: IFieldProcessor<Date> = {
-        fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-        toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+        fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info).pipe(delay(1)); },
+        toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info).pipe(delay(1)); }
     };
 
     export const TypeProcessorEntriesAsync = 
