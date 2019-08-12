@@ -1,4 +1,4 @@
-import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver } from 'rxjs';
+import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver, ObservableInput } from 'rxjs';
 import { RecorderLogLevel } from '../api/recorder-config';
 import { flatMap, map, finalize, tap, share } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
@@ -367,6 +367,49 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     private _isOnLazyLoading: boolean = false;
 
+    private flatMapKeepAllFlagsRxOprPriv<T, R>(
+        when: 'justOnce' | 'eachPipe',
+        project: (value: T, index?: number) => ObservableInput<R>,
+        concurrent?: number): OperatorFunction<T, R> {
+        const thisLocal = this;
+        const syncIsOn = thisLocal._isOnLazyLoading;
+        const syncIsOn2 = this._needCallNextOnSetLazyObj;
+        const isPipedCallbackDone = { value: false, result: null as ObservableInput<R> };
+        let newOp: OperatorFunction<T, R> = (source) => {
+            let projectExtentend = (value: T, index: number) => {
+                if (!isPipedCallbackDone.value || when === 'eachPipe') {
+                    isPipedCallbackDone.value = true;
+
+                    const asyncIsOn = thisLocal._isOnLazyLoading;
+                    const asyncIsOn2 = thisLocal._needCallNextOnSetLazyObj;
+
+                    thisLocal._isOnLazyLoading = syncIsOn;
+                    thisLocal._needCallNextOnSetLazyObj = syncIsOn2;
+                    try {
+                        isPipedCallbackDone.result = project(value, index);
+                    } finally {
+                        thisLocal._isOnLazyLoading = asyncIsOn;
+                        thisLocal._needCallNextOnSetLazyObj = asyncIsOn2;
+                    }
+                }
+                return isPipedCallbackDone.result;
+            };
+            return source
+                .pipe(
+                    flatMap(projectExtentend, concurrent)
+                );
+        }
+
+        return newOp;
+    }
+    private flatMapKeepAllFlagsRxOpr<T, R>(project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+        return this.flatMapKeepAllFlagsRxOprPriv('eachPipe', project);
+    }
+    private flatMapJustOnceKeepAllFlagsRxOpr<T, R>(project: (value: T, index?: number) => ObservableInput<R>,
+    concurrent?: number): OperatorFunction<T, R> {
+        return this.flatMapKeepAllFlagsRxOprPriv('justOnce', project);
+    }
+
     private mapKeepAllFlagsRxOprHelper<T, R>(when: 'justOnce' | 'eachPipe', project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
         const thisLocal = this;
         const syncIsOn = this._isOnLazyLoading;
@@ -407,11 +450,15 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public setLazyObjOnLazyLoading(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.lazyLoadingCallbackAsyncTemplate( () => {
-            return thisLocal.setLazyObj(lazyLoadedObj);
+        let result$ = this.lazyLoadingCallbackTemplate( () => {
+            return of(null).pipe(
+                thisLocal.flatMapKeepAllFlagsRxOpr(() => {
+                    return thisLocal.setLazyObj(lazyLoadedObj);
+                }),
+                share()
+            )
         });
-        return result$.pipe(
-            share());
+        return result$;
 
         // const isSynchronouslyDone = { value: false, result: null as void};
         // result$ = result$.pipe(
@@ -437,14 +484,17 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.noNextCallbackAsyncTemplate(() => {
-            return this.lazyLoadingCallbackAsyncTemplate(() => {
-                return thisLocal.setLazyObj(lazyLoadedObj);
+        let result$ = this.noNextCallbackTemplate(() => {
+            return this.lazyLoadingCallbackTemplate(() => {
+                return of(null).pipe(
+                    thisLocal.flatMapKeepAllFlagsRxOpr(() => {
+                        return thisLocal.setLazyObj(lazyLoadedObj);
+                    }),
+                    share()
+                );
             });
         });
-        return result$.pipe(
-            share()
-        );
+        return result$;
         // const isSynchronouslyDone = { value: false, result: null as void};
         // result$ = result$.pipe(
         //     tap((result)=>{
@@ -463,13 +513,16 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
     public setLazyObjNoNext(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;
-        let result$ = this.noNextCallbackAsyncTemplate(() => {
-            return thisLocal.setLazyObj(lazyLoadedObj);
+        let result$ = this.noNextCallbackTemplate(() => {
+            return of(null).pipe(
+                thisLocal.flatMapKeepAllFlagsRxOpr(() => {
+                    return thisLocal.setLazyObj(lazyLoadedObj);
+                }),
+                share()
+            );
         });
 
-        return result$.pipe(
-            share()
-        )
+        return result$;
         // const isSynchronouslyDone = { value: false, result: null as void};
         // result$ = result$.pipe(
         //     tap((result)=>{
@@ -541,13 +594,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         }
     }
 
-    private lazyLoadingCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
-        const thisLocal = this;
-        this._isOnLazyLoading = true;
-        return callback().pipe(finalize(() => {
-            thisLocal._isOnLazyLoading = false;
-        }));
-    }
+    // private lazyLoadingCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
+    //     const thisLocal = this;
+    //     this._isOnLazyLoading = true;
+    //     return callback().pipe(finalize(() => {
+    //         thisLocal._isOnLazyLoading = false;
+    //     }));
+    // }
 
     private noNextCallbackTemplate<R>(callback: () => R): R {
         try {
@@ -558,13 +611,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         }
     }
 
-    private noNextCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
-        const thisLocal = this;
-        this._needCallNextOnSetLazyObj = false;
-        return callback().pipe(finalize(() => {
-            thisLocal._needCallNextOnSetLazyObj = false;
-        }));
-    }
+    // private noNextCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
+    //     const thisLocal = this;
+    //     this._needCallNextOnSetLazyObj = false;
+    //     return callback().pipe(finalize(() => {
+    //         thisLocal._needCallNextOnSetLazyObj = false;
+    //     }));
+    // }
 
     public setLazyObj(lazyLoadedObj: L): Observable<void> {
         const thisLocal = this;

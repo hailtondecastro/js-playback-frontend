@@ -1,5 +1,5 @@
 import { TypeLike } from '../typeslike';
-import { LodashLike } from './lodash-like';
+import { LodashLike } from '../implementation/lodash-like';
 
 
 /**
@@ -43,26 +43,21 @@ export class JSONHelper {
 
     private static MergeWithCustomizerClass = class {
         constructor(){
-            this.visitedMap = new Map();
         }
-        private visitedMap: Map<any, any>;
+        //private visitedMap: Map<any, any>;
         customizer: LodashLike.MergeWithCustomizer = (value: any, srcValue: any) => {
-            if (this.visitedMap.get(srcValue) != null) {
-                return this.visitedMap.get(srcValue);
-            } else if (srcValue != null && JSONHelper.isCollection(srcValue.constructor)) {
+            if (srcValue != null && JSONHelper.isCollection(srcValue.constructor)) {
                 let valueColl: any = JSONHelper.createCollection(srcValue.constructor);
                 for (const item of srcValue) {
-                    if (item instanceof Object && !(item instanceof Date)) {
+                    if (LodashLike.isObject(item, new Set([Date, Buffer]))) {
                         JSONHelper.addOnCollection(valueColl, LodashLike.mergeWith(<any>{}, item, this.customizer));
                     } else {
                         JSONHelper.addOnCollection(valueColl, item);
                     }
                 }
-                this.visitedMap.set(srcValue, valueColl);
                 return valueColl;
-            } else if (srcValue instanceof Object && !(srcValue instanceof Date)) {
-                this.visitedMap.set(srcValue, LodashLike.mergeWith(<any>{}, srcValue, this.customizer));
-                return this.visitedMap.get(srcValue);
+            } else if (LodashLike.isObject(srcValue, new Set([Date, Buffer]))) {
+                LodashLike.mergeWith(<any>{}, srcValue, this.customizer);
             } else {
                 return srcValue;
             }
@@ -73,7 +68,7 @@ export class JSONHelper {
         for (let prop in obj) {
             if (prop.startsWith('_'))
                 delete obj[prop];
-            else if (obj[prop] instanceof Object  && !(obj[prop] instanceof Date)) {
+            else if (LodashLike.isObject(obj[prop], new Set([Date, Buffer]))) {
                 if (visitedSet.has(obj[prop])) {
                     //nada
                 } else {
@@ -88,9 +83,10 @@ export class JSONHelper {
         return new collType();
     }
 
-    private static isCollection(typeTested: TypeLike<any>): any {
+    private static isCollection(typeTested: TypeLike<any>, instance?: any): any {
         return (typeTested === Array)
-                || (typeTested === Set);
+                || (typeTested === Set)
+                || (LodashLike.isArrayLike(instance));
     }
 
     public static addOnCollection(collection: any, element: any) {
@@ -110,14 +106,14 @@ export class JSONHelper {
         if (sourceObject != null && JSONHelper.isCollection(sourceObject.constructor)) {
             let valueColl: any = JSONHelper.createCollection(sourceObject.constructor);
             for (const item of sourceObject) {
-                if (item instanceof Object && !(item instanceof Date)) {
+                if (LodashLike.isObject(item, new Set([Date, Buffer]))) {
                     JSONHelper.addOnCollection(valueColl, JSONHelper.convertToLiteralObjectPriv(item, removeDashFields, customizerObj));
                 } else {
                     JSONHelper.addOnCollection(valueColl, item);
                 }
             }
             result = valueColl;
-        } else if (sourceObject instanceof Object && !(sourceObject instanceof Date)) {
+        } else if (LodashLike.isObject(sourceObject, new Set([Date, Buffer]))) {
             result = LodashLike.mergeWith({}, sourceObject, customizerObj.customizer);
             if (removeDashFields) {
                 JSONHelper.deepRemoveDashFields(result, new Set());

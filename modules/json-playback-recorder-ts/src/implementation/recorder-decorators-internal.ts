@@ -89,7 +89,7 @@ export namespace RecorderDecoratorsInternal {
                     if (value && (value as any as LazyRef<any, any>).iAmLazyRef) {
                         //nothing
                     } else {
-                        if ((target instanceof Object && !(target instanceof Date))) {
+                        if (LodashLike.isObject(target, new Set([Date, Buffer]))) {
                             if (!session) {
                                 throw new Error('The property \'' + propertyKey.toString() + '\' of \'' + target.constructor + '\' has a not managed owner. \'' + RecorderConstants.ENTITY_SESION_PROPERTY_NAME + '\' is null or not present');
                             }
@@ -132,7 +132,7 @@ export namespace RecorderDecoratorsInternal {
                                         } else if (LodashLike.has(value, session.manager.config.creationIdName)) {
                                             action.settedCreationRefId = LodashLike.get(value, session.manager.config.creationIdName) as number;
                                         } else {
-                                            if (value instanceof Object && !(value instanceof Date)) {
+                                            if (LodashLike.isObject(value, new Set([Date, Buffer]))) {
                                                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Value can not be anything but primitive in this case. value: ' + value.constructor);
                                             }
                                             action.simpleSettedValue = value;
@@ -220,6 +220,9 @@ export namespace RecorderDecoratorsInternal {
                                             session.registerProvidedObservablesRxOpr(),
                                             share()
                                         );
+                                        toLiteralValue$.subscribe(() => {
+                                            //nothing
+                                        })
                                     } else {
                                         
                                     }

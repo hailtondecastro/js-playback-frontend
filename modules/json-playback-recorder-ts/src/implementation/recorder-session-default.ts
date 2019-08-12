@@ -27,6 +27,15 @@ import { LodashLike } from './lodash-like';
 
 declare type prptype = any;
 
+interface ResolveMetadataReturn {
+    refererObjMd: PlayerMetadatas,
+    objectMd: PlayerMetadatas,
+    playerObjectIdMd: PlayerMetadatas,
+    refererObjMdFound: boolean,
+    objectMdFound: boolean,
+    playerObjectIdMdFound: boolean
+}
+
 /**
  * Contract
  */
@@ -1008,15 +1017,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     refererObject?: Object,
                     refererLiteralObject?: any,
                     refMap?: Map<Number, any>,
-                }) :
-                {
-                    refererObjMd: PlayerMetadatas,
-                    objectMd: PlayerMetadatas,
-                    playerObjectIdMd: PlayerMetadatas,
-                    refererObjMdFound: boolean,
-                    objectMdFound: boolean,
-                    playerObjectIdMdFound: boolean
-                } {
+                }) : ResolveMetadataReturn {
         const thisLocal = this;
         let valueOrliteral = options.object || options.literalObject || {};
         let refererObjectOrLiteral = options.refererObject || options.refererLiteralObject || {};
@@ -1349,7 +1350,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is a Collection, lazyRefGenericParam: ' + lazyRefGenericParam.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
                         let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
-                        let setLazyObjOnLazyLoading$ = lazyRefSet.setLazyObjOnLazyLoading(this.createCollection(lazyRefGenericParam, entityObj, keyItem));
+                        let setLazyObjOnLazyLoadingNoNext$ = lazyRefSet.setLazyObjOnLazyLoadingNoNext(this.createCollection(lazyRefGenericParam, entityObj, keyItem));
                         // setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
                         //     tap(
                         //         {
@@ -1357,7 +1358,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         //         }
                         //     )
                         // );
-                        asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                        asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
 
                         lazyRefSet.instanceId = this.nextMultiPurposeInstanceId();
 
@@ -1998,94 +1999,149 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private processResultEntityPriv<L>(entityType: TypeLike<L>, snapshotField: any, refMap: Map<Number, any>): Observable<L> {
         const thisLocal = this;
-
-        const asyncCombineObsArr: Observable<any>[] = [];
-        //const breackPointFlag = { fooid: ''};
-        if (!snapshotField) {
-            throw new Error('snapshotField can not be null');
-        }
-        let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
-        let bMd = allMD.objectMd;
-        let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
-
-        if (!entityValue) {
-            if (bMd.$idRef$) {
-                entityValue = refMap.get(bMd.$idRef$);
-            }
-        }
-        
-        if (!entityValue) {
-            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
-            }
-            this.validatingMetaFieldsExistence(entityType);
-            entityValue = new entityType();
-            LodashLike.set(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
-            this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
-
-            if (bMd.$id$) {
-                refMap.set(bMd.$id$, entityValue);
-            } else {
-                throw new Error('This should not happen 1');
-            }
-            
-            this.lazyLoadTemplateCallback(entityValue, () => {
-                this.tryCacheInstanceBySignature(
-                    {
-                        realInstance: entityValue, 
-                        playerSnapshot: { wrappedSnapshot: snapshotField }
-                    }
-                );
-                const asyncMergeWith$ = LodashLike.asyncMergeWith(
-                    entityValue as any,
-                    snapshotField, 
-                    {
-                        customizer: this.mergeWithCustomizerPropertyReplection(refMap),
-                        asyncCustomSetter: thisLocal.createAsyncCustomSetter(entityValue),
-                        noObjects: new Set([Date])
-                    }
-                );
-                asyncCombineObsArr.push(
-                    asyncMergeWith$
-                );
-                //lodashMergeWith(entityValue as any, snapshotField, this.mergeWithCustomizerPropertyReplection(refMap));
-            });
-        } else {
-            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLike.debug('entity already processed on this session. Found by signature: ' + bMd.$signature$);
-            }
-        }
-
-        let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
-            share(),
+        const resultEntityAlreadyProcessed = {
+            alreadyProcessed: false,
+            entityValue: undefined as L,
+            allMD: undefined as ResolveMetadataReturn
+        };
+        //resolveMetadatas is synchronous, so everything here need to be into a
+        // piped block! Can you see that?! Sometime i can't!
+        return of(null).pipe(
             map(() => {
-                //console.log(breackPointFlag.fooid);
-                return entityValue;
+                let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
+                let bMd = allMD.objectMd;
+                let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
+        
+                resultEntityAlreadyProcessed.allMD = allMD;
+
+                if (!LodashLike.isNil(entityValue)) {
+                    if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                        thisLocal.consoleLike.debug('entity is already processed on this session. Found by signature: ' + bMd.$signature$);
+                    }
+                    resultEntityAlreadyProcessed.alreadyProcessed = true;
+                    resultEntityAlreadyProcessed.entityValue = entityValue;
+                } else {
+                    if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                        thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
+                    }
+                    if (bMd.$idRef$) {
+                        entityValue = refMap.get(bMd.$idRef$);
+                        if (LodashLike.isNil(entityValue)) {
+                            throw new Error('entity not foun for idRef: ' + bMd.$idRef$);
+                        }
+                        resultEntityAlreadyProcessed.alreadyProcessed = true;
+                        resultEntityAlreadyProcessed.entityValue = entityValue;
+                    }
+                }
+                if (LodashLike.isNil(entityValue)) {
+                    resultEntityAlreadyProcessed.entityValue = new entityType();
+                    if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                        thisLocal.consoleLike.debug('entity was not processed yet on this session.' + 
+                          ' Creating new instance for: ' + entityType.name);
+                    }
+                }
+                return resultEntityAlreadyProcessed;
+            }),
+            thisLocal.flatMapKeepAllFlagsRxOpr(resultEntityAlreadyProcessed.entityValue, (resultEntityAlreadyProcessed) => {
+                const asyncCombineObsArr: Observable<any>[] = [];
+                //const breackPointFlag = { fooid: ''};
+                if (!snapshotField) {
+                    throw new Error('snapshotField can not be null');
+                }
+                //let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
+                let allMD = resultEntityAlreadyProcessed.allMD;
+                let bMd = allMD.objectMd;
+                let entityValue: L = resultEntityAlreadyProcessed.entityValue;
+                
+                if (!resultEntityAlreadyProcessed.alreadyProcessed) {
+                    // if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    //     thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
+                    // }
+                    this.validatingMetaFieldsExistence(entityType);
+                    entityValue = resultEntityAlreadyProcessed.entityValue;
+                    LodashLike.set(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
+                    this.removeNonUsedKeysFromLiteral(entityValue as any, snapshotField);
+        
+                    if (bMd.$id$) {
+                        refMap.set(bMd.$id$, entityValue);
+                    } else {
+                        throw new Error('This should not happen 1');
+                    }
+                    
+                    this.lazyLoadTemplateCallback(entityValue, () => {
+                        this.tryCacheInstanceBySignature(
+                            {
+                                realInstance: entityValue, 
+                                playerSnapshot: { wrappedSnapshot: snapshotField }
+                            }
+                        );
+                        const asyncMergeWith$ = of(null).pipe(
+                            thisLocal.flatMapKeepAllFlagsRxOpr(entityValue, () => {
+                                return LodashLike.asyncMergeWith(
+                                    entityValue as any,
+                                    snapshotField, 
+                                    {
+                                        customizer: this.mergeWithCustomizerPropertyReplection(refMap),
+                                        asyncCustomSetter: thisLocal.createAsyncCustomSetter(entityValue),
+                                        noObjects: new Set([Date])
+                                    }
+                                );                                
+                            })
+                        );
+                            // thisLocal.lazyLoadTemplateCallback(entityValue, () => {
+                            //     return LodashLike.asyncMergeWith(
+                            //         entityValue as any,
+                            //         snapshotField, 
+                            //         {
+                            //             customizer: this.mergeWithCustomizerPropertyReplection(refMap),
+                            //             asyncCustomSetter: thisLocal.createAsyncCustomSetter(entityValue),
+                            //             noObjects: new Set([Date])
+                            //         }
+                            //     );
+                            // }) as Observable<any>;
+                        asyncCombineObsArr.push(
+                            asyncMergeWith$
+                        );
+                        //lodashMergeWith(entityValue as any, snapshotField, this.mergeWithCustomizerPropertyReplection(refMap));
+                    });
+                } else {
+                    // if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    //     thisLocal.consoleLike.debug('entity already processed on this session. Found by signature: ' + bMd.$signature$);
+                    // }
+                }
+        
+                let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                    share(),
+                    map(() => {
+                        //console.log(breackPointFlag.fooid);
+                        return entityValue;
+                    })
+                );
+                // this.createSerialAsyncTasksWaiting().pipe(
+                //     map(() => {
+                //         //console.log(breackPointFlag.fooid);
+                //         return entityValue;
+                //     })
+                // );
+        
+                return asyncCombineArr$;
+        
+                // const isSynchronouslyDone = { value: false, result: null as L};
+                // asyncCombineArr$.subscribe((result)=>{
+                //     isSynchronouslyDone.value = true;
+                //     isSynchronouslyDone.result = result;
+                // });
+        
+                // let finalResult$: Observable<L>;
+                // if (!isSynchronouslyDone.value) {
+                //     finalResult$ = asyncCombineArr$;
+                // } else {
+                //     finalResult$ = of(isSynchronouslyDone.result);
+                // }
+        
+                // return finalResult$;
             })
         );
-        // this.createSerialAsyncTasksWaiting().pipe(
-        //     map(() => {
-        //         //console.log(breackPointFlag.fooid);
-        //         return entityValue;
-        //     })
-        // );
-
-        return asyncCombineArr$;
-
-        // const isSynchronouslyDone = { value: false, result: null as L};
-        // asyncCombineArr$.subscribe((result)=>{
-        //     isSynchronouslyDone.value = true;
-        //     isSynchronouslyDone.result = result;
-        // });
-
-        // let finalResult$: Observable<L>;
-        // if (!isSynchronouslyDone.value) {
-        //     finalResult$ = asyncCombineArr$;
-        // } else {
-        //     finalResult$ = of(isSynchronouslyDone.result);
-        // }
-
-        // return finalResult$;
     }
 
     private createLoadedLazyRef<L extends object, I>(
@@ -2103,7 +2159,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         asyncCombineObsArr.push(trySetPlayerObjectIdentifier$);
         let tryGetFromObjectsBySignature$ = this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap);
         asyncCombineObsArr.push(tryGetFromObjectsBySignature$);
-        let setLazyObjOnLazyLoading$: Observable<void> = of(null);
+        let setLazyObjOnLazyLoadingNoNext$: Observable<void> = of(null);
         //let lazyLoadedObj$: Observable<void> = of(null);
         const isValueByFieldProcessor: {value: boolean} = { value: false };
 
@@ -2113,8 +2169,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!literalLazyObj) {
                     throw new Error('literalLazyObj.$iAmPlayerMetadatas$ and $idRef$ not found: \'' + refererKey + '\' on ' + refererObj.constructor);
                 }
-                setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoading(referedInstance);
-                asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(referedInstance);
+                asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
             }
         }
 
@@ -2148,7 +2204,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const lazyCollection = this.createCollection(lazyLoadedObjType, refererObj, refererKey);
                 
                 thisLocal.lazyLoadTemplateCallback(lazyCollection, ()=> {
-                    setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoadingNoNext(lazyCollection)
+                    setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(lazyCollection)
                         .pipe(
                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
                                 let processResultEntityPrivObsArr: Observable<L>[] = [];
@@ -2168,7 +2224,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         .pipe(share());
                             })
                         );
-                        asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                        asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                 });
             } else {
                 let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.manager.config);
@@ -2181,34 +2237,35 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             tap(
                                 {
                                     next: (value) => {
-                                        lr.setLazyObjOnLazyLoading(value);
+                                        lr.setLazyObjOnLazyLoadingNoNext(value);
                                     }
                                 }
                             )
                         );
-                        asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                        asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                     } else {
-                        setLazyObjOnLazyLoading$ = lr.setLazyObjOnLazyLoading(literalLazyObj);
-                        asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                        setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
+                        asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                     }
                 } else {
-                    setLazyObjOnLazyLoading$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
+                    setLazyObjOnLazyLoadingNoNext$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
                         .pipe(
                             flatMapJustOnceRxOpr((resultEntity) => {
                                 return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
                             })
                         );
-                    asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                    asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                 }
 
                 if (!isValueByFieldProcessor.value && genericNode.gType !== LazyRefPrpMarker) {
-                    setLazyObjOnLazyLoading$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
-                        .pipe(
-                            flatMapJustOnceRxOpr((resultEntity) => {
-                                return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
-                            })
-                        );
-                    asyncCombineObsArr.push(setLazyObjOnLazyLoading$);
+                    setLazyObjOnLazyLoadingNoNext$ = this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap)
+                        // .pipe(
+                        //     flatMapJustOnceRxOpr((resultEntity) => {
+                        //         return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
+                        //     })
+                        // )
+                        ;
+                    asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                 }
             }
         }
@@ -2456,7 +2513,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
         let result$: Observable<void>;
         if (entityValue) {
-            result$ = lr.setLazyObjOnLazyLoading(entityValue);
+            result$ = lr.setLazyObjOnLazyLoadingNoNext(entityValue);
         } else {
             result$ = of(null);
         }
@@ -2554,7 +2611,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             playerObjectIdLiteralRef.value = bMd.$playerObjectId$;            
         }
 
-        if (playerObjectIdLiteralRef.value instanceof Object && !(playerObjectIdLiteralRef.value instanceof Date)) {
+        if (LodashLike.isObject(playerObjectIdLiteralRef.value, new Set([Date, Buffer]))) {
             let playerObjectIdType: TypeLike<any> = null;
             if (genericNode.gParams[1] instanceof GenericNode) {
                 playerObjectIdType = (<GenericNode>genericNode.gParams[1]).gType;
@@ -2722,329 +2779,338 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             ): LodashLike.AsyncMergeWithCustomizer {
         let thisLocal = this;
         return (value: any, srcValue: any, key?: string, object?: Object, source?: Object): Observable<any> => {
-            const asyncCombineObsArr: Observable<any>[] = [];
-            const keepAllFlagsTemplateCallback = thisLocal.createKeepAllFlagsTemplateCallback(object);
-            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function');
-                thisLocal.consoleLikeMerge.debug(refMap);
-                thisLocal.consoleLikeMerge.debug(value);
-                thisLocal.consoleLikeMerge.debug(srcValue);
-                thisLocal.consoleLikeMerge.debug(key);
-                thisLocal.consoleLikeMerge.debug(object);
-                thisLocal.consoleLikeMerge.debug(source);
-                thisLocal.consoleLikeMerge.groupEnd();
-            }
-
-            let allMD = thisLocal.resolveMetadatas({literalObject: srcValue, refererLiteralObject: source, key: key, refMap: refMap});
-            let mdSource = allMD.refererObjMd;
-            let mdSrcValue = allMD.objectMd;
-            let mdPlayerObjectId = allMD.playerObjectIdMd;
-            let mdSrcValueFound = allMD.objectMdFound;
-            let fieldEtc: FieldEtc<any, any> = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.manager.config);
-            const isLazyRefField = 
-                (!fieldEtc )
-                    || (!fieldEtc.prpGenType)
-                    || fieldEtc.prpGenType.gType === LazyRef
-                    || fieldEtc.prpGenType.gType === LazyRefPrpMarker;
-
-            if (mdPlayerObjectId.$isComponent$) {
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: bMdPlayerObjectId.isComponent. bMdSrcValue.$playerObjectId$:');
-                    thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
-                    thisLocal.consoleLikeMerge.groupEnd();
-                }
-                fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
-                if (!fieldEtc.prpType) {
-                    throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
-                }
-            }
-            if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType !== LazyRef) {
-                throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side associative relation and is not LazyRef or not define GenericTokenizer');
-            }
-            if (mdSrcValue.$isComponent$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType === LazyRef) {
-                throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
-            }
-            const isDoneRef = { value: false, result: null as any};
-
-            if (key === thisLocal.manager.config.playerMetadatasName) {
-                isDoneRef.result = mdSource;
-                isDoneRef.value = true;
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). srcValue and mdSource:');
-                    thisLocal.consoleLikeMerge.debug(srcValue);
-                    thisLocal.consoleLikeMerge.debug(mdSource);
-                    thisLocal.consoleLikeMerge.groupEnd();
-                }
-                let correctSrcValueAsMetadata: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
-                Object.assign(correctSrcValueAsMetadata, mdSource);
-
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). '+
-                        'Immediately assign metadatas on ' +
-                        'final instance because resolveMetadatas() is synchronous: \n' + 
-                        JSON.stringify(correctSrcValueAsMetadata, null, 2));
-                }
-                LodashLike.set(object as any, key, correctSrcValueAsMetadata);
-
-                if (mdPlayerObjectId.$isComponent$) {
-                    isDoneRef.result = DummyUndefinedForMergeAsync;
-                    let processResultEntityPrivPlayerObjectId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap)
-                        .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
-                                correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
-                                //isDoneRef.result = correctSrcValueAsMetadata;
-                                isDoneRef.result = playerObjectIdValue;
-                                isDoneRef.value = true;                                
+            //resolveMetadatas is synchronous, so everything here need to be into a
+            // piped block! Can you see that?! Sometimes i can't!
+            return of(null).pipe(
+                thisLocal.flatMapKeepAllFlagsRxOpr(object, () => {
+                    const asyncCombineObsArr: Observable<any>[] = [];
+                    const keepAllFlagsTemplateCallback = thisLocal.createKeepAllFlagsTemplateCallback(object);
+                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function');
+                        thisLocal.consoleLikeMerge.debug(refMap);
+                        thisLocal.consoleLikeMerge.debug(value);
+                        thisLocal.consoleLikeMerge.debug(srcValue);
+                        thisLocal.consoleLikeMerge.debug(key);
+                        thisLocal.consoleLikeMerge.debug(object);
+                        thisLocal.consoleLikeMerge.debug(source);
+                        thisLocal.consoleLikeMerge.groupEnd();
+                    }
+        
+                    let allMD = thisLocal.resolveMetadatas({literalObject: srcValue, refererLiteralObject: source, key: key, refMap: refMap});
+                    let mdSource = allMD.refererObjMd;
+                    let mdSrcValue = allMD.objectMd;
+                    let mdPlayerObjectId = allMD.playerObjectIdMd;
+                    let mdSrcValueFound = allMD.objectMdFound;
+                    let fieldEtc: FieldEtc<any, any> = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc(thisLocal.fielEtcCacheMap, object, key, thisLocal.manager.config);
+                    const isLazyRefField = 
+                        (!fieldEtc )
+                            || (!fieldEtc.prpGenType)
+                            || fieldEtc.prpGenType.gType === LazyRef
+                            || fieldEtc.prpGenType.gType === LazyRefPrpMarker;
+        
+                    if (mdPlayerObjectId.$isComponent$) {
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: bMdPlayerObjectId.isComponent. bMdSrcValue.$playerObjectId$:');
+                            thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
+                            thisLocal.consoleLikeMerge.groupEnd();
+                        }
+                        fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
+                        if (!fieldEtc.prpType) {
+                            throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
+                        }
+                    }
+                    if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType !== LazyRef) {
+                        throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side associative relation and is not LazyRef or not define GenericTokenizer');
+                    }
+                    if (mdSrcValue.$isComponent$ && fieldEtc.prpGenType && fieldEtc.prpGenType.gType === LazyRef) {
+                        throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
+                    }
+                    const isDoneRef = { value: false, result: null as any};
+        
+                    if (key === thisLocal.manager.config.playerMetadatasName) {
+                        isDoneRef.result = mdSource;
+                        isDoneRef.value = true;
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). srcValue and mdSource:');
+                            thisLocal.consoleLikeMerge.debug(srcValue);
+                            thisLocal.consoleLikeMerge.debug(mdSource);
+                            thisLocal.consoleLikeMerge.groupEnd();
+                        }
+                        let correctSrcValueAsMetadata: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
+                        Object.assign(correctSrcValueAsMetadata, mdSource);
+        
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). '+
+                                'Immediately assign metadatas on ' +
+                                'final instance because resolveMetadatas() is synchronous: \n' + 
+                                JSON.stringify(correctSrcValueAsMetadata, null, 2));
+                        }
+                        LodashLike.set(object as any, key, correctSrcValueAsMetadata);
+        
+                        if (mdPlayerObjectId.$isComponent$) {
+                            isDoneRef.result = DummyUndefinedForMergeAsync;
+                            let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
+                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(object, () => {
+                                    return thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap);
+                                }),
+                                thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
+                                    correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
+                                    isDoneRef.result = correctSrcValueAsMetadata;
+                                    //isDoneRef.result = mdPlayerObjectId;
+                                    isDoneRef.value = true;   
+                                    mdPlayerObjectId.$playerObjectId$ = playerObjectIdValue;
+                                    //LodashLike.set(object, key, isDoneRef.result);
+                                    return playerObjectIdValue;
+                                })
+                            );
+                            asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
+                            asyncCombineObsArr.push(processResultEntityPrivPlayerObjectId$);
+                        } 
+                    } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
+                        isDoneRef.result = DummyUndefinedForMergeAsync;
+                        let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo)
+                            .pipe(
+                                thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (callFromLiteralValue) => {
+                                    isDoneRef.result = callFromLiteralValue;
+                                    isDoneRef.value = true;  
+                                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                        thisLocal.consoleLikeMerge.debug('(Async) mergeWithCustomizerPropertyReplection => function =>'+
+                                            ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
+                                            ' Object resolved by fieldEtc.fieldProcessorCaller.callFromLiteralValue:\n' + 
+                                            JSON.stringify(srcValue, null, '\t'));
+                                    }
+                                    LodashLike.set(object, key, isDoneRef.result);
+                                })
+                            );
+                        asyncCombineObsArr.push(callFromLiteralValue$);
+                    } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
+                        isDoneRef.result = DummyUndefinedForMergeAsync;
+                        const previousCombine$ = combineFirstSerial(asyncCombineObsArr).pipe(
+                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, () => {
+                                isDoneRef.result = refMap.get(mdSrcValue.$idRef$);
+                                isDoneRef.value = true;
+                                if (!isDoneRef.result) {
+                                    throw new Error('This should not happen 2');
+                                }
+                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLikeMerge.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
+                                        ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
+                                        ' Object resolved by mdSrcValue.$idRef$ field');
+                                    thisLocal.consoleLikeMerge.debug(isDoneRef.result);
+                                    thisLocal.consoleLikeMerge.groupEnd();
+                                }
                                 LodashLike.set(object, key, isDoneRef.result);
-                                return playerObjectIdValue;
                             })
                         );
-                    asyncCombineObsArr.push(processResultEntityPrivPlayerObjectId$);
-                } 
-            } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                isDoneRef.result = DummyUndefinedForMergeAsync;
-                let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo)
-                    .pipe(
-                        thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (callFromLiteralValue) => {
-                            isDoneRef.result = callFromLiteralValue;
-                            isDoneRef.value = true;  
-                            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                thisLocal.consoleLikeMerge.debug('(Async) mergeWithCustomizerPropertyReplection => function =>'+
-                                    ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
-                                    ' Object resolved by fieldEtc.fieldProcessorCaller.callFromLiteralValue:\n' + 
-                                    JSON.stringify(srcValue, null, '\t'));
+                        asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
+                        asyncCombineObsArr.push(previousCombine$);
+                    } else if (fieldEtc.prpType) {
+                        const isFromLiteralValue = {value: false};
+                        if (fieldEtc.prpGenType) {
+                            if (thisLocal.isCollection(fieldEtc.prpGenType.gType)) {
+                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
+                                        ' thisLocal.isCollection(prpGenType.gType) ');
+                                    thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType); thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType.gType);
+                                    thisLocal.consoleLikeMerge.groupEnd();
+                                }
+                                isDoneRef.result = DummyUndefinedForMergeAsync;
+                                let correctSrcValueColl = thisLocal.createCollection(fieldEtc.prpGenType.gType, object, key);
+                                
+                                let processResultEntityPrivObsArr: Observable<any>[] = [];
+                                thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
+                                    for (let index = 0; index < srcValue.length; index++) { 
+                                        let arrItemType: TypeLike<any> = <TypeLike<any>>fieldEtc.prpGenType.gParams[0];
+                                        let processResultEntityPriv$ = thisLocal.processResultEntityPriv(arrItemType, srcValue[index], refMap);
+                                        processResultEntityPrivObsArr.push(processResultEntityPriv$);
+        
+                                        let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                            .pipe(
+                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
+                                                    for (const entityItem of entityArr) {
+                                                        thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
+                                                    }
+                                                    return of(null);
+                                                })
+                                            )
+                                            .pipe(share());
+                                        asyncCombineObsArr.push(processResultEntityPrivArr$);
+                                    }
+                                });
+                                //nothing for now
+                            } else if (fieldEtc.prpGenType.gType === LazyRef || fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
+                                if (!mdSource.$id$) {
+                                    throw new Error('There is no mdSource.$id$ on ' + JSON.stringify(srcValue));
+                                }
+                                if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
+                                    throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
+                                }
+                                if (mdSrcValue.$isLazyUninitialized$) {
+                                    isDoneRef.result = DummyUndefinedForMergeAsync;
+                                    let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
+                                        .pipe(
+                                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
+                                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
+                                                        ' function => createNotLoadedLazyRef$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()).'+
+                                                        ' createNotLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, lazyRef)');
+                                                    thisLocal.consoleLikeMerge.debug(object);
+                                                    thisLocal.consoleLikeMerge.groupEnd();
+                                                }
+                                                isDoneRef.result = lazyRef;
+                                                isDoneRef.value = true;
+                                                LodashLike.set(object, key, isDoneRef.result);
+                                                return lazyRef;
+                                            })
+                                        );
+                                    //createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
+                                    asyncCombineObsArr.push(createNotLoadedLazyRef$);
+                                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
+                                            ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
+                                            ' property \''+key+'\'.');
+                                        thisLocal.consoleLikeMerge.debug(object);
+                                        thisLocal.consoleLikeMerge.groupEnd();
+                                    }
+                                } else {
+                                    isDoneRef.result = DummyUndefinedForMergeAsync;
+                                    let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
+                                        .pipe(
+                                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
+                                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...)'+
+                                                        ' mergeWithCustomizerPropertyReplection => function =>'+
+                                                        ' createLoadedLazyRef$.subscribe(). createLoadedLazyRef,'+
+                                                        ' for property \''+key+'\'. lodashSet(object, key, lazyRef)');
+                                                    thisLocal.consoleLikeMerge.debug(object);
+                                                    thisLocal.consoleLikeMerge.groupEnd();
+                                                }
+                                                isDoneRef.result = lazyRef;
+                                                isDoneRef.value = true;
+                                                keepAllFlagsTemplateCallback(() => {
+                                                    LodashLike.set(object, key, isDoneRef.result);
+                                                });
+                                                return lazyRef;
+                                            })
+                                        );
+                                    //createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
+                                    asyncCombineObsArr.push(createNotLoadedLazyRef$);
+                                }
                             }
-                            LodashLike.set(object, key, isDoneRef.result);
-                        })
-                    );
-                asyncCombineObsArr.push(callFromLiteralValue$);
-            } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
-                isDoneRef.result = DummyUndefinedForMergeAsync;
-                const previousCombine$ = combineFirstSerial(asyncCombineObsArr).pipe(
-                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, () => {
-                        isDoneRef.result = refMap.get(mdSrcValue.$idRef$);
-                        isDoneRef.value = true;
-                        if (!isDoneRef.result) {
-                            throw new Error('This should not happen 2');
-                        }
-                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                            thisLocal.consoleLikeMerge.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
-                                ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
-                                ' Object resolved by mdSrcValue.$idRef$ field');
-                            thisLocal.consoleLikeMerge.debug(isDoneRef.result);
-                            thisLocal.consoleLikeMerge.groupEnd();
-                        }
-                        LodashLike.set(object, key, isDoneRef.result);
-                    })
-                );
-                asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
-                asyncCombineObsArr.push(previousCombine$);
-            } else if (fieldEtc.prpType) {
-                const isFromLiteralValue = {value: false};
-                if (fieldEtc.prpGenType) {
-                    if (thisLocal.isCollection(fieldEtc.prpGenType.gType)) {
-                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
-                                ' thisLocal.isCollection(prpGenType.gType) ');
-                            thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType); thisLocal.consoleLikeMerge.debug(fieldEtc.prpGenType.gType);
-                            thisLocal.consoleLikeMerge.groupEnd();
-                        }
-                        isDoneRef.result = DummyUndefinedForMergeAsync;
-                        let correctSrcValueColl = thisLocal.createCollection(fieldEtc.prpGenType.gType, object, key);
-                        
-                        let processResultEntityPrivObsArr: Observable<any>[] = [];
-                        thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
-                            for (let index = 0; index < srcValue.length; index++) { 
-                                let arrItemType: TypeLike<any> = <TypeLike<any>>fieldEtc.prpGenType.gParams[0];
-                                let processResultEntityPriv$ = thisLocal.processResultEntityPriv(arrItemType, srcValue[index], refMap);
-                                processResultEntityPrivObsArr.push(processResultEntityPriv$);
-
-                                let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
-                                    .pipe(
-                                        thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
-                                            for (const entityItem of entityArr) {
-                                                thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
-                                            }
-                                            return of(null);
-                                        })
-                                    )
-                                    .pipe(share());
-                                asyncCombineObsArr.push(processResultEntityPrivArr$);
-                            }
-                        });
-                        //nothing for now
-                    } else if (fieldEtc.prpGenType.gType === LazyRef || fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
-                        if (!mdSource.$id$) {
-                            throw new Error('There is no mdSource.$id$ on ' + JSON.stringify(srcValue));
-                        }
-                        if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
-                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + JSON.stringify(srcValue));
-                        }
-                        if (mdSrcValue.$isLazyUninitialized$) {
+                        } else if (LodashLike.isObject(srcValue, new Set([Date, Buffer]))
+                                && !fieldEtc.propertyOptions.lazyDirectRawRead) {
                             isDoneRef.result = DummyUndefinedForMergeAsync;
-                            let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
+                            let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, srcValue, refMap)
                                 .pipe(
-                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
+                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValueSubs) => {
                                         if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                             thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
-                                                ' function => createNotLoadedLazyRef$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()).'+
-                                                ' createNotLoadedLazyRef, for property \''+key+'\'. lodashSet(object, key, lazyRef)');
+                                            ' function => processResultEntityPriv$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
+                                            ' createLoadedLazyRef, for property \''+key+'\'. LodashLike.set(object, key, correctSrcValue)');
                                             thisLocal.consoleLikeMerge.debug(object);
                                             thisLocal.consoleLikeMerge.groupEnd();
                                         }
-                                        isDoneRef.result = lazyRef;
+                                        isDoneRef.result = correctSrcValueSubs;
                                         isDoneRef.value = true;
-                                        LodashLike.set(object, key, isDoneRef.result);
-                                        return lazyRef;
+                                        keepAllFlagsTemplateCallback(() => {
+                                            LodashLike.set(object, key, correctSrcValueSubs);
+                                        });
+                                        return correctSrcValueSubs;
                                     })
                                 );
-                            //createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
-                            asyncCombineObsArr.push(createNotLoadedLazyRef$);
+                            asyncCombineObsArr.push(processResultEntityPriv$);
+                        } else if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
-                                    ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
-                                    ' property \''+key+'\'.');
+                                    ' Transformation by "IFieldProcessor.fromLiteralValue" for property \''+key+'\'.');
                                 thisLocal.consoleLikeMerge.debug(object);
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
-                        } else {
                             isDoneRef.result = DummyUndefinedForMergeAsync;
-                            let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
+                            isFromLiteralValue.value = true;
+                            let fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
+                            fromLiteralValue$ = fromLiteralValue$
+                                // .pipe(thisLocal.addSubscribedObsRxOpr())
                                 .pipe(
-                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
+                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (fromLiteralValue) => {
                                         if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                            thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...)'+
-                                                ' mergeWithCustomizerPropertyReplection => function =>'+
-                                                ' createLoadedLazyRef$.subscribe(). createLoadedLazyRef,'+
-                                                ' for property \''+key+'\'. lodashSet(object, key, lazyRef)');
+                                            thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
+                                                ' function => fromLiteralValue$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
+                                                ' fromLiteralValue, for property \''+key+'\'. LodashLike.set(object, key, correctSrcValue)');
                                             thisLocal.consoleLikeMerge.debug(object);
                                             thisLocal.consoleLikeMerge.groupEnd();
                                         }
-                                        isDoneRef.result = lazyRef;
+                                        isDoneRef.result = fromLiteralValue;
                                         isDoneRef.value = true;
                                         keepAllFlagsTemplateCallback(() => {
                                             LodashLike.set(object, key, isDoneRef.result);
                                         });
-                                        return lazyRef;
-                                    })
-                                );
-                            //createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
-                            asyncCombineObsArr.push(createNotLoadedLazyRef$);
-                        }
-                    }
-                } else if (srcValue instanceof Object
-                        && !(srcValue instanceof Date)
-                        && !fieldEtc.propertyOptions.lazyDirectRawRead) {
-                    isDoneRef.result = DummyUndefinedForMergeAsync;
-                    let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, srcValue, refMap)
-                        .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValueSubs) => {
-                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
-                                    ' function => processResultEntityPriv$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
-                                    ' createLoadedLazyRef, for property \''+key+'\'. LodashLike.set(object, key, correctSrcValue)');
-                                    thisLocal.consoleLikeMerge.debug(object);
-                                    thisLocal.consoleLikeMerge.groupEnd();
-                                }
-                                isDoneRef.result = correctSrcValueSubs;
-                                isDoneRef.value = true;
-                                keepAllFlagsTemplateCallback(() => {
-                                    LodashLike.set(object, key, correctSrcValueSubs);
-                                });
-                                return correctSrcValueSubs;
-                            })
-                        );
-                    asyncCombineObsArr.push(processResultEntityPriv$);
-                } else if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
-                            ' Transformation by "IFieldProcessor.fromLiteralValue" for property \''+key+'\'.');
-                        thisLocal.consoleLikeMerge.debug(object);
-                        thisLocal.consoleLikeMerge.groupEnd();
-                    }
-                    isDoneRef.result = DummyUndefinedForMergeAsync;
-                    isFromLiteralValue.value = true;
-                    let fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
-                    fromLiteralValue$ = fromLiteralValue$
-                        // .pipe(thisLocal.addSubscribedObsRxOpr())
-                        .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (fromLiteralValue) => {
-                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
-                                        ' function => fromLiteralValue$.pipe() => thisLocal.mapJustOnceKeepAllFlagsRxOpr().'+
-                                        ' fromLiteralValue, for property \''+key+'\'. LodashLike.set(object, key, correctSrcValue)');
-                                    thisLocal.consoleLikeMerge.debug(object);
-                                    thisLocal.consoleLikeMerge.groupEnd();
-                                }
-                                isDoneRef.result = fromLiteralValue;
-                                isDoneRef.value = true;
-                                keepAllFlagsTemplateCallback(() => {
-                                    LodashLike.set(object, key, isDoneRef.result);
-                                });
-                                return fromLiteralValue;
-                            }));
-                    fromLiteralValue$ = fromLiteralValue$.pipe(
-                        tap((correctSrcValueFlv) => {
+                                        return fromLiteralValue;
+                                    }));
+                            fromLiteralValue$ = fromLiteralValue$.pipe(
+                                tap((correctSrcValueFlv) => {
+                                    if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.pipe(tap()). property \''+key+'\'.');
+                                        thisLocal.consoleLikeMerge.debug(correctSrcValueFlv);
+                                        thisLocal.consoleLikeMerge.groupEnd();
+                                    }
+                                })
+                            );
+                            asyncCombineObsArr.push(fromLiteralValue$);
+                        } else {
                             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.pipe(tap()). property \''+key+'\'.');
-                                thisLocal.consoleLikeMerge.debug(correctSrcValueFlv);
+                                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Transformation is not necessary for property \''+key+'\'.');
+                                thisLocal.consoleLikeMerge.debug(object);
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
-                        })
-                    );
-                    asyncCombineObsArr.push(fromLiteralValue$);
-                } else {
+                            isDoneRef.result = srcValue;
+                            isDoneRef.value = true;
+                            let noTranslation$ = of(isDoneRef.result)
+                                .pipe(
+                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValue) => {
+                                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. noTranslation$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()). Transformation is not necessary for property \''+key+'\'.');
+                                            thisLocal.consoleLikeMerge.debug(object);
+                                            thisLocal.consoleLikeMerge.groupEnd();
+                                        }
+                                        LodashLike.set(object, key, correctSrcValue);
+                                        return correctSrcValue;
+                                    })
+                                );       
+                            asyncCombineObsArr.push(noTranslation$);
+                        }
+                    } else if (LodashLike.has(object, key)) {
+                        throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
+                    } else if (!LodashLike.has(object, key) && !thisLocal.isLiteralObjMetadataKey(key)) {
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
+                        }
+                        isDoneRef.result = undefined;
+                        isDoneRef.value = true;
+                    } else {
+                        if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
+                            thisLocal.consoleLikeMerge.debug(isDoneRef.result);
+                            thisLocal.consoleLikeMerge.groupEnd();
+                        }
+                    }
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Transformation is not necessary for property \''+key+'\'.');
-                        thisLocal.consoleLikeMerge.debug(object);
+                        thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. return');
+                        thisLocal.consoleLikeMerge.debug(isDoneRef.result);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    isDoneRef.result = srcValue;
-                    isDoneRef.value = true;
-                    let noTranslation$ = of(isDoneRef.result)
-                        .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (correctSrcValue) => {
-                                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. noTranslation$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()). Transformation is not necessary for property \''+key+'\'.');
-                                    thisLocal.consoleLikeMerge.debug(object);
-                                    thisLocal.consoleLikeMerge.groupEnd();
-                                }
-                                LodashLike.set(object, key, correctSrcValue);
-                                return correctSrcValue;
+        
+                    if (!LodashLike.isNil(isDoneRef.result) && isDoneRef.result !== DummyUndefinedForMergeAsync) {
+                        return of(isDoneRef.result);
+                    } else {
+                        return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                            map(() => {
+                                return isDoneRef.result;
                             })
-                        );       
-                    asyncCombineObsArr.push(noTranslation$);
-                }
-            } else if (LodashLike.has(object, key)) {
-                throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
-            } else if (!LodashLike.has(object, key) && !thisLocal.isLiteralObjMetadataKey(key)) {
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
-                }
-                isDoneRef.result = undefined;
-                isDoneRef.value = true;
-            } else {
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
-                    thisLocal.consoleLikeMerge.debug(isDoneRef.result);
-                    thisLocal.consoleLikeMerge.groupEnd();
-                }
-            }
-            if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. return');
-                thisLocal.consoleLikeMerge.debug(isDoneRef.result);
-                thisLocal.consoleLikeMerge.groupEnd();
-            }
-
-            if (!LodashLike.isNil(isDoneRef.result) && isDoneRef.result !== DummyUndefinedForMergeAsync) {
-                return of(isDoneRef.result);
-            } else {
-                return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
-                    map(() => {
-                        return isDoneRef.result;
-                    })
-                );
-            }
+                        );
+                    }
+                })
+            );
         }
     }
 

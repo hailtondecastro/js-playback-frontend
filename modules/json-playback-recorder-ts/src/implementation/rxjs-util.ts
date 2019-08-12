@@ -1,5 +1,5 @@
 import { OperatorFunction, ObservableInput, Observable, of } from "rxjs";
-import { map, flatMap, tap } from "rxjs/operators";
+import { map, flatMap, tap, share } from "rxjs/operators";
 
 class DummyMarker {
 
@@ -15,15 +15,16 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
         const element$ = array[index];
         const indexRef = {value: index};
         resutltObsArrRef.value = resutltObsArrRef.value.pipe(
-            flatMapJustOnceRxOpr((resultT) => {
+            flatMap((resultT) => {
                 return element$;
             }),
-            tap((resultT) => {
-                if (resultT != dummyMarker) {
+            tap((element) => {
+                if (element != dummyMarker) {
                     //console.log(array.length);
-                    resutlArr[indexRef.value] = resultT;
+                    resutlArr[indexRef.value] = element;
                 }
-            })
+            }),
+            share()
         );
 
         // if (!resutltObsArrRef.value) {
@@ -45,7 +46,10 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
         // }
     }
     return resutltObsArrRef.value.pipe(
-        mapJustOnceRxOpr((resultT) => {
+        // mapJustOnceRxOpr((resultT) => {
+        //     return resutlArr;
+        // })
+        map((resultT) => {
             return resutlArr;
         })
     );

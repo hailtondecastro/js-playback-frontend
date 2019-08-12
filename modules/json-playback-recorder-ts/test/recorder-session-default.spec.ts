@@ -730,7 +730,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -909,12 +909,12 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                     return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
                 done();
             });
         });
 
-        it('RecorderManagerDefault.master-a-detail-a-test-async', (done) => {
+        it('ERROR_RecorderManagerDefault.master-a-detail-a-test-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let recorderSession: RecorderSession;
@@ -924,7 +924,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 15, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1091,12 +1091,12 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(59, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
                 done();
             });
         });
 
-        it('RecorderManagerDefault.detail-a-arr-master-test-async', (done) => {
+        it('ERROR_RecorderManagerDefault.detail-a-arr-master-test-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let recorderSession: RecorderSession;
@@ -1106,7 +1106,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1269,12 +1269,12 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(12, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
         });
 
-        it('RecorderManagerDefault.master-lazy-prp-over-sized-test-async', (done) => {
+        it('ERROR_RecorderManagerDefault.master-lazy-prp-over-sized-test-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let recorderSession: RecorderSession;
@@ -1465,14 +1465,14 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             });
         });
 
-        it('RecorderManagerDefault.master-a-detail-a-record-sync', (done) => {
+        it('ERROR_RecorderManagerDefault.master-a-detail-a-record-sync', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);
 
 
             let asyncCount = new AsyncCount();
@@ -1568,13 +1568,13 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(1));
+                        return of(responseResult).pipe();
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(1));
+                        return of(responseResult).pipe();
                     }
                 }
                 );
@@ -1598,7 +1598,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             recorderSession.startRecording();
 
             let dataAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 500});
-            let tapeAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 700});
+            let tapeAsyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
 
             let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             masterA$ = masterA$.pipe(dataAsyncCountdown.registerRxOpr());
@@ -1703,12 +1703,12 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                     return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(9, 'asyncCount');
                 done();
             });
         });
 
-        it('RecorderManagerDefault.master-a-detail-a-record-async', (done) => {
+        it('ERROR_RecorderManagerDefault.master-a-detail-a-record-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let recorderSession: RecorderSession;
@@ -1946,7 +1946,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                     return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(63, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(9, 'asyncCount');
                 done();
             });
         });

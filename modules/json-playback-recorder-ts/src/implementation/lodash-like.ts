@@ -7,7 +7,7 @@ export namespace LodashLike {
     export type AsyncMergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): Observable<any>; }["bivariantHack"];
     export type AsyncCustomSetter = { bivariantHack(object: any, key: string, value: any): Observable<void>; }["bivariantHack"];
     export type MergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): any; }["bivariantHack"];
-    function isObject(value: any, noObjects?: Set<TypeLike<any>>) {
+    export function isObject(value: any, noObjects?: Set<TypeLike<any>>) {
         if (!noObjects) {
             noObjects = new Set();
         }
@@ -22,7 +22,7 @@ export namespace LodashLike {
     function asyncMergeWithDeep<TObject, TSource>(
             object: TObject,
             source: TSource,
-            visitedSet: Set<any>,
+            visitedMap: Map<any, any>,
             extraOptions?: 
                 {
                     customizer?: AsyncMergeWithCustomizer,
@@ -45,6 +45,25 @@ export namespace LodashLike {
             let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
 
             let newValue$: Observable<any>;
+
+            if (isObject(prpSourceValue, extraOptions.noObjects)) {
+                if (!visitedMap.has(prpSourceValue)) {
+                    if (extraOptions.customizer) {
+                        newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                    } else {
+                        newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                    }
+                } else {
+                    newValue$ = of(visitedMap.get(prpSourceValue));
+                }
+            } else {
+                if (extraOptions.customizer) {
+                    newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                } else {
+                    newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                }
+            }
+
             if (extraOptions.customizer) {
                 newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
             } else {
@@ -52,7 +71,7 @@ export namespace LodashLike {
                     throw new Error('Arrays not supported yet');
                 }
                 if (isObject(prpSourceValue)) {
-                    newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedSet, extraOptions);
+                    newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
                 } else {
                     newValue$ = of(prpSourceValue);
                 }
@@ -60,9 +79,11 @@ export namespace LodashLike {
             newValue$ = newValue$.pipe(
                 !extraOptions.asyncCustomSetter?
                     tap((newValue) => {
+                        visitedMap.set(prpSourceValue, newValue);
                         set(object, propt, newValue);
                     }) :
                     flatMap((newValue) => {
+                        visitedMap.set(prpSourceValue, newValue);
                         return extraOptions.asyncCustomSetter(object, propt, newValue);
                     })
             )
@@ -79,8 +100,8 @@ export namespace LodashLike {
     function mergeWithDeep<TObject, TSource>(
             object: TObject,
             source: TSource,
-            customizer: AsyncMergeWithCustomizer,
-            visitedSet: Set<any>,
+            customizer: MergeWithCustomizer,
+            visitedMap: Map<any, any>,
             noObjects?: Set<TypeLike<any>>): TObject {
         if (Array.isArray(source)) {
             throw new Error('Not supported. source is array.');
@@ -93,22 +114,26 @@ export namespace LodashLike {
         for (const propt in source) {
             let prpSourceValue = source[propt];
             let prpObjectValue = (object as any)[propt];
-            if (isObject(prpSourceValue)) {
-                if (!visitedSet.has(prpSourceValue)) {
-                    visitedSet.add(prpSourceValue);
-                    mergeWithDeep(prpObjectValue, prpSourceValue, customizer, visitedSet, noObjects);
+            let newValue = prpSourceValue;
+            if (isObject(prpSourceValue, noObjects)) {
+                if (!visitedMap.has(prpSourceValue)) {
+                    if (customizer) {
+                        newValue = customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                    } else {
+                        newValue = mergeWithDeep(prpObjectValue, prpSourceValue, customizer, visitedMap, noObjects);
+                    }
+                    visitedMap.set(prpSourceValue, newValue);
+                } else {
+                    newValue = visitedMap.get(prpSourceValue);
                 }
             } else {
-                let newValue$ = customizer
-                    ? customizer(prpObjectValue, prpSourceValue, propt, object, source)
-                    : undefined;
-                newValue$ = newValue$.pipe(
-                    tap((newValue) => {
-                        prpObjectValue[propt] = newValue;
-                    })
-                )
-                // allObsArr.push(newValue$);
+                if (customizer) {
+                    newValue = customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                } else {
+                    newValue = mergeWithDeep(prpObjectValue, prpSourceValue, customizer, visitedMap, noObjects);
+                }
             }
+            set(object, propt, newValue);
         }
 
         return object;
@@ -120,7 +145,7 @@ export namespace LodashLike {
 
 
     export function mergeWith<TObject, TSource>(object: TObject, source: TSource, customizer: MergeWithCustomizer, noObjects?: Set<TypeLike<any>>): TObject {
-        return mergeWithDeep(object, source, customizer, new Set());
+        return mergeWithDeep(object, source, customizer, new Map());
     }
     export function asyncMergeWith<TObject, TSource>(
         object: TObject,
@@ -131,7 +156,7 @@ export namespace LodashLike {
                 noObjects?: Set<TypeLike<any>>,
                 asyncCustomSetter?: AsyncCustomSetter
             }): Observable<TObject> {
-        return asyncMergeWithDeep(object, source, new Set(), extraOptions);
+        return asyncMergeWithDeep(object, source, new Map(), extraOptions);
     }
 
     export function has(obj: any, prop: string): boolean {
@@ -169,8 +194,8 @@ export namespace LodashLike {
             : Object.keys(Object(object))
     }
 
-    function isArrayLike(value: any) {
-        return value != null && typeof value != 'function' && isLength(value.length)
+    export function isArrayLike(value: any) {
+        return !isNil(value) && typeof value != 'function' && isLength(value.length)
     }
 
     function isLength(value: any) {
