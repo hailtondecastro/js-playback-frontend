@@ -2851,14 +2851,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             isDoneRef.result = DummyUndefinedForMergeAsync;
                             let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
                                 thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(object, () => {
-                                    return thisLocal.processResultEntityPriv(fieldEtc.prpType, correctSrcValueAsMetadata.$playerObjectId$, refMap);
+                                    return thisLocal.processResultEntityPriv(fieldEtc.prpType, mdSource.$playerObjectId$, refMap);
                                 }),
                                 thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
                                     correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
                                     isDoneRef.result = correctSrcValueAsMetadata;
                                     //isDoneRef.result = mdPlayerObjectId;
                                     isDoneRef.value = true;   
-                                    mdPlayerObjectId.$playerObjectId$ = playerObjectIdValue;
+                                    //mdPlayerObjectId.$playerObjectId$ = playerObjectIdValue;
                                     //LodashLike.set(object, key, isDoneRef.result);
                                     return playerObjectIdValue;
                                 })

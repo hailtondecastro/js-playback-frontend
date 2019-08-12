@@ -402,7 +402,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             });
         });
 
-        it('RecorderManagerDefault.master-a-test-sync', (done) => {
+        it('ERROR2_RecorderManagerDefault.master-a-test-sync', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
             let recorderSession: RecorderSession;
@@ -566,7 +566,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             });
         });
 
-        it('RecorderManagerDefault.detail-a-master-a-async', (done) => {
+        it('ERROR2_RecorderManagerDefault.detail-a-master-a-async', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
 
             let recorderSession: RecorderSession;
@@ -822,13 +822,13 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(1));
+                        return of(responseResult);
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<BinaryStream> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(1));
+                        return of(responseResult);
                     }
                 });
 
