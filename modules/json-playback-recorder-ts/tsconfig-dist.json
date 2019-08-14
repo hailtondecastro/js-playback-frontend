@@ -22,7 +22,9 @@
     "skipLibCheck": true,
     "target": "es5",
     "resolveJsonModule": true,
-    "esModuleInterop": true  
+    "esModuleInterop": true ,
+    "alwaysStrict": false,
+    "noImplicitUseStrict": true
   },
   "exclude": [
     "node_modules",

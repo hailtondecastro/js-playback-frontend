@@ -730,7 +730,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);

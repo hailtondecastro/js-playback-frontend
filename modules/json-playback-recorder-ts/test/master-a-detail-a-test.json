@@ -14,7 +14,8 @@
     "blobA" : "TWFzdGVyQUVudF9SRUcwMV9CbG9iQQ==",
     "blobB" : "TWFzdGVyQUVudF9SRUcwMV9CbG9iQg==",
     "hbVersion" : 0,
-    "detailAEntCol" : [ {
+    "detailAEntCol" : [ 
+      {
       "$metadatas$" : {
         "$iAmPlayerMetadatas$" : true,
         "$id$" : 2,

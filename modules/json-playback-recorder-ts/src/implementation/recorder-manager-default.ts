@@ -57,6 +57,11 @@ export class RecorderManagerDefault implements RecorderManager {
 		this._config = value;
 	}
 
+    public static isCollection(typeTested: TypeLike<any>): any {
+        return (typeTested === Array)
+                || (typeTested === Set);
+    }
+
 	public static resolveFieldProcessorPropOptsEtc<P, GP>(
 			fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>,
 			owner: any,
@@ -71,14 +76,24 @@ export class RecorderManagerDefault implements RecorderManager {
 			let prpType: TypeLike<any> = Reflect.getMetadata('design:type', owner, fieldName);
 			let prpGenType: GenericNode = GenericTokenizer.resolveNode(owner, fieldName);
 			let lazyLoadedObjType: TypeLike<any> = null;
+			let lazyRefMarkerType: TypeLike<LazyRef<any, any>> | TypeLike<LazyRefPrpMarker>;
+			let otmCollectionType: TypeLike<any> = null;
 			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
-			let lazyRefGenericParam: TypeLike<any> = null;
-			let fieldProcessor: IFieldProcessor<P> = {};
+			// let lazyRefGenericParam: TypeLike<any> = null;
+			let fieldProcessor: IFieldProcessor<P>;
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
 				fieldProcessor = propertyOptions.fieldProcessorResolver();
 			} else {
-				fieldProcessor = config.getTypeProcessor(prpType);
+				if (prpGenType) {
+					fieldProcessor = config.getTypeProcessor(prpGenType.gType);
+				}
+				if (!fieldProcessor) {
+					let fieldProcessor = config.getTypeProcessor(prpType);
+				}
+				if (!fieldProcessor) {
+					fieldProcessor = {};
+				}
 			}
 
 			if (prpGenType) {
@@ -88,19 +103,27 @@ export class RecorderManagerDefault implements RecorderManager {
 					lazyLoadedObjType = <TypeLike<any>>prpGenType.gParams[0];
 				}
 
+				if (RecorderManagerDefault.isCollection(lazyLoadedObjType)) {
+					otmCollectionType = lazyLoadedObjType;
+					lazyLoadedObjType = (prpGenType.gParams[0] as GenericNode).gParams[0] as TypeLike<any>;
+				}
 				if (prpGenType.gType === LazyRef || prpGenType.gType === LazyRefPrpMarker) {
-					if (prpGenType.gParams.length > 0) {
-						if (prpGenType.gParams[0] instanceof GenericNode) {
-							lazyRefGenericParam = (prpGenType.gParams[0] as GenericNode).gType;
-						} else {
-							lazyRefGenericParam = (prpGenType.gParams[0] as TypeLike<any>);
-						}
+					if (prpGenType.gParams.length <=0) {
+						throw new Error('LazyRef is not correctly defined: \'' + fieldName + '\' on ' + owner.constructor.name);
 					}
+					lazyRefMarkerType = prpGenType.gType;
+					// if (prpGenType.gParams.length > 0) {
+					// 	if (prpGenType.gParams[0] instanceof GenericNode) {
+					// 		lazyRefGenericParam = (prpGenType.gParams[0] as GenericNode).gType;
+					// 	} else {
+					// 		lazyRefGenericParam = (prpGenType.gParams[0] as TypeLike<any>);
+					// 	}
+					// }
 					if (prpGenType.gType === LazyRefPrpMarker) {
 						if (propertyOptions.fieldProcessorResolver) {
 							fieldProcessor = propertyOptions.fieldProcessorResolver();
 						} else {
-							fieldProcessor = config.getTypeProcessor(lazyRefGenericParam);
+							fieldProcessor = config.getTypeProcessor(lazyLoadedObjType);
 						}
 					}
 				}
@@ -121,6 +144,8 @@ export class RecorderManagerDefault implements RecorderManager {
 					prpType: prpType,
 					prpGenType: prpGenType,
 					lazyLoadedObjType: lazyLoadedObjType,
+					otmCollectionType: otmCollectionType,
+					lazyRefMarkerType: lazyRefMarkerType,
 					propertyOptions: propertyOptions,
 					fieldProcessorCaller: 
 						{
@@ -182,7 +207,7 @@ export class RecorderManagerDefault implements RecorderManager {
 									return toDirectRaw$;
 								}
 						},
-						lazyRefGenericParam: lazyRefGenericParam,
+						// lazyRefGenericParam: lazyRefGenericParam,
 						fieldInfo: info
 				}
 			);

@@ -29,70 +29,68 @@ export namespace LodashLike {
                     noObjects?: Set<TypeLike<any>>,
                     asyncCustomSetter?: AsyncCustomSetter
                 }): Observable<TObject> {
-        if (!extraOptions) {
-            extraOptions = {};
-        }
-        if (Array.isArray(source)) {
-            throw new Error('Not supported. source is array.');
-        }
-        if ((object as any) === (source as any)) {
-            return of(object);
-        }
-        const allObsArr: Observable<any>[] = [];
-
-        for (const propt in source) {
-            let prpSourceValue = source[propt];
-            let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
-
-            let newValue$: Observable<any>;
-
-            if (isObject(prpSourceValue, extraOptions.noObjects)) {
-                if (!visitedMap.has(prpSourceValue)) {
-                    if (extraOptions.customizer) {
-                        newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+        return of(null).pipe(
+            flatMap(() => {
+                console.log(object.constructor.name);
+                if (!extraOptions) {
+                    extraOptions = {};
+                }
+                if (Array.isArray(source)) {
+                    throw new Error('Not supported. source is array.');
+                }
+                if ((object as any) === (source as any)) {
+                    return of(object);
+                }
+                const allObsArr: Observable<any>[] = [];
+        
+                for (const propt in source) {
+                    let prpSourceValue = source[propt];
+                    let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
+        
+                    let newValue$: Observable<any>;
+        
+                    if (isObject(prpSourceValue, extraOptions.noObjects)) {
+                        if (!visitedMap.has(prpSourceValue)) {
+                            if (extraOptions.customizer) {
+                                newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                            } else {
+                                newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                            }
+                            newValue$ = newValue$.pipe(
+                                tap((newValue) => {
+                                    visitedMap.set(prpSourceValue, newValue);
+                                })
+                            );
+                        } else {
+                            newValue$ = of(visitedMap.get(prpSourceValue));
+                        }
                     } else {
-                        newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                        if (extraOptions.customizer) {
+                            newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                        } else {
+                            newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                        }
                     }
-                } else {
-                    newValue$ = of(visitedMap.get(prpSourceValue));
-                }
-            } else {
-                if (extraOptions.customizer) {
-                    newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
-                } else {
-                    newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
-                }
-            }
 
-            if (extraOptions.customizer) {
-                newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
-            } else {
-                if (isArrayLike(prpSourceValue)) {
-                    throw new Error('Arrays not supported yet');
+                    newValue$ = newValue$.pipe(
+                        !extraOptions.asyncCustomSetter?
+                            tap((newValue) => {
+                                visitedMap.set(prpSourceValue, newValue);
+                                set(object, propt, newValue);
+                            }) :
+                            flatMap((newValue) => {
+                                visitedMap.set(prpSourceValue, newValue);
+                                return extraOptions.asyncCustomSetter(object, propt, newValue);
+                            })
+                    )
+                    allObsArr.push(newValue$);
                 }
-                if (isObject(prpSourceValue)) {
-                    newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
-                } else {
-                    newValue$ = of(prpSourceValue);
-                }
-            }
-            newValue$ = newValue$.pipe(
-                !extraOptions.asyncCustomSetter?
-                    tap((newValue) => {
-                        visitedMap.set(prpSourceValue, newValue);
-                        set(object, propt, newValue);
-                    }) :
-                    flatMap((newValue) => {
-                        visitedMap.set(prpSourceValue, newValue);
-                        return extraOptions.asyncCustomSetter(object, propt, newValue);
+        
+                return combineFirstSerial(allObsArr).pipe(
+                    map(() => {
+                        return object;
                     })
-            )
-            allObsArr.push(newValue$);
-        }
-
-        return combineFirstSerial(allObsArr).pipe(
-            map(() => {
-                return object;
+                );
             })
         );
     }

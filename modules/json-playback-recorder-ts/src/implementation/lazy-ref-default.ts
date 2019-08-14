@@ -636,8 +636,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         if (fieldEtc.prpGenType.gType !== LazyRef && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
             throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' is not LazyRef. Me:\n' + this);
         }
-        if ((fieldEtc.lazyRefGenericParam === Set || fieldEtc.lazyRefGenericParam === Array) && !this._isOnLazyLoading) {
-            throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' can not be changed because this is a collection: \'' + fieldEtc.lazyRefGenericParam.name + '\'' + '. Me:\n' + this);
+        if ((fieldEtc.otmCollectionType === Set || fieldEtc.otmCollectionType === Array) && !this._isOnLazyLoading) {
+            throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\' can not be changed because this is a collection: \'' + fieldEtc.otmCollectionType.name + '\'' + '. Me:\n' + this);
         }
 
         //null to response.
@@ -678,14 +678,14 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         action.settedSignatureStr = mdLazyLoadedObj.$signature$;
                     } else if (LodashLike.has(lazyLoadedObj, this.session.manager.config.creationIdName)) {
                         action.settedCreationRefId = LodashLike.get(lazyLoadedObj, this.session.manager.config.creationIdName) as number;
-                    } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {
+                    } else if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
                         //nothing for now!
                     } else if (!this._isOnLazyLoading) {
                         throw new Error('The property \'' + this.refererKey + ' from \'' + this.refererObj.constructor.name + '\'.  lazyLoadedObj is not managed: \'' + lazyLoadedObj.constructor.name + '\'' + '. Me:\n' + this);
                     }
                 }
 
-                if (fieldEtc.prpGenType.gType === LazyRefPrpMarker) {                    
+                if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {                    
                     if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
                         isValueByFieldProcessor.value = true;
                         let processTapeActionAttachRefId$ = thisLocal.session.processTapeActionAttachRefId({fieldEtc: fieldEtc, value: lazyLoadedObj, action: action, propertyKey: thisLocal.refererKey});
@@ -1077,7 +1077,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             if (this.genericNode.gType !== LazyRef && this.genericNode.gType !== LazyRefPrpMarker) {
                 throw new Error('Wrong type: ' + this.genericNode.gType.name + '. Me:\n' + this);
             }
-            if (this.session.isCollection(fieldEtc.lazyLoadedObjType)) {
+            if (fieldEtc.otmCollectionType) {
                 isLazyRefOfCollection = true;
                 if (!(this.genericNode instanceof GenericNode) || (<GenericNode>this.genericNode.gParams[0]).gParams.length <=0) {
                     throw new Error('LazyRef not defined: \'' + this.refererKey + '\' of ' + this.refererObj.constructor.name + '. Me:\n' + this);
@@ -1095,7 +1095,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is collection of: ' + collTypeParam.name);
                 }
 
-                let lazyLoadedColl: any = this.session.createCollection(fieldEtc.lazyLoadedObjType, this.refererObj, this.refererKey)
+                let lazyLoadedColl: any = this.session.createCollection(fieldEtc.otmCollectionType, this.refererObj, this.refererKey)
                 LodashLike.set(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
                     let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, playerSnapshot.wrappedSnapshot as any[]);
@@ -1116,7 +1116,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 } finally {
                     LodashLike.set(this.lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 }
-            } else if (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && isResponseBodyStream) {
+            } else if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && isResponseBodyStream) {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead". Me:\n' + this);
                 }
@@ -1192,9 +1192,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 })
                             );
                 } else {
-                    if(Object.getOwnPropertyNames(fieldEtc.lazyRefGenericParam).lastIndexOf('pipe') < 0) {
+                    if(Object.getOwnPropertyNames(fieldEtc.lazyLoadedObjType).lastIndexOf('pipe') < 0) {
                         throw new Error('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" and has no "IFieldProcessor.fromDirectRaw",'+
-                            ' but this generic definition is LazyRepPrp<'+(fieldEtc.lazyRefGenericParam? fieldEtc.lazyRefGenericParam.name: '')+'>. Me:\n' +
+                            ' but this generic definition is LazyRepPrp<'+(fieldEtc.lazyLoadedObjType? fieldEtc.lazyLoadedObjType.name: '')+'>. Me:\n' +
                             this);
                     }
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
@@ -1209,8 +1209,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                             );
                 }
             } else if (
-                    (fieldEtc.prpGenType.gType === LazyRefPrpMarker && !fieldEtc.propertyOptions.lazyDirectRawRead)
-                    || (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && !isResponseBodyStream)) {
+                    (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker && !fieldEtc.propertyOptions.lazyDirectRawRead)
+                    || (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead && !isResponseBodyStream)) {
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: (LazyRefPrp is NOT "lazyDirectRawRead") or '+
                         '(LazyRefPrp is "lazyDirectRawRead" and "responseLike.body" is not a Stream). Is it rigth?! Me:\n' + this);
