@@ -30,9 +30,9 @@
     "build:prepare-dist-test-folder": "node ../../build-utils/prepare-dist-folder -baseDistFolder ./dist-test -verbose true",
     "build:prepare-dist-dev-folder": " node ../../build-utils/prepare-dist-folder -baseDistFolder ./dist-dev -verbose true",
     "test": " npm run build && npm run mocha-dist-test",
-    "mocha-dist-test": "mocha dist-test/**/**.spec.js",
-    "mocha-dist-dev": " mocha dist-dev/**/**.spec.js",
-    "test2": "npm run build && mocha --grep /master-lazy-prp-over-sized-test/ dist/**/**.spec.js",
+    "mocha-dist-test": "mocha  dist-test/**/**.spec.js --require babel-register dist-test/",
+    "mocha-dist-dev": " mocha  --require babel-register dist-dev/**/**.spec.js",
+    "test2": "npm run build && mocha --require babel-register --grep /master-lazy-prp-over-sized-test/ dist/**/**.spec.js",
     "browserify": "npm run build && browserify dist-dev/index.js --outfile browser.js"
   },
   "devDependencies": {
@@ -47,6 +47,7 @@
     "@types/stream-buffers": "^3.0.3",
     "@types/uuid": "^3.4.4",
     "atob": "^2.1.2",
+    "babel-register": "^6.26.0",
     "browserify": "^16.2.3",
     "chai": "^4.2.0",
     "fs": "0.0.1-security",
