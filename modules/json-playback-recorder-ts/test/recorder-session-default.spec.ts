@@ -725,7 +725,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
 
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 

@@ -1980,24 +1980,42 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 key: undefined as string,
                 value: undefined as any
             };
-        const asyncCustomSetterResult$ = of(undefined).pipe(
-            thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
-                if (entity !== futureAsyncCustomSetterArgs.object) {
-                    throw new Error('This should not happen');
-                }
-                LodashLike.set(
-                    futureAsyncCustomSetterArgs.object,
-                    futureAsyncCustomSetterArgs.key, 
-                    futureAsyncCustomSetterArgs.value);
-                return undefined as void;
-            })
-        );
+
+        const syncIsOn = LodashLike.get(entity, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+        const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
+        const asyncIsOnRef = { value: undefined as boolean };
+        const asyncIsOn2Ref = { value: undefined as boolean };
+
         let asyncCustomSetter: LodashLike.AsyncCustomSetter = (object, key, value) => {
+            asyncIsOnRef.value = LodashLike.get(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
+            asyncIsOn2Ref.value = thisLocal._isOnRestoreEntireStateFromLiteral;
+            LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
+            thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
+
+            const asyncCustomSetterResult$ = of(undefined).pipe(
+                thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
+                    try {
+                        if (entity !== futureAsyncCustomSetterArgs.object) {
+                            throw new Error('This should not happen');
+                        }
+                        LodashLike.set(
+                            futureAsyncCustomSetterArgs.object,
+                            futureAsyncCustomSetterArgs.key, 
+                            futureAsyncCustomSetterArgs.value);
+                        return undefined as void;
+                    } finally {
+                        LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
+                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
+                    }
+                })
+            );
+
             futureAsyncCustomSetterArgs.object = object;
             futureAsyncCustomSetterArgs.key = key;
             futureAsyncCustomSetterArgs.value = value;
             return asyncCustomSetterResult$;
-        }
+        };
+
         return asyncCustomSetter;
     }
 
@@ -2147,7 +2165,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 // }
         
                 // return finalResult$;
-            })
+            }),
+            share()
         );
     }
 
@@ -2179,7 +2198,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 resultVoid$ = resultVoid$.pipe(
                     thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
                         return tryGetFromObjectsBySignature$;
-                    })
+                    }),
+                    share()
                 )
                 //asyncCombineObsArr.push(tryGetFromObjectsBySignature$);
                 //let setLazyObjOnLazyLoadingNoNext$: Observable<void> = of(null);
@@ -2202,7 +2222,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         } else {
                             return of(undefined);
                         }
-                    })
+                    }),
+                    share()
                 );
 
                 const resultVoidInnerResultRef = {value: of(undefined)};
@@ -2299,6 +2320,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
                                             return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalLazyObj, refMap);
                                         }),
+                                        share(),
                                         map(() => {})
                                     );
                                     // .pipe(
@@ -2371,7 +2393,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 // } else {
                 //     return of(isSynchronouslyDone.result);
                 // }
-            })
+            }),
+            share()
         );
     }
 
@@ -2418,7 +2441,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 let tryGetFromObjectsBySignature$ = trySetPlayerObjectIdentifier$.pipe(
                     this.flatMapKeepAllFlagsRxOpr(null, () => {
                         return this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap).pipe();        
-                    })
+                    }),
+                    share()
                 );
 
                 let result$ = tryGetFromObjectsBySignature$.pipe(
@@ -2471,7 +2495,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         }
 
                         return lr;
-                    })
+                    }),
+                    share()
                 );
 
                 if (thisLocal._decoratorCreateNotLoadedLazyRefCB) {
@@ -2540,7 +2565,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 // } else {
                 //     return of(isSynchronouslyDone.result);
                 // }
-            })
+            }),
+            share()
         );
     }
 
@@ -2671,7 +2697,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 // } else {
                 //     return of(null);
                 // }
-            })
+            }),
+            share()
         );
     }
 
@@ -3131,10 +3158,13 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         );
                     }
                 }),
-                finalize(() => {
-                    LodashLike.set(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
-                    thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
-                })
+                tap(() => {
+                    finalize(() => {
+                        LodashLike.set(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
+                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
+                    })
+                }),
+                share()
             );
         }
     }
