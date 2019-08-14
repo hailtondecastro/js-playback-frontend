@@ -48,6 +48,7 @@ export interface RecorderConfig {
     cacheStoragePrefix: string;
     cacheHandler: CacheHandler;
     lazyObservableProvider: LazyObservableProvider;
+    maxJsonStringifyForDiagnostic: number;
     configCreationIdName(creationIdName: string): RecorderConfig;  
     configMetadatasName(playerMetadatasName: string): RecorderConfig;
     configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig;
@@ -56,6 +57,11 @@ export interface RecorderConfig {
     configAddFieldProcessors(entries: TypeProcessorEntry<any, any>[]): RecorderConfig;
     configCacheHandler(cacheHandler: CacheHandler): RecorderConfig;
     configLazyObservableProvider(provider: LazyObservableProvider): RecorderConfig;
+    /**
+     * Max size of JSON.stringfy for error and log purpose. Default: 300.
+     * @param maxJsonStringifyForDiagnostic 
+     */
+    configMaxJsonStringifyForDiagnostic(maxJsonStringifyForDiagnostic: number): RecorderConfig;
     configLogLevel(logger: RecorderLogger, level: RecorderLogLevel, consoleLike?: ConsoleLike): RecorderConfig;
     getConsole(logger: RecorderLogger): ConsoleLike;
     /**

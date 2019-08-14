@@ -1,6 +1,6 @@
 import { MasterBEnt, MasterBCompId } from './master-b-ent';
 import { MasterAEnt } from './master-a-ent';
-import { LazyRefMTO, LazyRef } from '../../src/api/lazy-ref';
+import { LazyRefMTO, LazyRef, BinaryStream, BinaryStreamMarker } from '../../src/api/lazy-ref';
 import { Stream } from 'stream';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
@@ -36,8 +36,8 @@ export class DetailAComp {
     private _subIdB: number;
     private _vcharA: string;
     private _vcharB: string;
-    private _blobA: Stream;
-    private _blobB: Stream;
+    private _blobA: BinaryStream;
+    private _blobB: BinaryStream;
 
 	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
@@ -86,20 +86,22 @@ export class DetailAComp {
     }
 
 	@RecorderDecorators.property()
-	public get blobA(): Stream {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryStreamMarker).tree))
+	public get blobA(): BinaryStream {
 		return this._blobA;
      }
      
-	public set blobA(value: Stream) {
+	public set blobA(value: BinaryStream) {
 		this._blobA = value;
 	}
 
 	@RecorderDecorators.property()
-	public get blobB(): Stream {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryStreamMarker).tree))
+	public get blobB(): BinaryStream {
 		return this._blobB;
 	}
 
-	public set blobB(value: Stream) {
+	public set blobB(value: BinaryStream) {
 		this._blobB = value;
 	}
 

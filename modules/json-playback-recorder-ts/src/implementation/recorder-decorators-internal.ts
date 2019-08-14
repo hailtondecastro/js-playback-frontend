@@ -1,5 +1,4 @@
 import { RecorderConstants } from './recorder-constants';
-import { Stream, Readable } from 'stream';
 import { of, from } from 'rxjs';
 import { RecorderManagerDefault } from './recorder-manager-default';
 //import getStream = require("get-stream");
@@ -178,7 +177,7 @@ export namespace RecorderDecoratorsInternal {
                                         //             });
                                         //         } else {
                                         //             if (value) {
-                                        //                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. Stream is null but value is not null. value: ' + value.constructor);
+                                        //                 throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. NodeJS.ReadableStream is null but value is not null. value: ' + value.constructor);
                                         //             }
                                         //             action.simpleSettedValue = null;
                                         //             action.attachRefId = null;
@@ -186,10 +185,10 @@ export namespace RecorderDecoratorsInternal {
                                         //         }
                                         //     });
                                         // } else {
-                                        //     if (!((value as any as Stream).addListener && (value as any as Stream).pipe)) {
-                                        //         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a Stream. value: ' + value.constructor);
+                                        //     if (!((value as any as NodeJS.ReadableStream).addListener && (value as any as NodeJS.ReadableStream).pipe)) {
+                                        //         throw new Error('The property \'' + propertyKey.toString() + ' of \'' + this.constructor + '\'. There is no "IFieldProcessor.toDirectRaw" defined and value is not a NodeJS.ReadableStream. value: ' + value.constructor);
                                         //     } else {
-                                        //         let putOnCache$ = session.manager.config.cacheHandler.putOnCache(action.attachRefId, value as any as Stream);
+                                        //         let putOnCache$ = session.manager.config.cacheHandler.putOnCache(action.attachRefId, value as any as NodeJS.ReadableStream);
                                         //         putOnCache$ = putOnCache$.pipe(session.addSubscribedObsRxOpr());
                                         //         asyncAddTapeAction.value = true;
                                         //         putOnCache$.subscribe(() => {
@@ -319,11 +318,11 @@ export namespace RecorderDecoratorsInternal {
     //     fromLiteralValue: (value: string, info: any) => {
     //         return of(value);
     //     },
-    //     fromDirectRaw: (stream: Stream, info: any) => {
+    //     fromDirectRaw: (stream: NodeJS.ReadableStream, info: any) => {
     //         return from(getStream(stream, {}) as Promise<string>);
     //     }
     // };
-    // export const StreamProcessor: IFieldProcessor<String> = {
+    // export const NodeJS.ReadableStreamProcessor: IFieldProcessor<String> = {
     //     fromLiteralValue: (value, info) => {
     //         if (value) {
     //             let base64AB = Buffer.from(value, 'base64');
@@ -338,7 +337,7 @@ export namespace RecorderDecoratorsInternal {
     //     },
     //     fromDirectRaw: (stream, info) => {
     //         if (stream) {
-    //             if ((stream as Stream).addListener && (stream as Stream).pipe) {
+    //             if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
     //                 return of(stream);
     //             } else {
     //                 throw new Error('Not supported');
@@ -363,7 +362,7 @@ export namespace RecorderDecoratorsInternal {
     //         },
     //         fromDirectRaw: (stream, info) => {
     //             if (stream) {
-    //                 if ((stream as Stream).addListener && (stream as Stream).pipe) {
+    //                 if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
     //                     (stream as any as Readable).setEncoding('utf-8');
     //                     return of(stream);
     //                 } else {
@@ -468,7 +467,7 @@ export namespace RecorderDecoratorsInternal {
                 of(null);
             }
             // if (stream) {
-            //     if ((stream as Stream).addListener && (stream as Stream).pipe) {
+            //     if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
             //         let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
             //         return from(resultPrmStr);
             //     } else {
@@ -504,7 +503,7 @@ export namespace RecorderDecoratorsInternal {
         },
         fromDirectRaw: (stream, info) => {
             if (stream) {
-                if ((stream as Stream).addListener && (stream as Stream).pipe) {
+                if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
                     return of(stream);
                 } else {
                     throw new Error('Not supported');
@@ -549,7 +548,7 @@ export namespace RecorderDecoratorsInternal {
             fromDirectRaw: (stream, info) => {
                 if (stream) {
                     if (stream.addListener && stream.pipe) {
-                        (stream as any as Readable).setEncoding('utf-8');
+                        (stream as any as NodeJS.ReadableStream).setEncoding('utf-8');
                         return of(stream);
                     } else {
                         throw new Error('Not supported');

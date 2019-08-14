@@ -27,6 +27,7 @@
                 //"RecorderManagerDefault.poc-observable-each-pipe-test",
                 //"RecorderManagerDefault.detail-a-master-a-async",
                 //"RecorderManagerDefault.detail-a-arr-master-test-async",
+                //"RecorderManagerDefault.master-a-test-subs-to-mod-async",
                 //"ForNodeTest.StringSyncProcessor",
                 //"ForNodeTest.BufferSyncProcessor",
                 //"ForNodeTest.BinaryStreamSyncProcessor",
