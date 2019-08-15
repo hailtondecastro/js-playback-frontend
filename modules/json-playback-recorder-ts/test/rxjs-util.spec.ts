@@ -1,4 +1,4 @@
-
+import * as chai from 'chai';
 import { Observable, of } from 'rxjs';
 import { delay, tap } from 'rxjs/operators';
 import { combineFirstSerial } from '../src/implementation/rxjs-util.js';
@@ -7,24 +7,15 @@ import { AsyncCount } from './async-count.js';
 
 {
     describe('rxjs-util-test', () => {
-        it('rxjs-util-test.combineFirstSerial', (done) => {
+        it('rxjs-util-test.combineFirstSerial_4-items', (done) => {
             //let asyncCount = 0;
-            const debugTimeFactor = 10;
+            const debugTimeFactor = 1;
             let asyncCount = new AsyncCount();
             const executionArr: Number[] = [];
             let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor});
 
 
             let obs0$: Observable<number> = of(0).pipe(
-                delay(400 * debugTimeFactor),
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-                tap((value) => {
-                    console.log(new Date() + ': ' + value);
-                    executionArr.push(value);
-                })
-            );
-            let obs1$: Observable<number> = of(1).pipe(
                 delay(300 * debugTimeFactor),
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
@@ -33,8 +24,17 @@ import { AsyncCount } from './async-count.js';
                     executionArr.push(value);
                 })
             );
-            let obs2$: Observable<number> = of(2).pipe(
+            let obs1$: Observable<number> = of(1).pipe(
                 delay(200 * debugTimeFactor),
+                asyncCount.registerRxOpr(),
+                asyncCountdown.registerRxOpr(),
+                tap((value) => {
+                    console.log(new Date() + ': ' + value);
+                    executionArr.push(value);
+                })
+            );
+            let obs2$: Observable<number> = of(2).pipe(
+                delay(100 * debugTimeFactor),
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
@@ -43,7 +43,7 @@ import { AsyncCount } from './async-count.js';
                 })                
             );
             let obs3$: Observable<number> = of(3).pipe(
-                delay(100 * debugTimeFactor),
+                delay(1 * debugTimeFactor),
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
@@ -64,7 +64,30 @@ import { AsyncCount } from './async-count.js';
 
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
-            })
+            });
+        });
+        it('rxjs-util-test.combineFirstSerial_0-items', (done) => {
+            //let asyncCount = 0;
+            const debugTimeFactor = 1;
+            let asyncCount = new AsyncCount();
+            const executionArr: Number[] = [];
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor});
+
+            combineFirstSerial([]).pipe(
+                asyncCountdown.registerRxOpr()
+            ).subscribe((resultArr) => {
+                chai.expect(resultArr.length).to.eq(0);
+            });
+
+            combineFirstSerial([]).pipe(
+                asyncCountdown.registerRxOpr()
+            ).subscribe((resultArr) => {
+                chai.expect(resultArr.length).to.eq(0);
+            });
+
+            asyncCountdown.createCountdownEnds().subscribe(() => {
+                done();
+            });
         });
     });
 }

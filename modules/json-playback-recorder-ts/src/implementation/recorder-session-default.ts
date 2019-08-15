@@ -7,7 +7,7 @@ import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from './field-etc';
-import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
+import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial, timeoutDecorateRxOpr } from './rxjs-util';
 import { OriginalLiteralValueEntry, RecorderSession as RecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
@@ -179,6 +179,7 @@ class UndefinedForMergeAsync {
         return 'I am an instance of "UndefinedForMerge", just a temporary value before real value from async execution!';
     }
 }
+
 const DummyUndefinedForMergeAsync = new UndefinedForMergeAsync();
 
 export class RecorderSessionDefault implements RecorderSessionImplementor {
@@ -346,7 +347,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         //     thisLocal._asyncTasksWaitingArrNew.delete(result$);
                         // }
                     }
-                )
+                ),
+                timeoutDecorateRxOpr()
             );
             return result$;
         }
@@ -2013,28 +2015,34 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
             thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
 
-            const asyncCustomSetterResult$ = of(undefined).pipe(
-                thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
-                    try {
-                        if (entity !== futureAsyncCustomSetterArgs.object) {
-                            throw new Error('This should not happen');
-                        }
-                        LodashLike.set(
-                            futureAsyncCustomSetterArgs.object,
-                            futureAsyncCustomSetterArgs.key, 
-                            futureAsyncCustomSetterArgs.value);
-                        return undefined as void;
-                    } finally {
-                        LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
-                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
-                    }
-                })
-            );
-
             futureAsyncCustomSetterArgs.object = object;
             futureAsyncCustomSetterArgs.key = key;
             futureAsyncCustomSetterArgs.value = value;
-            return asyncCustomSetterResult$;
+
+            try {
+                const asyncCustomSetterResult$ = of(undefined).pipe(
+                    thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
+                        try {
+                            if (entity !== futureAsyncCustomSetterArgs.object) {
+                                throw new Error('This should not happen');
+                            }
+                            LodashLike.set(
+                                futureAsyncCustomSetterArgs.object,
+                                futureAsyncCustomSetterArgs.key, 
+                                futureAsyncCustomSetterArgs.value);
+                            return undefined as void;
+                        } finally {
+                            LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
+                            thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
+                        }
+                    })
+                );
+    
+                return asyncCustomSetterResult$.pipe(timeoutDecorateRxOpr());
+            } finally {
+                LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
+                thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
+            }
         };
 
         return asyncCustomSetter;
@@ -2096,7 +2104,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             thisLocal.flatMapKeepAllFlagsRxOpr(resultEntityAlreadyProcessed.entityValue, (resultEntityAlreadyProcessed) => {
                 const asyncCombineObsArr: Observable<any>[] = [];
                 //const breackPointFlag = { fooid: ''};
-                if (!snapshotField) {
+                if (!wrappedSnapshotField) {
                     throw new Error('snapshotField can not be null');
                 }
                 //let allMD = this.resolveMetadatas({literalObject: snapshotField, refMap: refMap});
@@ -2130,7 +2138,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             thisLocal.flatMapKeepAllFlagsRxOpr(entityValue, () => {
                                 return LodashLike.asyncMergeWith(
                                     entityValue as any,
-                                    snapshotField, 
+                                    wrappedSnapshotField, 
                                     {
                                         customizer: this.mergeWithCustomizerPropertyReplection(entityValue, refMap),
                                         asyncCustomSetter: thisLocal.createAsyncCustomSetter(entityValue),
@@ -2322,7 +2330,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                                 }
                                             )
                                         );
-                                        return callFromLiteralValue$;
+                                        resultVoidInnerResultRef.value = callFromLiteralValue$;
                                         //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                                     } else {
                                         let setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
@@ -2925,10 +2933,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         
                         if (mdPlayerObjectId.$isComponent$) {
                             isDoneRef.result = DummyUndefinedForMergeAsync;
-                            let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
-                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(object, () => {
-                                    return thisLocal.processResultEntityPriv(fieldEtc.prpType, mdSource.$playerObjectId$, refMap);
-                                }),
+                            //let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
+                            let processResultEntityPrivPlayerObjectId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, mdSource.$playerObjectId$, refMap).pipe(
                                 thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
                                     correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
                                     isDoneRef.result = correctSrcValueAsMetadata;
@@ -2939,7 +2945,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                     return playerObjectIdValue;
                                 })
                             );
-                            asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
                             asyncCombineObsArr.push(processResultEntityPrivPlayerObjectId$);
                         } 
                     } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
@@ -2961,7 +2966,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         asyncCombineObsArr.push(callFromLiteralValue$);
                     } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
                         isDoneRef.result = DummyUndefinedForMergeAsync;
-                        const previousCombine$ = combineFirstSerial(asyncCombineObsArr).pipe(
+                        //const previousCombine$ = combineFirstSerial(asyncCombineObsArr).pipe(
+                        const previousCombine$ = of(null).pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, () => {
                                 isDoneRef.result = refMap.get(mdSrcValue.$idRef$);
                                 isDoneRef.value = true;
@@ -2971,14 +2977,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                     thisLocal.consoleLikeMerge.group('(Async) mergeWithCustomizerPropertyReplection => function =>'+
                                         ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
-                                        ' Object resolved by mdSrcValue.$idRef$ field');
-                                    thisLocal.consoleLikeMerge.debug(isDoneRef.result);
+                                        ' Object resolved by mdSrcValue.$idRef$ field. owner type: ' +
+                                        object.constructor.name + '; owner field: ' + key);
                                     thisLocal.consoleLikeMerge.groupEnd();
                                 }
                                 LodashLike.set(object, key, isDoneRef.result);
                             })
                         );
-                        asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
+                        //asyncCombineObsArr.splice(0, asyncCombineObsArr.length);
                         asyncCombineObsArr.push(previousCombine$);
                     } else if (fieldEtc.prpType) {
                         const isFromLiteralValue = {value: false};
@@ -2997,19 +3003,18 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         let arrItemType: TypeLike<any> = <TypeLike<any>>fieldEtc.lazyLoadedObjType;
                                         let processResultEntityPriv$ = thisLocal.processResultEntityPriv(arrItemType, srcValue[index], refMap);
                                         processResultEntityPrivObsArr.push(processResultEntityPriv$);
-        
-                                        let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
-                                            .pipe(
-                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
-                                                    for (const entityItem of entityArr) {
-                                                        thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
-                                                    }
-                                                    return of(null);
-                                                })
-                                            )
-                                            .pipe(share());
-                                        asyncCombineObsArr.push(processResultEntityPrivArr$);
                                     }
+                                    let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                        .pipe(
+                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
+                                                for (const entityItem of entityArr) {
+                                                    thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
+                                                }
+                                                return of(null);
+                                            })
+                                        )
+                                        .pipe(share());
+                                    asyncCombineObsArr.push(processResultEntityPrivArr$);
                                 });
                                 //nothing for now
                             } else if (fieldEtc.lazyRefMarkerType === LazyRef || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
@@ -3174,23 +3179,21 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
         
-                    if (!LodashLike.isNil(isDoneRef.result) && isDoneRef.result !== DummyUndefinedForMergeAsync) {
-                        return of(isDoneRef.result);
-                    } else {
-                        return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
-                            map(() => {
-                                return isDoneRef.result;
-                            })
-                        );
-                    }
+                    // if (!LodashLike.isNil(isDoneRef.result) && isDoneRef.result !== DummyUndefinedForMergeAsync) {
+                    //     return of(isDoneRef.result);
+                    // } else {
+                    return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                        map(() => {
+                            return isDoneRef.result;
+                        }),
+                        timeoutDecorateRxOpr()
+                    );
+                    // }
                 }),
                 tap(() => {
-                    finalize(() => {
-                        LodashLike.set(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
-                        thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
-                    })
-                }),
-                share()
+                    LodashLike.set(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
+                    thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
+                })
             );
         }
     }
@@ -3478,11 +3481,5 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
         }
         return result;
-    }
-}
-
-class UndefinedForMergeAsync {
-    public toString(): string {
-        return 'I am an instance of "UndefinedForMerge", just a temporary value before real value from async execution!';
     }
 }

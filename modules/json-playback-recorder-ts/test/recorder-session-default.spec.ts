@@ -14,7 +14,7 @@ import { ForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout, tap, share } from 'rxjs/operators';
 import { ResponseLike } from '../src/typeslike';
-import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util.js';
+import { mapJustOnceRxOpr, flatMapJustOnceRxOpr, timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
 import { RecorderSession } from '../src/api/session.js';
 import { RecorderConfigDefault } from '../src/implementation/recorder-config-default.js';
 import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config.js';
@@ -413,7 +413,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown(4);
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -533,7 +533,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             }
 
             recorderSession = manager.createSession();
-            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, resultMasterLiteral)
+            let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -569,7 +569,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createAsyncTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(69, 'asyncCount');
@@ -905,7 +905,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
                 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 10000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1030,7 +1030,7 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral)
                 .pipe(
                     asyncCount.registerRxOpr(),
-                    asyncCountdown.registerRxOpr()
+                    asyncCountdown.registerRxOpr(),
                 );
             masterA$.subscribe(
                 {
@@ -1082,6 +1082,9 @@ import { RecorderSessionImplementor } from '../src/implementation/recorder-sessi
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
                     return recorderSession.createSerialPendingTasksWaiting()
+                }),
+                catchError((err, caugth) => {
+                    return throwError(err);
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(2, 'asyncCount');

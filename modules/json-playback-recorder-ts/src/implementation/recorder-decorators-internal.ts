@@ -427,10 +427,10 @@ export namespace RecorderDecoratorsInternal {
         },
         toDirectRaw: (value, info) => {
             if (value) {
-                let ws = new memStreams.WritableStream();
-                ws.write(value);
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                myReadableStreamBuffer.push(value);
+                // let ws = new memStreams.WritableStream();
+                // ws.write(value);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
+                //myReadableStreamBuffer.push(value);
                 return of(null);
                 // return of(null).pipe(
                 //     tap(() => {

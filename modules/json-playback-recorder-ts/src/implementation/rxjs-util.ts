@@ -1,5 +1,5 @@
-import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge } from "rxjs";
-import { map, flatMap, tap, share, take, mergeMap } from "rxjs/operators";
+import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge, throwError } from "rxjs";
+import { map, flatMap, tap, share, take, mergeMap, timeout, catchError } from "rxjs/operators";
 import { a } from "@angular/core/src/render3";
 
 class DummyMarker {
@@ -22,7 +22,7 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
             }),
             tap((element) => {
                 if (element != dummyMarker) {
-                    console.log((array as any).fooid);
+                    //console.log((array as any).fooid);
                     resutlArr[indexRef.value] = element;
                 }
             }),
@@ -47,14 +47,20 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
         //     );
         // }
     }
-    return resutltObsArrRef.value.pipe(
-        // mapJustOnceRxOpr((resultT) => {
-        //     return resutlArr;
-        // })
-        map((resultT) => {
-            return resutlArr;
-        })
-    );
+    // if (array.length > 0) {
+        return resutltObsArrRef.value.pipe(
+            // mapJustOnceRxOpr((resultT) => {
+            //     return resutlArr;
+            // })
+            map((resultT) => {
+                return resutlArr;
+            })
+            // ,
+            // timeoutDecorateRxOpr()
+        );
+    // } else {
+    //     return of([]);
+    // }
 }
 
 export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
@@ -70,6 +76,21 @@ export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R,
         return source
             .pipe(
                 map(projectExtentend)
+            );
+    }
+    return rxOpr;
+}
+
+export function timeoutDecorateRxOpr<T>(): OperatorFunction<T, T> {
+    const errTimeOut = new Error('timeout for provided observable');
+    let rxOpr: OperatorFunction<T, T> = (source) => {
+        return source
+            .pipe(
+                timeout(3000),
+                catchError((err, caugth) => {
+                    console.error(err + '\n' + errTimeOut);
+                    return throwError(errTimeOut);
+                })
             );
     }
     return rxOpr;

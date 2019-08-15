@@ -1254,7 +1254,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
-                let processedEntity$ = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, playerSnapshot.wrappedSnapshot)
+                let processedEntity$ = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, (playerSnapshot as PlayerSnapshot).wrappedSnapshot)
                 const processedEntityRef = {value: null as L};
                 lazyLoadedObj$ = processedEntity$
                     .pipe(

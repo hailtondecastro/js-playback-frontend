@@ -88,12 +88,6 @@
         "vcharB" : "DetailAEnt_REG01_REG01_VcharB",
         "blobA" : "RGV0YWlsQUVudF9SRUcwMV9CbG9iQQ==",
         "blobB" : "RGV0YWlsQUVudF9SRUcwMV9CbG9iQg=="
-      },
-      "detailAComponent" : {
-        "$metadatas$" : {
-          "$iAmPlayerMetadatas$" : true,
-          "$idRef$" : 4
-        }
       }
     }, {
       "$metadatas$" : {
@@ -155,12 +149,6 @@
         "vcharB" : "DetailAEnt_REG04_REG01_VcharB",
         "blobA" : "RGV0YWlsQUVudF9SRUcwNF9CbG9iQQ==",
         "blobB" : "RGV0YWlsQUVudF9SRUcwNF9CbG9iQg=="
-      },
-      "detailAComponent" : {
-        "$metadatas$" : {
-          "$iAmPlayerMetadatas$" : true,
-          "$idRef$" : 10
-        }
       }
     }, {
       "$metadatas$" : {
@@ -222,12 +210,6 @@
         "vcharB" : "DetailAEnt_REG07_REG01_VcharB",
         "blobA" : "RGV0YWlsQUVudF9SRUcwN19CbG9iQQ==",
         "blobB" : "RGV0YWlsQUVudF9SRUcwN19CbG9iQg=="
-      },
-      "detailAComponent" : {
-        "$metadatas$" : {
-          "$iAmPlayerMetadatas$" : true,
-          "$idRef$" : 14
-        }
       }
     } ],
     "blobLazyA" : "TWFzdGVyQUVudF9SRUcwMV9CbG9iTGF6eUE=",

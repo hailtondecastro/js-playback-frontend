@@ -13,9 +13,32 @@ import { ForNodeTest } from './native-for-node-test.js';
 import { FieldInfo } from '../src/api/recorder-config.js';
 import { StringStream, BinaryStream, NonWritableStreamExtraMethods, NonReadableStreamExtraMethods } from '../src/api/lazy-ref.js';
 import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';
+import { delay } from 'rxjs/operators';
+import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
 
 {
     describe('ForNodeTest', () => {
+        it('ForNodeTest.timeoutDecorateRxOpr', (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 4000});
+            let asyncCount = new AsyncCount();
+
+            const obs$ = of(null).pipe(
+                asyncCount.registerRxOpr(),
+                asyncCountdown.registerRxOpr(),
+                delay(2000),
+                timeoutDecorateRxOpr()
+            );
+
+            obs$.subscribe(() => {
+
+            });
+
+            asyncCountdown.createCountdownEnds().subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(1);
+                done();
+            });
+        });
+
         it('ForNodeTest.StringSyncProcessor', (done) => {
             let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
             let asyncCount = new AsyncCount();

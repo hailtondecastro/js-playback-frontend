@@ -1,6 +1,6 @@
 import { Observable, of } from "rxjs";
 import { tap, map, flatMap } from "rxjs/operators";
-import { combineFirstSerial } from "./rxjs-util";
+import { combineFirstSerial, timeoutDecorateRxOpr } from "./rxjs-util";
 import { TypeLike } from "../typeslike";
 
 export namespace LodashLike {
@@ -75,6 +75,7 @@ export namespace LodashLike {
                     newValue$ = newValue$.pipe(
                         !extraOptions.asyncCustomSetter?
                             tap((newValue) => {
+                                console.log((newValue$ as any).fooid);
                                 visitedMap.set(prpSourceValue, newValue);
                                 set(object, propt, newValue);
                             }) :
@@ -89,7 +90,8 @@ export namespace LodashLike {
                 return combineFirstSerial(allObsArr).pipe(
                     map(() => {
                         return object;
-                    })
+                    }),
+                    timeoutDecorateRxOpr()
                 );
             })
         );

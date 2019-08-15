@@ -95,14 +95,14 @@ export namespace ForNodeTest {
         };
 
     export interface CacheHandlerWithInterceptor extends CacheHandler {
-        callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: NodeJS.ReadableStream) => void
+        callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => void
     }
     export function createCacheHandlerWithInterceptor(cacheHandler: CacheHandler): CacheHandlerWithInterceptor {
         CacheMap.clear();
         let newCacheHandler: CacheHandlerWithInterceptor =
         {
             ...cacheHandler,
-            callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: NodeJS.ReadableStream) => {}
+            callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => {}
         }
         newCacheHandler.putOnCache = (cacheKey, stream) => {
             newCacheHandler.callback('putOnCache', cacheKey, stream);
@@ -225,7 +225,7 @@ export namespace ForNodeTest {
                 return of(null);
             }
             // if (stream) {
-            //     if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
+            //     if ((stream as Stream).addListener && (stream as Stream).pipe) {
             //         let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
             //         return from(resultPrmStr);
             //     } else {
@@ -261,7 +261,7 @@ export namespace ForNodeTest {
         },
         fromDirectRaw: (stream, info) => {
             if (stream) {
-                if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
+                if ((stream as Stream).addListener && (stream as Stream).pipe) {
                     return of(stream);
                 } else {
                     throw new Error('Not supported');
@@ -305,7 +305,7 @@ export namespace ForNodeTest {
             },
             fromDirectRaw: (stream, info) => {
                 if (stream) {
-                    if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
+                    if ((stream as Stream).addListener && (stream as Stream).pipe) {
                         (stream as any as Readable).setEncoding('utf-8');
                         return of(stream);
                     } else {
