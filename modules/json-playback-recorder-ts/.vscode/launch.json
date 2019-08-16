@@ -12,10 +12,10 @@
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
-                //"2000",
-                "600000",
+                "2000",
+                //"600000",
                 "--grep",
-                "/.*/",
+                //"/.*/",
                 //"RecorderManagerDefault.master-lazy-prp-over-sized-test-async",
                 //"RecorderManagerDefault.master-a-test-async",
                 //"RecorderManagerDefault.master-a-test-sync",
@@ -45,7 +45,7 @@
                 //"RecorderManagerDefault.master-[al][-a][zd]",
                 //"rxjs-util-test",
                 //"rxjs-util-test.combineFirstSerial_4-items",
-                //"rxjs-util-test.combineFirstSerial_so-many-items",
+                "rxjs-util-test.combineFirstSerial_so-many-items",
                 //"rxjs-util-test.combineFirstSerial_0-items",
                 "dist-dev/**/**.spec.js"
             ],

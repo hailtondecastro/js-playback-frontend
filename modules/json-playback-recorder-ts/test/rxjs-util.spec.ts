@@ -74,7 +74,7 @@ import { AsyncCount } from './async-count.js';
             const executionArr: Number[] = [];
             const amount = 1000;
 
-            let asyncCountdown = new AsyncCountdown({ count: amount, timeOut: (amount * 14) * debugTimeFactor});
+            let asyncCountdown = new AsyncCountdown({ count: amount, timeOut: (amount * 16) * debugTimeFactor});
 
             const obsArr: Observable<number>[] = [];
             for (let index = 0; index < amount; index++) {
@@ -99,7 +99,7 @@ import { AsyncCount } from './async-count.js';
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
             });
-        }, 15000);
+        }).timeout(20000);
 
         it('rxjs-util-test.combineFirstSerial_0-items', (done) => {
             //let asyncCount = 0;

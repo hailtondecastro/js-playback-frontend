@@ -26,6 +26,11 @@
     "alwaysStrict": false,
     "noImplicitUseStrict": true
   },
+  "types": [
+    "mocha",
+    "jasmine",
+    "node"
+  ],
   "exclude": [
     "node_modules",
     "dist",

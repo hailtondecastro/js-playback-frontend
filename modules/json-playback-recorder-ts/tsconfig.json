@@ -18,6 +18,11 @@
     "typeRoots": [
       "node_modules/@types"
     ],
+    "types": [
+      "mocha",
+      "jasmine",
+      "node"
+    ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
     "target": "es5",

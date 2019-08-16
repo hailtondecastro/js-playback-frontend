@@ -16,7 +16,12 @@
     "sourceMap": true,
     "lib": ["es6", "dom"],
     "typeRoots": [
-      "node_modules/@types"
+      "mocha",
+      "jasmine",
+      "node"
+    ],
+    "types": [
+      "@types/mocha"
     ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,

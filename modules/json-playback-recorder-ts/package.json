@@ -42,6 +42,7 @@
     "@types/chai": "^4.1.7",
     "@types/jasmine": "^2.5.43",
     "@types/lodash": "^4.14.117",
+    "@types/mocha": "^5.2.7",
     "@types/node": "^10.3.5",
     "@types/rx": "^4.1.1",
     "@types/stream-buffers": "^3.0.3",
