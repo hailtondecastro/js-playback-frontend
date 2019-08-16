@@ -347,8 +347,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         //     thisLocal._asyncTasksWaitingArrNew.delete(result$);
                         // }
                     }
-                ),
-                timeoutDecorateRxOpr()
+                )
+                // ,
+                // timeoutDecorateRxOpr()
             );
             return result$;
         }
@@ -687,6 +688,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return newOp;
     }
 
+    private repeatedValueSet = new Set();
+
     private flatMapKeepAllFlagsRxOprPriv<T, R>(
             when: 'justOnce' | 'eachPipe', 
             turnOnMode: 
@@ -701,6 +704,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const syncIsOn = LodashLike.get(lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
+
+        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
+
         let newOp: OperatorFunction<T, R> = (source) => {
             let projectExtentend = (value: T, index: number) => {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
@@ -731,7 +737,22 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             return source
                 .pipe(
-                    flatMap(projectExtentend, concurrent)
+                    flatMap(projectExtentend, concurrent),
+                    (source) => {
+                        if (!LodashLike.isNil(source)) {
+                            let currSource = source;
+                            do {
+                                if(thisLocal.repeatedValueSet.has(currSource)) {
+                                    //console.error(errorForStack + '\n' + errorForStack.stack);
+                                } else {
+                                    //thisLocal.repeatedValueSet.add(currSource);
+                                }
+                                currSource = currSource.source;
+                            } while (currSource);
+                            thisLocal.repeatedValueSet.add(source);
+                        } 
+                        return source;
+                    }
                 );
         }
 
@@ -1376,7 +1397,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         lazyRefSet.session = this;
                         lazyRefSet.bMdLazyLoadedObj = allMD.objectMd;
                         lazyRefSet.bMdRefererObj = allMD.refererObjMd;
-                        lazyRefSet.bMdPlayerObjectIdMetadata = allMD.playerObjectIdMd;
+                        lazyRefSet.pbMdRefererPlayerObjectId = allMD.playerObjectIdMd;
                         LodashLike.set(entityObj, keyItem, lazyRefSet);
                     } else {
                         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1389,7 +1410,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         lazyRef.session = this;
                         lazyRef.bMdLazyLoadedObj = allMD.objectMd;
                         lazyRef.bMdRefererObj = allMD.refererObjMd;
-                        lazyRef.bMdPlayerObjectIdMetadata = allMD.playerObjectIdMd;
+                        lazyRef.pbMdRefererPlayerObjectId = allMD.playerObjectIdMd;
                         LodashLike.set(entityObj, keyItem, lazyRef);
                     }
                 } else {
@@ -1997,12 +2018,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private createAsyncCustomSetter(entity: any): LodashLike.AsyncCustomSetter {
         const thisLocal = this;
-        const futureAsyncCustomSetterArgs = 
-            {
-                object: undefined as any,
-                key: undefined as string,
-                value: undefined as any
-            };
 
         const syncIsOn = LodashLike.get(entity, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
@@ -2015,11 +2030,19 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, syncIsOn);
             thisLocal._isOnRestoreEntireStateFromLiteral = syncIsOn2;
 
+            const futureAsyncCustomSetterArgs = 
+            {
+                object: object,
+                key: key,
+                value: value
+            };
+
             futureAsyncCustomSetterArgs.object = object;
             futureAsyncCustomSetterArgs.key = key;
             futureAsyncCustomSetterArgs.value = value;
 
             try {
+
                 const asyncCustomSetterResult$ = of(undefined).pipe(
                     thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
                         try {
@@ -2038,7 +2061,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     })
                 );
     
-                return asyncCustomSetterResult$.pipe(timeoutDecorateRxOpr());
+                // return asyncCustomSetterResult$.pipe(timeoutDecorateRxOpr());
+                return asyncCustomSetterResult$;
             } finally {
                 LodashLike.set(object, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
                 thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
@@ -2142,7 +2166,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                     {
                                         customizer: this.mergeWithCustomizerPropertyReplection(entityValue, refMap),
                                         asyncCustomSetter: thisLocal.createAsyncCustomSetter(entityValue),
-                                        noObjects: new Set([Date])
+                                        noObjects: new Set([Date]),
+                                        considerObjectProperties: true,
+                                        ignorePropeties: [ 
+                                            /^_.*/,
+                                            RecorderConstants.ENTITY_CONTROL_PROPS_PATTERN
+                                        ]
                                     }
                                 );                                
                             })
@@ -2212,7 +2241,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
         //const asyncCombineObsArr: Observable<any>[] = [];
-
+        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         return of(null).pipe(
             thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
                 let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(fieldEtc.prpGenType, literalLazyObj, refererObj, refererKey, refMap);
@@ -2241,7 +2270,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const isValueByFieldProcessor: {value: boolean} = { value: false };
         
                 resultVoid$ = resultVoid$.pipe(
-                    thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+                    thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                         if (allMD.objectMd.$iAmPlayerMetadatas$) {
                             if (allMD.objectMd.$idRef$) {
                                 let referedInstance = refMap.get(allMD.objectMd.$idRef$);
@@ -2260,9 +2289,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     share()
                 );
 
-                const resultVoidInnerResultRef = {value: of(undefined)};
                 resultVoid$ = resultVoid$.pipe(
                     thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
+                        const resultVoidInnerResultRef = {value: of(undefined)};
                         if (lr.lazyLoadedObj) {
                             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
@@ -2286,7 +2315,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 // } else {
                                 //     collTypeParam = <TypeLike<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
                                 // }
-                                const lazyCollection = this.createCollection(fieldEtc.lazyLoadedObjType, refererObj, refererKey);
+                                const lazyCollection = this.createCollection(fieldEtc.otmCollectionType, refererObj, refererKey);
                                 
                                 thisLocal.lazyLoadTemplateCallback(lazyCollection, () => {
                                     const setLazyObjOnLazyLoadingNoNext$ = of(undefined).pipe(
@@ -2296,7 +2325,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
                                                 let processResultEntityPrivObsArr: Observable<L>[] = [];
                                                     for (const literalItem of literalLazyObj) {
-                                                        let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.otmCollectionType, literalItem, refMap)
+                                                        let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalItem, refMap)
                                                         processResultEntityPrivObsArr.push(processResultEntityPriv$);
                                                     }
                                                     return thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
@@ -2322,13 +2351,19 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo);
                                         // callFromLiteralValue$ = callFromLiteralValue$.pipe(this.addSubscribedObsRxOpr());
                                         callFromLiteralValue$ = callFromLiteralValue$.pipe(
-                                            tap(
-                                                {
-                                                    next: (value) => {
-                                                        lr.setLazyObjOnLazyLoadingNoNext(value);
-                                                    }
-                                                }
-                                            )
+                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, (value) => {
+                                                //here for debug purpose
+                                                refererKey === 'blobLazyA';
+
+                                                return lr.setLazyObjOnLazyLoadingNoNext(value).pipe(
+                                                    map((slValue) => {
+                                                        //here for debug purpose
+                                                        refererKey === 'blobLazyA';
+
+                                                        return value;
+                                                    })
+                                                );
+                                            })
                                         );
                                         resultVoidInnerResultRef.value = callFromLiteralValue$;
                                         //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
@@ -2372,9 +2407,28 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
                 return resultVoid$.pipe(
                     map(() => {
+                        //for debug purpose
+                        refererKey === 'detailAEntCol';
+
                         return lr;
                     }),
                     share()
+                    // ,
+                    // (source) => {
+                    //     if (!LodashLike.isNil(source)) {
+                    //         let currSource = source;
+                    //         do {
+                    //             if(thisLocal.repeatedValueSet.has(currSource)) {
+                    //                 //console.error(errorForStack + '\n' + errorForStack.stack);
+                    //             } else {
+                    //                 //thisLocal.repeatedValueSet.add(currSource);
+                    //             }
+                    //             currSource = currSource.source;
+                    //         } while (currSource);
+                    //         thisLocal.repeatedValueSet.add(source);
+                    //     } 
+                    //     return source;
+                    // }
                 );
         
                 // asyncCombineArr$ = asyncCombineArr$.pipe(
@@ -2474,7 +2528,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 //asyncCombineObsArr.push(trySetPlayerObjectIdentifier$);
                 let tryGetFromObjectsBySignature$ = trySetPlayerObjectIdentifier$.pipe(
                     this.flatMapKeepAllFlagsRxOpr(null, () => {
-                        return this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap).pipe();        
+                        return this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap);
                     }),
                     share()
                 );
@@ -2558,11 +2612,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             literalLazyObj: any,
             refMap: Map<Number, any>): Observable<void> {
         const thisLocal = this;
+        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         return of(null).pipe(
             thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
-                if (!literalLazyObj){
-                    throw new Error('literalLazyObj nao pode ser nula');
-                }
+                // if (!literalLazyObj){
+                //     throw new Error('literalLazyObj nao pode ser nula');
+                // }
                 let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refMap: refMap});
                 //let allMD = this.resolveMetadatas({literalObject: literalLazyObj});
                 let bMd = allMD.objectMd;
@@ -2583,6 +2638,22 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         
                 return result$.pipe(
                     share()
+                    // ,
+                    // (source) => {
+                    //     if (!LodashLike.isNil(source)) {
+                    //         let currSource = source;
+                    //         do {
+                    //             if(thisLocal.repeatedValueSet.has(currSource)) {
+                    //                 console.error(errorForStack + '\n' + errorForStack.stack);
+                    //             } else {
+                    //                 //thisLocal.repeatedValueSet.add(currSource);
+                    //             }
+                    //             currSource = currSource.source;
+                    //         } while (currSource);
+                    //         thisLocal.repeatedValueSet.add(source);
+                    //     } 
+                    //     return source;
+                    // }
                 );
         
                 // const isSynchronouslyDone = { value: false, result: null as void};
@@ -2605,9 +2676,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     }
 
     createApropriatedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string, refMap?: Map<Number, any>): LazyRefImplementor<L, I> {
-        if (!literalLazyObj){
-            throw new Error('literalLazyObj nao pode ser nula');
-        }
+        // if (!literalLazyObj){
+        //     throw new Error('literalLazyObj nao pode ser nula');
+        // }
         let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap});
         let bMd = allMD.objectMd;
 
@@ -2625,7 +2696,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         lazyRef.genericNode = genericNode;
         lazyRef.bMdLazyLoadedObj = allMD.objectMd;
         lazyRef.bMdRefererObj = allMD.refererObjMd;
-        lazyRef.bMdPlayerObjectIdMetadata = allMD.refererObjMd;
+        lazyRef.pbMdRefererPlayerObjectId = allMD.refererObjMd;
         return lazyRef;
     }
 
@@ -2659,9 +2730,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return of(null).pipe(
             thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
                 let result$: Observable<void> = of(null);
-                if (!literalLazyObj){
-                    throw new Error('literalLazyObj nao pode ser nula');
-                }
+                // if (!literalLazyObj){
+                //     throw new Error('literalLazyObj nao pode ser nula');
+                // }
                 let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refMap: refMap});
                 let bMd = allMD.objectMd;
         
@@ -2898,8 +2969,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             thisLocal.consoleLikeMerge.debug(mdSrcValue.$playerObjectId$);
                             thisLocal.consoleLikeMerge.groupEnd();
                         }
-                        fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
-                        if (!fieldEtc.prpType) {
+                        //fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
+                        if (!fieldEtc.objectIdPrpType) {
                             throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                         }
                     }
@@ -2934,7 +3005,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         if (mdPlayerObjectId.$isComponent$) {
                             isDoneRef.result = DummyUndefinedForMergeAsync;
                             //let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
-                            let processResultEntityPrivPlayerObjectId$ = thisLocal.processResultEntityPriv(fieldEtc.prpType, mdSource.$playerObjectId$, refMap).pipe(
+                            let processResultEntityPrivPlayerObjectId$ = thisLocal.processResultEntityPriv(fieldEtc.objectIdPrpType, mdSource.$playerObjectId$, refMap).pipe(
                                 thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (playerObjectIdValue) => {
                                     correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
                                     isDoneRef.result = correctSrcValueAsMetadata;
@@ -2989,7 +3060,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     } else if (fieldEtc.prpType) {
                         const isFromLiteralValue = {value: false};
                         if (fieldEtc.prpGenType) {
-                            if (fieldEtc.otmCollectionType) {
+                            if (fieldEtc.otmCollectionType && !(fieldEtc.lazyRefMarkerType === LazyRef || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)) {
+                                if (1 === 1) {
+                                    throw new Error('Not pesrsistent collection is not supported yet!');
+                                }
                                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                     thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function.'+
                                         ' fieldEtc.otmCollectionType ' + fieldEtc.otmCollectionType.name);
@@ -3011,6 +3085,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                                     thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
                                                 }
                                                 return of(null);
+                                                isDoneRef.result = DummyUndefinedForMergeAsync;correctSrcValueColl
                                             })
                                         )
                                         .pipe(share());
@@ -3053,7 +3128,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                     }
                                 } else {
                                     isDoneRef.result = DummyUndefinedForMergeAsync;
-                                    let createNotLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc, srcValue, refMap, object, key)
+                                    let createLoadedLazyRef$ = thisLocal.createLoadedLazyRef(fieldEtc, srcValue, refMap, object, key)
                                         .pipe(
                                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
                                                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
@@ -3073,7 +3148,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                             })
                                         );
                                     //createNotLoadedLazyRef$ = createNotLoadedLazyRef$.pipe(thisLocal.addSubscribedObsRxOpr());
-                                    asyncCombineObsArr.push(createNotLoadedLazyRef$);
+                                    asyncCombineObsArr.push(createLoadedLazyRef$);
                                 }
                             }
                         } else if (LodashLike.isObject(srcValue, new Set([Date, Buffer]))
@@ -3184,13 +3259,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     // } else {
                     return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
                         map(() => {
+                            //for debug purpose
+                            key === 'detailAEntCol';
+
                             return isDoneRef.result;
-                        }),
-                        timeoutDecorateRxOpr()
+                        })
+                        // ,
+                        // timeoutDecorateRxOpr()
                     );
                     // }
                 }),
                 tap(() => {
+                    //for debug purpose
+                    key === 'detailAEntCol';
+
                     LodashLike.set(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, asyncIsOnRef.value);
                     thisLocal._isOnRestoreEntireStateFromLiteral = asyncIsOn2Ref.value;
                 })

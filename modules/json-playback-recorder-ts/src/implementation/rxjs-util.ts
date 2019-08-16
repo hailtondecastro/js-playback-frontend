@@ -1,6 +1,7 @@
 import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge, throwError } from "rxjs";
 import { map, flatMap, tap, share, take, mergeMap, timeout, catchError } from "rxjs/operators";
 import { a } from "@angular/core/src/render3";
+import { LodashLike } from "./lodash-like";
 
 class DummyMarker {
 
@@ -8,16 +9,32 @@ class DummyMarker {
 
 const dummyMarker = new DummyMarker();
 
+const repeatedValueSet = new Set();
+
 export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
     const resutlArr: T[] = new Array<T>(array.length);
     const resutltObsArrRef = {value: of(dummyMarker) as Observable<T>};
+    
+    const errorForStack = new Error('combineFirstSerial. Possible cycle!');
+
+    // for (let i = 0; i < array.length; i++) {
+    //     const element = array[i];
+    //     for (let j = i + 1; j < array.length; j++) {
+    //         const elementOther = array[j];
+    //         if (element === elementOther) {
+    //             console.log('same element\n' + errorForStack.stack);
+    //         }
+    //     }
+    // }
+
 
     for (let index = 0; index < array.length; index++) {
+  
         const element$ = array[index];
         const indexRef = {value: index};
         resutltObsArrRef.value = resutltObsArrRef.value.pipe(
             flatMap((resultT) => {
-                console.log((array as any).fooid);
+                //console.log((array as any).fooid);
                 return element$;
             }),
             tap((element) => {
@@ -27,6 +44,15 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
                 }
             }),
             share()
+            // ,tap((value) => {
+            //     if (!LodashLike.isNil(value)) {
+            //         if(repeatedValueSet.has(value)) {
+            //             console.error(errorForStack + '\n' + errorForStack.stack);
+            //         } else {
+            //             repeatedValueSet.add(value);
+            //         }
+            //     } 
+            // })
         );
 
         // if (!resutltObsArrRef.value) {

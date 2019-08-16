@@ -252,8 +252,7 @@ export namespace ForNodeTest {
         fromLiteralValue: (value, info) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                myReadableStreamBuffer.push(base64AB);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(base64AB.toString()); 
                 return of(myReadableStreamBuffer);
             } else {
                 return of(null);

@@ -17,6 +17,7 @@ export interface IFieldProcessorCaller<P> {
 export interface FieldEtc<P, GP> {
     prpType: TypeLike<P>,
     prpGenType: GenericNode,
+    objectIdPrpType: TypeLike<any>,
     lazyLoadedObjType: TypeLike<P>,
     otmCollectionType?: TypeLike<any>,
     lazyRefMarkerType?: TypeLike<LazyRef<any, any>> | TypeLike<LazyRefPrpMarker>,

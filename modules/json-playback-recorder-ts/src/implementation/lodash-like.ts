@@ -2,6 +2,7 @@ import { Observable, of } from "rxjs";
 import { tap, map, flatMap } from "rxjs/operators";
 import { combineFirstSerial, timeoutDecorateRxOpr } from "./rxjs-util";
 import { TypeLike } from "../typeslike";
+import { isNull } from "util";
 
 export namespace LodashLike {
     export type AsyncMergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): Observable<any>; }["bivariantHack"];
@@ -19,19 +20,23 @@ export namespace LodashLike {
     export function isNil(value: any) {
         return value === null || value === undefined;
     }
+    function testPatterns(valueToTest: string, pttrs: RegExp[]): boolean {
+        for (let index = 0; index < pttrs.length; index++) {
+            const pttrItem = pttrs[index];
+            if (pttrItem.test(valueToTest)) {
+                return true;
+            }
+        }
+        return false;
+    }
     function asyncMergeWithDeep<TObject, TSource>(
             object: TObject,
             source: TSource,
             visitedMap: Map<any, any>,
-            extraOptions?: 
-                {
-                    customizer?: AsyncMergeWithCustomizer,
-                    noObjects?: Set<TypeLike<any>>,
-                    asyncCustomSetter?: AsyncCustomSetter
-                }): Observable<TObject> {
+            extraOptions?: AsyncMergeWithExtraOptions): Observable<TObject> {
         return of(null).pipe(
             flatMap(() => {
-                console.log(object.constructor.name);
+                // console.log(object.constructor.name);
                 if (!extraOptions) {
                     extraOptions = {};
                 }
@@ -42,9 +47,23 @@ export namespace LodashLike {
                     return of(object);
                 }
                 const allObsArr: Observable<any>[] = [];
-        
+                const prpsSet = new Set<string>();
+                const finalPrpsArr: string[] =  [];
                 for (const propt in source) {
-                    let prpSourceValue = source[propt];
+                    prpsSet.add(propt);
+                }
+                if (extraOptions.considerObjectProperties && !isNull(object)) {
+                    for (const propt in object) {
+                        prpsSet.add(propt);
+                    }
+                }
+                for (const prpItem of Array.from(prpsSet)) {
+                    if(!extraOptions.ignorePropeties || !testPatterns(prpItem, extraOptions.ignorePropeties)) {
+                        finalPrpsArr.push(prpItem);
+                    }                    
+                }
+                for (const propt of finalPrpsArr) {
+                    let prpSourceValue = (source as any)[propt];
                     let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
         
                     let newValue$: Observable<any>;
@@ -75,7 +94,7 @@ export namespace LodashLike {
                     newValue$ = newValue$.pipe(
                         !extraOptions.asyncCustomSetter?
                             tap((newValue) => {
-                                console.log((newValue$ as any).fooid);
+                                // console.log((newValue$ as any).fooid);
                                 visitedMap.set(prpSourceValue, newValue);
                                 set(object, propt, newValue);
                             }) :
@@ -90,8 +109,9 @@ export namespace LodashLike {
                 return combineFirstSerial(allObsArr).pipe(
                     map(() => {
                         return object;
-                    }),
-                    timeoutDecorateRxOpr()
+                    })
+                    // ,
+                    // timeoutDecorateRxOpr()
                 );
             })
         );
@@ -147,15 +167,17 @@ export namespace LodashLike {
     export function mergeWith<TObject, TSource>(object: TObject, source: TSource, customizer: MergeWithCustomizer, noObjects?: Set<TypeLike<any>>): TObject {
         return mergeWithDeep(object, source, customizer, new Map());
     }
+    export interface AsyncMergeWithExtraOptions {
+        customizer?: AsyncMergeWithCustomizer,
+        noObjects?: Set<TypeLike<any>>,
+        asyncCustomSetter?: AsyncCustomSetter,
+        considerObjectProperties?: boolean,
+        ignorePropeties?: RegExp[]
+    }
     export function asyncMergeWith<TObject, TSource>(
-        object: TObject,
-        source: TSource,
-        extraOptions?: 
-            {
-                customizer?: AsyncMergeWithCustomizer,
-                noObjects?: Set<TypeLike<any>>,
-                asyncCustomSetter?: AsyncCustomSetter
-            }): Observable<TObject> {
+            object: TObject,
+            source: TSource,
+            extraOptions?: AsyncMergeWithExtraOptions): Observable<TObject> {
         return asyncMergeWithDeep(object, source, new Map(), extraOptions);
     }
 

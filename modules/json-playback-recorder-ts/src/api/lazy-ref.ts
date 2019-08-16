@@ -1,5 +1,5 @@
 import { PlayerMetadatas } from "./player-metadatas";
-import { Subject, PartialObserver, Observable } from "rxjs";
+import { Subject, PartialObserver, Observable, BehaviorSubject } from "rxjs";
 import { ConsoleLike } from "./recorder-config";
 import { Readable } from "stream";
 
@@ -327,7 +327,7 @@ export class LazyRef<L extends object, I> extends Subject<L> {
     signatureStr: string;
     bMdRefererObj: PlayerMetadatas;
     bMdLazyLoadedObj: PlayerMetadatas;
-    bMdPlayerObjectIdMetadata: PlayerMetadatas;
+    pbMdRefererPlayerObjectId: PlayerMetadatas;
 
     consoleLike: ConsoleLike;
 	consoleLikeSubs: ConsoleLike;

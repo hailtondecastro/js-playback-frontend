@@ -222,13 +222,14 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
                     );
+                asyncCount.doNonObservableIncrement();
                 fromDirectRaw$.subscribe((streamStr) => {
                     chai.expect(originalValue).to.eq(streamStr);
                 });
             })
 
             asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(7);
+                chai.expect(asyncCount.count).to.eq(8);
                 done();
             });
         });
@@ -272,6 +273,7 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 );
 
             fromDirectRaw$.subscribe((stream) => {
+                asyncCount.doNonObservableIncrement();
                 stream.setEncoding('utf8');
                 let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
                     .pipe(
@@ -315,7 +317,7 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
             })
 
             asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(7);
+                chai.expect(asyncCount.count).to.eq(8);
                 done();
             });
         });

@@ -793,16 +793,17 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     }
 
     private mayDoNextHelper(isValueByFieldProcessor: {value: boolean}, fieldEtc: FieldEtc<L, any>, newLazyLoadedObj: L) {
-        if (newLazyLoadedObj !== this._lazyLoadedObj) {
-            this._lazyLoadedObj = newLazyLoadedObj;
+        const thisLocal = this;
+        if (newLazyLoadedObj !== thisLocal._lazyLoadedObj) {
+            thisLocal._lazyLoadedObj = newLazyLoadedObj;
             if (!isValueByFieldProcessor.value && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
-                if (this.lazyLoadedObj) {
-                    this.session.registerEntityAndLazyref(this.lazyLoadedObj, this);
+                if (thisLocal.lazyLoadedObj) {
+                    thisLocal.session.registerEntityAndLazyref(thisLocal.lazyLoadedObj, thisLocal);
                 }
             }
 
-            if (this._needCallNextOnSetLazyObj) {
-                this.next(this.lazyLoadedObj);
+            if (thisLocal._needCallNextOnSetLazyObj) {
+                thisLocal.next(thisLocal.lazyLoadedObj);
             }
         }
     }
@@ -850,7 +851,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     thisLocal.consoleLikeSubs.debug(
                         '(this.respObs == null)\n'
                         +'Means that we already subscribed to an earlier moment in the Observable of Reponse.\n'
-                        +'We will simply call the super.subscribe');
+                        +'We will simply call the super.subscribe and call  next()');
                 }
             } else if (this.session.getCachedBySignature(this.signatureStr)) {
                 if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -1026,16 +1027,16 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     //completed
                 })
             }
+        }
 
-            if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                thisLocal.consoleLikeSubs.debug(
-                    '(thisLocal.lazyLoadedObj != null)\n'
-                    +'It may mean that we already have subscribed yet in the Observable of Response\n '
-                    +'or this was created with lazyLoadedObj already loaded.');
-            }
-            if (!observerNew.closed && !thisLocalNextOnAsync.value) {
-                thisLocal.next(thisLocal.lazyLoadedObj);
-            }
+        if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+            thisLocal.consoleLikeSubs.debug(
+                '(thisLocal.lazyLoadedObj != null)\n'
+                +'It may mean that we already have subscribed yet in the Observable of Response\n '
+                +'or this was created with lazyLoadedObj already loaded.');
+        }
+        if (!observerNew.closed && !thisLocalNextOnAsync.value) {
+            thisLocal.next(thisLocal.lazyLoadedObj);
         }
 
         return resultSubs;

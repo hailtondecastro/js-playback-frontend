@@ -80,6 +80,7 @@ export class RecorderManagerDefault implements RecorderManager {
 			let otmCollectionType: TypeLike<any> = null;
 			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
+			let objectIdPrpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, owner);
 			// let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P>;
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
@@ -89,7 +90,7 @@ export class RecorderManagerDefault implements RecorderManager {
 					fieldProcessor = config.getTypeProcessor(prpGenType.gType);
 				}
 				if (!fieldProcessor) {
-					let fieldProcessor = config.getTypeProcessor(prpType);
+					fieldProcessor = config.getTypeProcessor(prpType);
 				}
 				if (!fieldProcessor) {
 					fieldProcessor = {};
@@ -143,6 +144,7 @@ export class RecorderManagerDefault implements RecorderManager {
 				{
 					prpType: prpType,
 					prpGenType: prpGenType,
+					objectIdPrpType: objectIdPrpType,
 					lazyLoadedObjType: lazyLoadedObjType,
 					otmCollectionType: otmCollectionType,
 					lazyRefMarkerType: lazyRefMarkerType,

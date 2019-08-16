@@ -20,7 +20,7 @@ import { AsyncCount } from './async-count.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
-                    console.log(new Date() + ': ' + value);
+                    // console.log(new Date() + ': ' + value);
                     executionArr.push(value);
                 })
             );
@@ -29,8 +29,8 @@ import { AsyncCount } from './async-count.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
-                    console.log(new Date() + ': ' + value);
-                    executionArr.push(value);
+                    // console.log(new Date() + ': ' + value);
+                    // executionArr.push(value);
                 })
             );
             let obs2$: Observable<number> = of(2).pipe(
@@ -38,7 +38,7 @@ import { AsyncCount } from './async-count.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
-                    console.log(new Date() + ': ' + value);
+                    // console.log(new Date() + ': ' + value);
                     executionArr.push(value);
                 })                
             );
@@ -47,7 +47,7 @@ import { AsyncCount } from './async-count.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr(),
                 tap((value) => {
-                    console.log(new Date() + ': ' + value);
+                    // console.log(new Date() + ': ' + value);
                     executionArr.push(value);
                 })
             );
