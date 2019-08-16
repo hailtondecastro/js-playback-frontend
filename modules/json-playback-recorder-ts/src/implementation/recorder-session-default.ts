@@ -48,8 +48,8 @@ export interface RecorderSessionImplementor extends RecorderSession {
     mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
     /** Framework internal use. */
     flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
-    /** Framework internal use. */
-    combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any>;
+    ///** Framework internal use. */
+    //combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any>;
     /** Framework internal use. */
     flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
     /** Framework internal use. */
@@ -361,9 +361,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let result$: Observable<void>;
 
         if (thisLocal._asyncTasksWaitingArrNew.size > 0) {
-            result$ = thisLocal.combineFirstSerialPreserveAllFlags(Array.from(thisLocal._asyncTasksWaitingArrNew))
+            //result$ = thisLocal.combineFirstSerialPreserveAllFlags(Array.from(thisLocal._asyncTasksWaitingArrNew))
+            result$ = combineFirstSerial(Array.from(thisLocal._asyncTasksWaitingArrNew))
                 .pipe(
                     thisLocal.logRxOpr('createSerialAsyncTasksWaitingNew'),
+                    map(() => { return undefined; }),
                     timeout(3000)
                     //,
                     // flatMap(() => {
@@ -565,7 +567,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             }
 
-            let combineFirstSerial$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr);
+            //let combineFirstSerial$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr);
+            let combineFirstSerial$ = combineFirstSerial(asyncCombineObsArr);
             // if (asyncCombineObsArr.length > 0) {
             //     combineFirstSerial$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(share());
             // } else {
@@ -997,7 +1000,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             }
         }
-        const asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        //const asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        const asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr).pipe(
             // thisLocal.registerExposedObservablesRxOpr(),
             // share(),
             map(() => {
@@ -1308,7 +1312,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             const resultElement = (playerSnapshot.wrappedSnapshot as any[])[index];
             asyncCombineObsArr.push(this.processResultEntityPriv(entityType, resultElement, refMap));
         }
-        const asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        //const asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        const asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr).pipe(
             tap(() => {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntityArray<L>(). wrappedSnapshot:');
@@ -1457,7 +1462,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             action.ownerCreationId = this._nextCreationId;
             this.addTapeAction(action);
         }
-        let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        //let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        let asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr).pipe(
             map(() => {
                 return entityObj;
             })
@@ -1708,7 +1714,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             }
                         }
                         if (idAndStreamObsArr.length > 0) {
-                            return thisLocal.combineFirstSerialPreserveAllFlags(idAndStreamObsArr).pipe(share());
+                            //return thisLocal.combineFirstSerialPreserveAllFlags(idAndStreamObsArr).pipe(share());
+                            return combineFirstSerial(idAndStreamObsArr).pipe(share());
                         } else {
                             return of([]);
                         }
@@ -1962,7 +1969,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
         let result$: Observable<void>;
         thisLocal.lazyLoadTemplateCallback(lazyLoadedColl, () => {
-            result$ = thisLocal.combineFirstSerialPreserveAllFlags(realItemObsArr)
+            //result$ = thisLocal.combineFirstSerialPreserveAllFlags(realItemObsArr)
+            result$ = combineFirstSerial(realItemObsArr)
                 .pipe(
                     thisLocal.mapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, (realItemArr) => {
                         for (const realItem of realItemArr) {                           
@@ -2044,7 +2052,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             try {
 
                 const asyncCustomSetterResult$ = of(undefined).pipe(
-                    thisLocal.mapKeepAllFlagsRxOpr(entity, () => {
+                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(entity, () => {
                         try {
                             if (entity !== futureAsyncCustomSetterArgs.object) {
                                 throw new Error('This should not happen');
@@ -2125,7 +2133,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
                 return resultEntityAlreadyProcessed;
             }),
-            thisLocal.flatMapKeepAllFlagsRxOpr(resultEntityAlreadyProcessed.entityValue, (resultEntityAlreadyProcessed) => {
+            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(resultEntityAlreadyProcessed.entityValue, (resultEntityAlreadyProcessed) => {
                 const asyncCombineObsArr: Observable<any>[] = [];
                 //const breackPointFlag = { fooid: ''};
                 if (!wrappedSnapshotField) {
@@ -2159,7 +2167,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             }
                         );
                         const asyncMergeWith$ = of(null).pipe(
-                            thisLocal.flatMapKeepAllFlagsRxOpr(entityValue, () => {
+                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(entityValue, () => {
                                 return LodashLike.asyncMergeWith(
                                     entityValue as any,
                                     wrappedSnapshotField, 
@@ -2198,7 +2206,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     // }
                 }
         
-                let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                //let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                let asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr).pipe(
                     map(() => {
                         //console.log(breackPointFlag.fooid);
                         return entityValue;
@@ -2243,7 +2252,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         //const asyncCombineObsArr: Observable<any>[] = [];
         const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         return of(null).pipe(
-            thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                 let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(fieldEtc.prpGenType, literalLazyObj, refererObj, refererKey, refMap);
 
                 // return of(null).pipe(
@@ -2259,7 +2268,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 //asyncCombineObsArr.push(trySetPlayerObjectIdentifier$);
                 let tryGetFromObjectsBySignature$ = this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap);
                 resultVoid$ = resultVoid$.pipe(
-                    thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+                    thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                         return tryGetFromObjectsBySignature$;
                     }),
                     share()
@@ -2328,7 +2337,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                                         let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalItem, refMap)
                                                         processResultEntityPrivObsArr.push(processResultEntityPriv$);
                                                     }
-                                                    return thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                                    //return thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                                    return combineFirstSerial(processResultEntityPrivObsArr)
                                                         .pipe(
                                                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, (entityArr) => {
                                                                 for (const entityItem of entityArr) {
@@ -2386,7 +2396,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 
                                 if (!isValueByFieldProcessor.value && fieldEtc.lazyRefMarkerType !== LazyRefPrpMarker) {
                                     let setLazyObjOnLazyLoadingNoNext$ = of(null).pipe(
-                                        thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+                                        thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                                             return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalLazyObj, refMap);
                                         }),
                                         share(),
@@ -2517,7 +2527,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refererKey: string): Observable<LazyRef<L, I>> {
         const thisLocal = this;
         return of(null).pipe(
-            this.flatMapKeepAllFlagsRxOpr(null, () => {
+            this.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                 //const asyncCombineObsArr: Observable<any>[] = [];
                 let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, refererObj, refererKey);
                 if (!propertyOptions){
@@ -2527,14 +2537,14 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 let trySetPlayerObjectIdentifier$ = this.trySetPlayerObjectIdentifier(lr, genericNode, literalLazyObj, refMap);
                 //asyncCombineObsArr.push(trySetPlayerObjectIdentifier$);
                 let tryGetFromObjectsBySignature$ = trySetPlayerObjectIdentifier$.pipe(
-                    this.flatMapKeepAllFlagsRxOpr(null, () => {
+                    this.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                         return this.tryGetFromObjectsBySignature(lr, literalLazyObj, refMap);
                     }),
                     share()
                 );
 
                 let result$ = tryGetFromObjectsBySignature$.pipe(
-                    this.mapKeepAllFlagsRxOpr(null, () => {
+                    this.mapJustOnceKeepAllFlagsRxOpr(null, () => {
                         if (lr.lazyLoadedObj) {
                             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
@@ -2614,7 +2624,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const thisLocal = this;
         const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         return of(null).pipe(
-            thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                 // if (!literalLazyObj){
                 //     throw new Error('literalLazyObj nao pode ser nula');
                 // }
@@ -2728,7 +2738,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refMap: Map<Number, any>): Observable<void> {
         const thisLocal = this;
         return of(null).pipe(
-            thisLocal.flatMapKeepAllFlagsRxOpr(null, () => {
+            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                 let result$: Observable<void> = of(null);
                 // if (!literalLazyObj){
                 //     throw new Error('literalLazyObj nao pode ser nula');
@@ -2935,7 +2945,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             //resolveMetadatas is synchronous, so everything here need to be into a
             // piped block! Can you see that?! Sometimes i can't!
             return of(null).pipe(
-                thisLocal.flatMapKeepAllFlagsRxOpr(object, () => {
+                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(object, () => {
                     const asyncCombineObsArr: Observable<any>[] = [];
                     const keepAllFlagsTemplateCallback = thisLocal.createKeepAllFlagsTemplateCallback(object);
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
@@ -3078,7 +3088,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                         let processResultEntityPriv$ = thisLocal.processResultEntityPriv(arrItemType, srcValue[index], refMap);
                                         processResultEntityPrivObsArr.push(processResultEntityPriv$);
                                     }
-                                    let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                    //let processResultEntityPrivArr$ = thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                    let processResultEntityPrivArr$ = combineFirstSerial(processResultEntityPrivObsArr)
                                         .pipe(
                                             thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(correctSrcValueColl, (entityArr) => {
                                                 for (const entityItem of entityArr) {
@@ -3257,7 +3268,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     // if (!LodashLike.isNil(isDoneRef.result) && isDoneRef.result !== DummyUndefinedForMergeAsync) {
                     //     return of(isDoneRef.result);
                     // } else {
-                    return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                    //return thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+                    return combineFirstSerial(asyncCombineObsArr).pipe(
                         map(() => {
                             //for debug purpose
                             key === 'detailAEntCol';
@@ -3280,17 +3292,17 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
 
-    combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any> {
-        let obsArrNew = obsArr.slice();
-        for (let index = 0; index < obsArrNew.length; index++) {
-            obsArrNew[index] = obsArrNew[index].pipe(
-                this.mapKeepAllFlagsRxOpr(lazyLoadedObj, (value: any) => {
-                    return value;
-                })
-            );            
-        }
-        return combineFirstSerial(obsArrNew);
-    }
+    // combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any> {
+    //     let obsArrNew = obsArr.slice();
+    //     for (let index = 0; index < obsArrNew.length; index++) {
+    //         obsArrNew[index] = obsArrNew[index].pipe(
+    //             this.mapJustOnceKeepAllFlagsRxOpr(lazyLoadedObj, (value: any) => {
+    //                 return value;
+    //             })
+    //         );            
+    //     }
+    //     return combineFirstSerial(obsArrNew);
+    // }
 
     public registerEntityAndLazyref(entity: object, lazyRef: LazyRefImplementor<any, any>): void {
         if (!lazyRef.isLazyLoaded()) {
@@ -3481,7 +3493,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 asyncCombineObsArr.push(putOnCacheGetFromCache$);
             }
         }
-        let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        //let asyncCombineArr$ = thisLocal.combineFirstSerialPreserveAllFlags(asyncCombineObsArr).pipe(
+        let asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr).pipe(
             map(() => {
                 return resultObservableValue;
             })

@@ -751,7 +751,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         //     this.next(lazyLoadedObj);
         // }
         
-        let asyncCombineArr$ = thisLocal.session.combineFirstSerialPreserveAllFlags(asyncCombineObsArr);
+        //let asyncCombineArr$ = thisLocal.session.combineFirstSerialPreserveAllFlags(asyncCombineObsArr);
+        let asyncCombineArr$ = combineFirstSerial(asyncCombineObsArr);
         return asyncCombineArr$.pipe(
             map(() => {
                 return undefined;

@@ -63,6 +63,9 @@ export namespace LodashLike {
                     }                    
                 }
                 for (const propt of finalPrpsArr) {
+                    //for debug purpose
+                    finalPrpsArr === finalPrpsArr;
+
                     let prpSourceValue = (source as any)[propt];
                     let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
         
@@ -99,6 +102,8 @@ export namespace LodashLike {
                                 set(object, propt, newValue);
                             }) :
                             flatMap((newValue) => {
+                                //for debug purpose
+                                propt === 'detailAEntCol';
                                 visitedMap.set(prpSourceValue, newValue);
                                 return extraOptions.asyncCustomSetter(object, propt, newValue);
                             })
@@ -108,6 +113,9 @@ export namespace LodashLike {
         
                 return combineFirstSerial(allObsArr).pipe(
                     map(() => {
+                        //for debug purpose                        
+                        allObsArr === allObsArr;
+
                         return object;
                     })
                     // ,
