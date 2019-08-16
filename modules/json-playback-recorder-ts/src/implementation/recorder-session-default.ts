@@ -1946,7 +1946,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
     validatePlayerSideResponseLike(responseLike: ResponseLike<{} | NodeJS.ReadableStream>): void {
-        let isResponseBodyStream = !responseLike.body && (responseLike.body as NodeJS.ReadableStream).pipe && (responseLike.body as NodeJS.ReadableStream);
+        let isResponseBodyStream = responseLike.body && (responseLike.body as NodeJS.ReadableStream).pipe;
         if (!isResponseBodyStream) {
             if (!responseLike || !responseLike.body || !(responseLike.body as PlayerSnapshot).wrappedSnapshot) {
                 throw new Error('Invalid player side responseLike body object: \n' + this.jsonStringfyWithMax(responseLike.body));
@@ -2301,113 +2301,119 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 resultVoid$ = resultVoid$.pipe(
                     thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
                         const resultVoidInnerResultRef = {value: of(undefined)};
-                        if (lr.lazyLoadedObj) {
-                            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                                thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
-                                thisLocal.consoleLike.debug(lr.lazyLoadedObj);
-                                thisLocal.consoleLike.groupEnd();
-                            }
-                            resultVoidInnerResultRef.value = of(undefined);
+                        if (LodashLike.isNil(literalLazyObj)) {
+                            //LodashLike.isNil(srcValue) means LazyRef object instance is null.
+                            let setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(null);
+                            resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
                         } else {
-                            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                                thisLocal.consoleLike.debug('LazyRef.lazyLoadedObj is not setted yet');
-                            }
-                            //let lazyLoadedObjType: TypeLike<any> = null;
-                            
-                            if (fieldEtc.otmCollectionType) {
-                                // if (!(genericNode.gParams[0] instanceof GenericNode) || (<GenericNode>genericNode.gParams[0]).gParams.length <=0) {
-                                //     throw new Error('LazyRef is not correctly defined: \'' + refererKey + '\' on ' + refererObj.constructor);
-                                // }
-                                // let collTypeParam: TypeLike<any> =  null;
-                                // if ((<GenericNode>genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
-                                //     collTypeParam = (<GenericNode>(<GenericNode>genericNode.gParams[0]).gParams[0]).gType;
-                                // } else {
-                                //     collTypeParam = <TypeLike<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
-                                // }
-                                const lazyCollection = this.createCollection(fieldEtc.otmCollectionType, refererObj, refererKey);
-                                
-                                thisLocal.lazyLoadTemplateCallback(lazyCollection, () => {
-                                    const setLazyObjOnLazyLoadingNoNext$ = of(undefined).pipe(
-                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
-                                                return lr.setLazyObjOnLazyLoadingNoNext(lazyCollection)
-                                            }),
-                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
-                                                let processResultEntityPrivObsArr: Observable<L>[] = [];
-                                                    for (const literalItem of literalLazyObj) {
-                                                        let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalItem, refMap)
-                                                        processResultEntityPrivObsArr.push(processResultEntityPriv$);
-                                                    }
-                                                    //return thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
-                                                    return combineFirstSerial(processResultEntityPrivObsArr)
-                                                        .pipe(
-                                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, (entityArr) => {
-                                                                for (const entityItem of entityArr) {
-                                                                    thisLocal.addOnCollection(lazyCollection, entityItem);                                                    
-                                                                }
-                                                                return of(null);
-                                                            })
-                                                        )
-                                                        .pipe(share());
-                                            })
-                                        );
-                                        //asyncCombineObsArr.splice(0, asyncCombineObsArr.length)
-                                    resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
-                                });
+                            if (lr.lazyLoadedObj) {
+                                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLike.group('LazyRef.lazyLoadedObj is already setted: ');
+                                    thisLocal.consoleLike.debug(lr.lazyLoadedObj);
+                                    thisLocal.consoleLike.groupEnd();
+                                }
+                                resultVoidInnerResultRef.value = of(undefined);
                             } else {
-                                let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.manager.config);
-                                if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
-                                    if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                                        isValueByFieldProcessor.value = true;
-                                        let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo);
-                                        // callFromLiteralValue$ = callFromLiteralValue$.pipe(this.addSubscribedObsRxOpr());
-                                        callFromLiteralValue$ = callFromLiteralValue$.pipe(
-                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, (value) => {
-                                                //here for debug purpose
-                                                refererKey === 'blobLazyA';
-
-                                                return lr.setLazyObjOnLazyLoadingNoNext(value).pipe(
-                                                    map((slValue) => {
-                                                        //here for debug purpose
-                                                        refererKey === 'blobLazyA';
-
-                                                        return value;
-                                                    })
-                                                );
-                                            })
-                                        );
-                                        resultVoidInnerResultRef.value = callFromLiteralValue$;
-                                        //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
+                                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                                    thisLocal.consoleLike.debug('LazyRef.lazyLoadedObj is not setted yet');
+                                }
+                                //let lazyLoadedObjType: TypeLike<any> = null;
+                                
+                                if (fieldEtc.otmCollectionType) {
+                                    // if (!(genericNode.gParams[0] instanceof GenericNode) || (<GenericNode>genericNode.gParams[0]).gParams.length <=0) {
+                                    //     throw new Error('LazyRef is not correctly defined: \'' + refererKey + '\' on ' + refererObj.constructor);
+                                    // }
+                                    // let collTypeParam: TypeLike<any> =  null;
+                                    // if ((<GenericNode>genericNode.gParams[0]).gParams[0] instanceof GenericNode) {
+                                    //     collTypeParam = (<GenericNode>(<GenericNode>genericNode.gParams[0]).gParams[0]).gType;
+                                    // } else {
+                                    //     collTypeParam = <TypeLike<any>>(<GenericNode>genericNode.gParams[0]).gParams[0];
+                                    // }
+                                    const lazyCollection = this.createCollection(fieldEtc.otmCollectionType, refererObj, refererKey);
+                                    
+                                    thisLocal.lazyLoadTemplateCallback(lazyCollection, () => {
+                                        const setLazyObjOnLazyLoadingNoNext$ = of(undefined).pipe(
+                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
+                                                    return lr.setLazyObjOnLazyLoadingNoNext(lazyCollection)
+                                                }),
+                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, () => {
+                                                    let processResultEntityPrivObsArr: Observable<L>[] = [];
+                                                        for (const literalItem of literalLazyObj) {
+                                                            let processResultEntityPriv$ = thisLocal.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalItem, refMap)
+                                                            processResultEntityPrivObsArr.push(processResultEntityPriv$);
+                                                        }
+                                                        //return thisLocal.combineFirstSerialPreserveAllFlags(processResultEntityPrivObsArr)
+                                                        return combineFirstSerial(processResultEntityPrivObsArr)
+                                                            .pipe(
+                                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(lazyCollection, (entityArr) => {
+                                                                    for (const entityItem of entityArr) {
+                                                                        thisLocal.addOnCollection(lazyCollection, entityItem);                                                    
+                                                                    }
+                                                                    return of(null);
+                                                                })
+                                                            )
+                                                            .pipe(share());
+                                                })
+                                            );
+                                            //asyncCombineObsArr.splice(0, asyncCombineObsArr.length)
+                                        resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
+                                    });
+                                } else {
+                                    let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.fielEtcCacheMap, refererObj, refererKey, this.manager.config);
+                                    if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
+                                        if (fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
+                                            isValueByFieldProcessor.value = true;
+                                            let callFromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(literalLazyObj, fieldEtc.fieldInfo);
+                                            // callFromLiteralValue$ = callFromLiteralValue$.pipe(this.addSubscribedObsRxOpr());
+                                            callFromLiteralValue$ = callFromLiteralValue$.pipe(
+                                                thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, (value) => {
+                                                    //here for debug purpose
+                                                    refererKey === 'blobLazyA';
+    
+                                                    return lr.setLazyObjOnLazyLoadingNoNext(value).pipe(
+                                                        map((slValue) => {
+                                                            //here for debug purpose
+                                                            refererKey === 'blobLazyA';
+    
+                                                            return value;
+                                                        })
+                                                    );
+                                                })
+                                            );
+                                            resultVoidInnerResultRef.value = callFromLiteralValue$;
+                                            //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
+                                        } else {
+                                            let setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
+                                            resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
+                                        }
                                     } else {
-                                        let setLazyObjOnLazyLoadingNoNext$ = lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
+                                        let setLazyObjOnLazyLoadingNoNext$ = of(null)
+                                            .pipe(
+                                                flatMapJustOnceRxOpr((resultEntity) => {
+                                                    return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType as TypeLike<L>, literalLazyObj, refMap);
+                                                }),
+                                                map(() => {
+                                                })
+                                            );
+                                        //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
                                         resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
                                     }
-                                } else {
-                                    let setLazyObjOnLazyLoadingNoNext$ = of(null)
-                                        .pipe(
-                                            flatMapJustOnceRxOpr((resultEntity) => {
-                                                return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType as TypeLike<L>, literalLazyObj, refMap);
+                    
+                                    if (!isValueByFieldProcessor.value && fieldEtc.lazyRefMarkerType !== LazyRefPrpMarker) {
+                                        let setLazyObjOnLazyLoadingNoNext$ = of(null).pipe(
+                                            thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
+                                                return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalLazyObj, refMap);
                                             }),
-                                            map(() => {
-                                            })
+                                            share(),
+                                            map(() => {})
                                         );
-                                    //asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
-                                    resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
-                                }
-                
-                                if (!isValueByFieldProcessor.value && fieldEtc.lazyRefMarkerType !== LazyRefPrpMarker) {
-                                    let setLazyObjOnLazyLoadingNoNext$ = of(null).pipe(
-                                        thisLocal.flatMapJustOnceKeepAllFlagsRxOpr(null, () => {
-                                            return this.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalLazyObj, refMap);
-                                        }),
-                                        share(),
-                                        map(() => {})
-                                    );
-                                    // .pipe(
-                                    //     flatMapJustOnceRxOpr((resultEntity) => {
-                                    //         return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
-                                    //     })
-                                    // )
-                                    resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
+                                        // .pipe(
+                                        //     flatMapJustOnceRxOpr((resultEntity) => {
+                                        //         return this.processResultEntityPriv(lazyLoadedObjType, literalLazyObj, refMap);
+                                        //     })
+                                        // )
+                                        resultVoidInnerResultRef.value = setLazyObjOnLazyLoadingNoNext$;
+                                    }
                                 }
                             }
                         }
@@ -2418,7 +2424,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 return resultVoid$.pipe(
                     map(() => {
                         //for debug purpose
-                        refererKey === 'detailAEntCol';
+                        refererKey === 'detailAEntCol'; literalLazyObj === literalLazyObj;
 
                         return lr;
                     }),
@@ -3115,6 +3121,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                     let createNotLoadedLazyRef$ = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key)
                                         .pipe(
                                             thisLocal.mapJustOnceKeepAllFlagsRxOpr(object, (lazyRef) => {
+                                                //for debug purpose
+                                                srcValue === srcValue;
+
                                                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                                     thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
                                                         ' function => createNotLoadedLazyRef$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()).'+
@@ -3124,7 +3133,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                                 }
                                                 isDoneRef.result = lazyRef;
                                                 isDoneRef.value = true;
-                                                LodashLike.set(object, key, isDoneRef.result);
+                                                //LodashLike.set(object, key, isDoneRef.result);
                                                 return lazyRef;
                                             })
                                         );

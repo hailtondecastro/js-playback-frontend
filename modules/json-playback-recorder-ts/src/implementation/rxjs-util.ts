@@ -1,5 +1,5 @@
-import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge, throwError } from "rxjs";
-import { map, flatMap, tap, share, take, mergeMap, timeout, catchError } from "rxjs/operators";
+import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge, throwError, PartialObserver } from "rxjs";
+import { map, flatMap, tap, share, take, mergeMap, timeout, catchError, delay } from "rxjs/operators";
 import { a } from "@angular/core/src/render3";
 import { LodashLike } from "./lodash-like";
 
@@ -11,82 +11,146 @@ const dummyMarker = new DummyMarker();
 
 const repeatedValueSet = new Set();
 
-export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
-    const resutlArr: T[] = new Array<T>(array.length);
-    const resutltObsArrRef = {value: of(dummyMarker) as Observable<T>};
+// export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
+//     const resutlArr: T[] = new Array<T>(array.length);
+//     const resutltObsArrRef = {value: of(dummyMarker) as Observable<T>};
     
-    const errorForStack = new Error('combineFirstSerial. Possible cycle!');
+//     const errorForStack = new Error('combineFirstSerial. Possible cycle!');
 
-    // for (let i = 0; i < array.length; i++) {
-    //     const element = array[i];
-    //     for (let j = i + 1; j < array.length; j++) {
-    //         const elementOther = array[j];
-    //         if (element === elementOther) {
-    //             console.log('same element\n' + errorForStack.stack);
-    //         }
-    //     }
-    // }
+//     // for (let i = 0; i < array.length; i++) {
+//     //     const element = array[i];
+//     //     for (let j = i + 1; j < array.length; j++) {
+//     //         const elementOther = array[j];
+//     //         if (element === elementOther) {
+//     //             console.log('same element\n' + errorForStack.stack);
+//     //         }
+//     //     }
+//     // }
 
+
+//     for (let index = 0; index < array.length; index++) {
+  
+//         const element$ = array[index];
+//         const indexRef = {value: index};
+//         resutltObsArrRef.value = resutltObsArrRef.value.pipe(
+//             flatMap((resultT) => {
+//                 //console.log((array as any).fooid);
+//                 return element$;
+//             }),
+//             tap((element) => {
+//                 if (element != dummyMarker) {
+//                     //console.log((array as any).fooid);
+//                     resutlArr[indexRef.value] = element;
+//                 }
+//             }),
+//             share()
+//             // ,tap((value) => {
+//             //     if (!LodashLike.isNil(value)) {
+//             //         if(repeatedValueSet.has(value)) {
+//             //             console.error(errorForStack + '\n' + errorForStack.stack);
+//             //         } else {
+//             //             repeatedValueSet.add(value);
+//             //         }
+//             //     } 
+//             // })
+//         );
+
+//         // if (!resutltObsArrRef.value) {
+//         //     resutltObsArrRef.value = element$.pipe(
+//         //         flatMapJustOnceRxOpr((resultT) => {
+//         //             console.log(array.length);
+//         //             resutlArr[indexRef.value] = resultT;
+//         //             return element$;
+//         //         })
+//         //     );
+//         // } else {
+//         //     resutltObsArrRef.value = resutltObsArrRef.value.pipe(
+//         //         flatMapJustOnceRxOpr((resultT) => {
+//         //             console.log(array.length);
+//         //             resutlArr[indexRef.value] = resultT;
+//         //             return element$;
+//         //         })
+//         //     );
+//         // }
+//     }
+//     // if (array.length > 0) {
+//         return resutltObsArrRef.value.pipe(
+//             // mapJustOnceRxOpr((resultT) => {
+//             //     return resutlArr;
+//             // })
+//             map((resultT) => {
+//                 return resutlArr;
+//             })
+//             // ,
+//             // timeoutDecorateRxOpr()
+//         );
+//     // } else {
+//     //     return of([]);
+//     // }
+// }
+
+export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
+    if (!array || array.length < 1) {
+        return of ([]);
+    }
+    
+    const resutlArr: T[] = new Array<T>(array.length);
+    const decoratedArray = new Array<Observable<T>>(array.length);
 
     for (let index = 0; index < array.length; index++) {
-  
-        const element$ = array[index];
-        const indexRef = {value: index};
-        resutltObsArrRef.value = resutltObsArrRef.value.pipe(
-            flatMap((resultT) => {
-                //console.log((array as any).fooid);
-                return element$;
-            }),
-            tap((element) => {
-                if (element != dummyMarker) {
-                    //console.log((array as any).fooid);
-                    resutlArr[indexRef.value] = element;
-                }
-            }),
-            share()
-            // ,tap((value) => {
-            //     if (!LodashLike.isNil(value)) {
-            //         if(repeatedValueSet.has(value)) {
-            //             console.error(errorForStack + '\n' + errorForStack.stack);
-            //         } else {
-            //             repeatedValueSet.add(value);
-            //         }
-            //     } 
-            // })
+        decoratedArray[index] = array[index].pipe(
+            delay(0)
         );
-
-        // if (!resutltObsArrRef.value) {
-        //     resutltObsArrRef.value = element$.pipe(
-        //         flatMapJustOnceRxOpr((resultT) => {
-        //             console.log(array.length);
-        //             resutlArr[indexRef.value] = resultT;
-        //             return element$;
-        //         })
-        //     );
-        // } else {
-        //     resutltObsArrRef.value = resutltObsArrRef.value.pipe(
-        //         flatMapJustOnceRxOpr((resultT) => {
-        //             console.log(array.length);
-        //             resutlArr[indexRef.value] = resultT;
-        //             return element$;
-        //         })
-        //     );
-        // }
     }
-    // if (array.length > 0) {
-        return resutltObsArrRef.value.pipe(
-            // mapJustOnceRxOpr((resultT) => {
-            //     return resutlArr;
-            // })
-            map((resultT) => {
-                return resutlArr;
-            })
-            // ,
-            // timeoutDecorateRxOpr()
-        );
-    // } else {
-    //     return of([]);
-    // }
+    const indexRef = { value: 0 };
+    const o$ = new Observable<T[] | T>(
+        (subscriber) => {
+            let subscriberGoNextDecorated: PartialObserver<T[] | T> = 
+                {
+                    next: (value) => {
+                        resutlArr[indexRef.value] = value as T;
+                        indexRef.value++;
+                        if (!subscriber.closed) {
+                            if (indexRef.value < array.length) {
+                                const subs = decoratedArray[indexRef.value].subscribe(
+                                    {
+                                        next: (nextValue) => {
+                                            try {
+                                                if (indexRef.value < array.length) {
+                                                    subscriberGoNextDecorated.next(nextValue);
+                                                } else {
+                                                }
+                                            } finally {
+                                                if (subs) {
+                                                    subs.unsubscribe();
+                                                }
+                                            }
+                                        },
+                                        error: (err) => {
+                                            if (subs) {
+                                                subs.unsubscribe();
+                                            }
+                                            subscriber.error(err);
+                                        }
+                                    }
+                                );
+                            } else {
+                                subscriber.next(resutlArr);
+                                subscriber.complete();
+                            }
+                        } else {
+
+                        }
+                    },
+                    error: subscriber.error,
+                    complete: () => {
+                        //nothing
+                    }
+                };
+            decoratedArray[indexRef.value].subscribe(subscriberGoNextDecorated);
+        }
+    );
+    return o$ as Observable<T[]>;
 }
 
 export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
