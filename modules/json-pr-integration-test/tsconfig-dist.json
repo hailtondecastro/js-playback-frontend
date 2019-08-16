@@ -7,7 +7,7 @@
     "declaration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "module": "commonjs",
+    "module": "esnext",
     "moduleResolution": "node",
     "outDir": "./dist",
     "noImplicitAny": true,
@@ -22,7 +22,9 @@
     "skipLibCheck": true,
     "target": "es5",
     "resolveJsonModule": true,
-    "esModuleInterop": true  
+    "esModuleInterop": true,
+    "alwaysStrict": false,
+    "noImplicitUseStrict": true
   },
   "exclude": [
     "node_modules",
