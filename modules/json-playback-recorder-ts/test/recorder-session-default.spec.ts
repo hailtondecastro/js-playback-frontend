@@ -3,6 +3,7 @@ import {HttpResponse, HttpHeaders} from '@angular/common/http';
 import * as chai from 'chai';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
 import pSnapshotMasterLiteral from './master-a-test.json';
+import pSnapshotMasterList1000Literal from './master-a-list-1000-test.json';
 import pSnapshotMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
 import pSnapshotMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import pSnapshotMasterADetailAMinTestLiteral from './master-a-detail-a-min-test.json';
@@ -240,6 +241,83 @@ import { MasterMinEnt } from './entities/master-min-ent.js';
                 done();
             });
 
+        });
+
+        it('RecorderManagerDefault.master-a-list-1000-test-sync', 1 == 1 ? (done) => {done();} : (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
+
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
+
+            recorderSession = manager.createSession();
+            let masterAArr$: Observable<MasterAEnt[]> = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterList1000Literal)
+                .pipe(
+                    asyncCount.registerRxOpr(),
+                    asyncCountdown.registerRxOpr()
+                );
+            masterAArr$.subscribe(
+                {
+                    next: (masterA) => {
+                        masterA[0].blobLazyA.subscribe( 
+                            {
+                                next: (valueStream) => {
+                                    asyncCount.doNonObservableIncrement();
+                                    let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(valueStream, null)
+                                    .pipe(
+                                        asyncCount.registerRxOpr(),
+                                        asyncCountdown.registerRxOpr()
+                                    );
+                                    fromDirectRaw$.subscribe((streamStr) => {
+                                        asyncCount.doNonObservableIncrement();
+                                        chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr);
+                                    });
+                                },
+                                complete: () => {
+                                }
+                            }
+                        );
+                    }
+                }
+            );
+
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting();
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
+                done();
+            });
         });
 
         it('RecorderManagerDefault.master-a-test-async', (done) => {

@@ -21,7 +21,9 @@
       "node"
     ],
     "types": [
-      "@types/mocha"
+      "mocha",
+      "jasmine",
+      "node"
     ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
