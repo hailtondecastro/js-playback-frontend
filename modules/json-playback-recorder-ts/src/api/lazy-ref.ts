@@ -350,7 +350,7 @@ export class LazyRef<L extends object, I> extends Subject<L> {
      * TODO:
      * @param lazyLoadedObj 
      */
-    setLazyObj(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    setLazyObj(lazyLoadedObj: L): void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /**
      * true if it is lazy loaded.
      * @returns true if it is lazy loaded.

@@ -4,7 +4,7 @@ import { flatMap, map, finalize, tap, share } from 'rxjs/operators';
 import { RecorderConstants } from './recorder-constants';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { FieldEtc } from './field-etc';
-import { flatMapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
+import { flatMapJustOnceRxOpr, combineFirstSerial, mapJustOnceRxOpr } from './rxjs-util';
 import { TypeLike } from '../typeslike';
 import { ResponseLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
@@ -243,13 +243,12 @@ import { LodashLike } from './lodash-like';
 // }
 
 export class LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
-    setLazyObj(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
-    setLazyObjOnLazyLoading(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    setLazyObjOnLazyLoading(lazyLoadedObj: L): void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
-    setLazyObjNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    setLazyObjNoNext(lazyLoadedObj: L) : void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
-    setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
+    setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** Framework internal use. */
     notifyModification(lazyLoadedObj: L) : void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
     /** 
@@ -978,7 +977,16 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     getFromCache$
                         .pipe(
                             flatMapJustOnceRxOpr((stream) => {
-                                return fieldEtc.fieldProcessorCaller.callFromDirectRaw(stream, fieldEtc.fieldInfo);
+                                return fieldEtc.fieldProcessorCaller.callFromDirectRaw(
+                                    of(
+                                        {
+                                            body: stream,
+                                        }
+                                    ),
+                                    fieldEtc.fieldInfo);
+                            }),
+                            map((respL) => {
+                                return respL.body;
                             })
                         );
                 // fromDirectRaw$ = fromDirectRaw$.pipe(thisLocal.session.addSubscribedObsRxOpr());
@@ -1024,8 +1032,11 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     thisLocal.session.registerProvidedObservablesRxOpr(),
                     share()
                 );
-                fromDirectRaw$.subscribe(() => {
-                    //completed
+                const subs = fromDirectRaw$.subscribe((fromCacheValue) => {
+                    thisLocal.next(fromCacheValue);
+                    if (subs) {
+                        subs.unsubscribe();
+                    }
                 })
             }
         }
@@ -1101,21 +1112,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 let lazyLoadedColl: any = this.session.createCollection(fieldEtc.otmCollectionType, this.refererObj, this.refererKey)
                 LodashLike.set(lazyLoadedColl, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, true);
                 try {
-                    let processResultEntityArrayInternal$ = this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, (playerSnapshot as PlayerSnapshot).wrappedSnapshot as any[]);
-                    lazyLoadedObj$ = processResultEntityArrayInternal$
-                        .pipe(
-                            thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, () => {
-                                return this.setLazyObjOnLazyLoadingNoNext(lazyLoadedColl)
-                                    .pipe(
-                                        thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(
-                                            lazyLoadedColl, 
-                                            () => {
-                                                return thisLocal.lazyLoadedObj;
-                                            }
-                                        )
-                                    )
-                            })
-                        );
+                    this.session.processWrappedSnapshotFieldArrayInternal(collTypeParam, lazyLoadedColl, (playerSnapshot as PlayerSnapshot).wrappedSnapshot as any[]);
+                    
+                    lazyLoadedObj$ = this.setLazyObjOnLazyLoadingNoNext(lazyLoadedColl).pipe(
+                        thisLocal.session.mapJustOnceKeepAllFlagsRxOpr(lazyLoadedColl, () => {
+                            return thisLocal.lazyLoadedObj;
+                        })
+                    );
                 } finally {
                     LodashLike.set(this.lazyLoadedObj, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME, false);
                 }
@@ -1145,10 +1148,12 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         getFromCache$
                             .pipe(thisLocal.session.logRxOpr('LazyRef_processResponse_fromDirectRaw_getFromCache'))
                             .pipe(
-                                flatMapJustOnceRxOpr( (cacheStream) => {
-                                    return fieldEtc.fieldProcessorCaller.callFromDirectRaw(cacheStream, fieldEtc.fieldInfo);
+                                mapJustOnceRxOpr( (cacheStream) => {
+                                    return { body: cacheStream }
                                 }),
-                                thisLocal.session.registerProvidedObservablesRxOpr(),
+                                flatMapJustOnceRxOpr((respStream) => {
+                                    return fieldEtc.fieldProcessorCaller.callFromDirectRaw(of(respStream), fieldEtc.fieldInfo);
+                                }),
                                 share()
                             );
                     
@@ -1170,7 +1175,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         fromDirectRaw$
                             .pipe(
                                 flatMapJustOnceRxOpr((fromStreamValue) => {
-                                    return of(fromStreamValue)
+                                    return of(fromStreamValue.body)
                                         .pipe(thisLocal.session.logRxOpr('LazyRef_processResponse_fromDirectRaw'))
                                         .pipe(
                                             thisLocal.session.flatMapJustOnceKeepAllFlagsRxOpr(
@@ -1223,25 +1228,25 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has "IFieldProcessor.fromLiteralValue".');
                     }
                     
-                    const fromLiteralValue$ = fieldEtc.fieldProcessorCaller.callFromLiteralValue(responselike.body, fieldEtc.fieldInfo);
-                    lazyLoadedObj$ =
-                        fromLiteralValue$.pipe(
-                            flatMapJustOnceRxOpr((fromLiteralValue) => {
-                                if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
-                                    thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
-                                }
-                                thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
-                                    mdRefererObj,
-                                    fieldEtc,
-                                    playerSnapshot as PlayerSnapshot);
-                                return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
-                                    .pipe(
-                                        map( () => {
-                                            return fromLiteralValue;
-                                        })
-                                    );                             
-                            })
-                        );
+                    const fromLiteralValue = fieldEtc.fieldProcessorCaller.callFromLiteralValue(responselike.body, fieldEtc.fieldInfo);
+                    const fromLiteralValue$ = of(fromLiteralValue);
+                    lazyLoadedObj$ = fromLiteralValue$.pipe(
+                        flatMapJustOnceRxOpr((fromLiteralValue) => {
+                            if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
+                                thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: Async on "IFieldProcessor.fromLiteralValue" result. Me:\n' + this);
+                            }
+                            thisLocal.lazyRefPrpStoreOriginalliteralEntryIfNeeded(
+                                mdRefererObj,
+                                fieldEtc,
+                                playerSnapshot as PlayerSnapshot);
+                            return thisLocal.setLazyObjOnLazyLoadingNoNext(fromLiteralValue)
+                                .pipe(
+                                    map( () => {
+                                        return fromLiteralValue;
+                                    })
+                                );                             
+                        })
+                    );
                 } else {
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: ((LazyRefPrp is NOT "lazyDirectRawRead") or (...above...)) and has NO "IFieldProcessor.fromLiteralValue". Using "responselike.body"');
@@ -1256,7 +1261,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef for a relationship. Me:\n' + this);
                 }
-                let processedEntity$ = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, (playerSnapshot as PlayerSnapshot).wrappedSnapshot)
+                let processedEntity = this.session.processWrappedSnapshotFieldInternal(fieldEtc.lazyLoadedObjType, (playerSnapshot as PlayerSnapshot).wrappedSnapshot)
+                let processedEntity$ = of(processedEntity);
                 const processedEntityRef = {value: null as L};
                 lazyLoadedObj$ = processedEntity$
                     .pipe(

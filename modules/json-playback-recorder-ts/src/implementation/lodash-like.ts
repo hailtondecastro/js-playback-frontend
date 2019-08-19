@@ -5,8 +5,20 @@ import { TypeLike } from "../typeslike";
 import { isNull } from "util";
 
 export namespace LodashLike {
-    export type AsyncMergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): Observable<any>; }["bivariantHack"];
-    export type AsyncCustomSetter = { bivariantHack(object: any, key: string, value: any): Observable<void>; }["bivariantHack"];
+    type Diff<T, U> = T extends U ? never : T;  // Remove types from T that are assignable to U
+    type NonObservable<T> = Diff<T, Observable<T>>;
+    export interface AsyncMergeWithCustomizerResult<T> {
+        value: NonObservable<T>,
+        needSet: boolean
+    }
+    export type AsyncMergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): AsyncMergeWithCustomizerResult<any>; }["bivariantHack"];
+    // export interface AsyncCustomSetterResult {
+    //     wasDone: boolean,
+    //     isAsync: boolean,
+    //     asyncResult?: Observable<void>,
+    //     syncResult?: NonObservable<any>
+    // }
+    // export type AsyncCustomSetter = { bivariantHack(object: any, key: string, value: any): AsyncCustomSetterResult; }["bivariantHack"];
     export type MergeWithCustomizer = { bivariantHack(value: any, srcValue: any, key: string, object: any, source: any): any; }["bivariantHack"];
     export function isObject(value: any, noObjects?: Set<TypeLike<any>>) {
         if (!noObjects) {
@@ -33,96 +45,77 @@ export namespace LodashLike {
             object: TObject,
             source: TSource,
             visitedMap: Map<any, any>,
-            extraOptions?: AsyncMergeWithExtraOptions): Observable<TObject> {
-        return of(null).pipe(
-            flatMap(() => {
-                // console.log(object.constructor.name);
-                if (!extraOptions) {
-                    extraOptions = {};
-                }
-                if (Array.isArray(source)) {
-                    throw new Error('Not supported. source is array.');
-                }
-                if ((object as any) === (source as any)) {
-                    return of(object);
-                }
-                const allObsArr: Observable<any>[] = [];
-                const prpsSet = new Set<string>();
-                const finalPrpsArr: string[] =  [];
-                for (const propt in source) {
-                    prpsSet.add(propt);
-                }
-                if (extraOptions.considerObjectProperties && !isNull(object)) {
-                    for (const propt in object) {
-                        prpsSet.add(propt);
-                    }
-                }
-                for (const prpItem of Array.from(prpsSet)) {
-                    if(!extraOptions.ignorePropeties || !testPatterns(prpItem, extraOptions.ignorePropeties)) {
-                        finalPrpsArr.push(prpItem);
-                    }                    
-                }
-                for (const propt of finalPrpsArr) {
-                    //for debug purpose
-                    finalPrpsArr === finalPrpsArr;
+            //setterResults: AsyncCustomSetterResult[],
+            extraOptions?: AsyncMergeWithExtraOptions): TObject {
+        // console.log(object.constructor.name);
+        if (!extraOptions) {
+            extraOptions = {};
+        }
+        if (Array.isArray(source)) {
+            throw new Error('Not supported. source is array.');
+        }
+        if ((object as any) === (source as any)) {
+            return object;
+        }
+        //const allObsArr: Observable<any>[] = [];
+        const prpsSet = new Set<string>();
+        const finalPrpsArr: string[] =  [];
+        for (const propt in source) {
+            prpsSet.add(propt);
+        }
+        if (extraOptions.considerObjectProperties && !isNull(object)) {
+            for (const propt in object) {
+                prpsSet.add(propt);
+            }
+        }
+        for (const prpItem of Array.from(prpsSet)) {
+            if(!extraOptions.ignorePropeties || !testPatterns(prpItem, extraOptions.ignorePropeties)) {
+                finalPrpsArr.push(prpItem);
+            }
+        }
+        for (const propt of finalPrpsArr) {
+            //for debug purpose
+            finalPrpsArr === finalPrpsArr;
 
-                    let prpSourceValue = (source as any)[propt];
-                    let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
-        
-                    let newValue$: Observable<any>;
-        
-                    if (isObject(prpSourceValue, extraOptions.noObjects)) {
-                        if (!visitedMap.has(prpSourceValue)) {
-                            if (extraOptions.customizer) {
-                                newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
-                            } else {
-                                newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
-                            }
-                            newValue$ = newValue$.pipe(
-                                tap((newValue) => {
-                                    visitedMap.set(prpSourceValue, newValue);
-                                })
-                            );
-                        } else {
-                            newValue$ = of(visitedMap.get(prpSourceValue));
+            let prpSourceValue = (source as any)[propt];
+            let prpObjectValue = !isNil(object) ? (object as any)[propt] : undefined;
+
+            let proptMergeResult: AsyncMergeWithCustomizerResult<TObject>;
+            let newValue: NonObservable<any>;
+
+            if (isObject(prpSourceValue, extraOptions.noObjects)) {
+                if (!visitedMap.has(prpSourceValue)) {
+                    if (extraOptions.customizer) {
+                        proptMergeResult = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                        if (isNil(proptMergeResult)) {
+                            throw new Error('Customizer can not return null!');
                         }
+                        visitedMap.set(prpSourceValue, proptMergeResult.value);
                     } else {
-                        if (extraOptions.customizer) {
-                            newValue$ = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
-                        } else {
-                            newValue$ = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
-                        }
+                        newValue = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                        visitedMap.set(prpSourceValue, newValue);
                     }
-
-                    newValue$ = newValue$.pipe(
-                        !extraOptions.asyncCustomSetter?
-                            tap((newValue) => {
-                                // console.log((newValue$ as any).fooid);
-                                visitedMap.set(prpSourceValue, newValue);
-                                set(object, propt, newValue);
-                            }) :
-                            flatMap((newValue) => {
-                                //for debug purpose
-                                propt === 'detailAEntCol';
-                                visitedMap.set(prpSourceValue, newValue);
-                                return extraOptions.asyncCustomSetter(object, propt, newValue);
-                            })
-                    )
-                    allObsArr.push(newValue$);
+                } else {
+                    newValue = visitedMap.get(prpSourceValue);
                 }
+            } else {
+                if (extraOptions.customizer) {
+                    proptMergeResult = extraOptions.customizer(prpObjectValue, prpSourceValue, propt, object, source);
+                    if (isNil(proptMergeResult)) {
+                        throw new Error('Customizer can not return null!');
+                    }
+                } else {
+                    newValue = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
+                }
+            }
+            if (proptMergeResult) {
+                if (proptMergeResult.needSet) {
+                    set(object, propt, newValue);
+                }
+            }
+        }
         
-                return combineFirstSerial(allObsArr).pipe(
-                    map(() => {
-                        //for debug purpose                        
-                        allObsArr === allObsArr;
-
-                        return object;
-                    })
-                    // ,
-                    // timeoutDecorateRxOpr()
-                );
-            })
-        );
+        return object;
     }
 
     function mergeWithDeep<TObject, TSource>(
@@ -178,14 +171,14 @@ export namespace LodashLike {
     export interface AsyncMergeWithExtraOptions {
         customizer?: AsyncMergeWithCustomizer,
         noObjects?: Set<TypeLike<any>>,
-        asyncCustomSetter?: AsyncCustomSetter,
+        //asyncCustomSetter?: AsyncCustomSetter,
         considerObjectProperties?: boolean,
         ignorePropeties?: RegExp[]
     }
     export function asyncMergeWith<TObject, TSource>(
             object: TObject,
             source: TSource,
-            extraOptions?: AsyncMergeWithExtraOptions): Observable<TObject> {
+            extraOptions?: AsyncMergeWithExtraOptions): TObject {
         return asyncMergeWithDeep(object, source, new Map(), extraOptions);
     }
 

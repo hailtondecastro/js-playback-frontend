@@ -1,8 +1,21 @@
 import { Observable } from "rxjs";
 import { FieldInfo } from "./recorder-config";
+import { ResponseLike } from "../typeslike";
 
-export interface IFieldProcessor<L> {
-    fromLiteralValue?(value: any, info: FieldInfo): Observable<L>;
+// export interface FromResult<L> {
+//     async: boolean,
+//     asyncResult: Observable<L>,
+//     syncResult: L
+// }
+
+// export interface ToResult<L> {
+//     async: boolean,
+//     asyncResult: Observable<any>,
+//     syncResult: any
+// }
+
+export interface IFieldProcessor<P> {
+    fromLiteralValue?(value: any, info: FieldInfo): P;
     /**
      * Used to restore from literal value stored on {@link RecorderSession#generateEntireStateAsLiteral}.  
      * It will be called from {@link RecorderSession#restoreEntireStateFromLiteral}.  
@@ -10,22 +23,22 @@ export interface IFieldProcessor<L> {
      * @param value 
      * @param info 
      */
-    fromRecordedLiteralValue?(value: any, info: FieldInfo): Observable<L>;
-    fromDirectRaw?(value: NodeJS.ReadableStream, info: FieldInfo): Observable<L>;
-    toLiteralValue?(value: L, info: FieldInfo): Observable<any>;
-    toDirectRaw?(value: L, info: FieldInfo): Observable<NodeJS.ReadableStream>;
+    fromRecordedLiteralValue?(value: any, info: FieldInfo): P;
+    fromDirectRaw?(value: Observable<ResponseLike<NodeJS.ReadableStream>>, info: FieldInfo): Observable<ResponseLike<P>>;
+    toLiteralValue?(value: P, info: FieldInfo): any;
+    toDirectRaw?(value: P, info: FieldInfo): Observable<ResponseLike<NodeJS.ReadableStream>>;
 }
 
 /** Framework internal use. */
-export interface IFieldProcessorEvents<L> {
+export interface IFieldProcessorEvents<P> {
     /** Framework internal use. */
-    onFromLiteralValue?: (value: any, info: FieldInfo, obs: Observable<L>) => Observable<L>;
+    onFromLiteralValue?: (value: any, info: FieldInfo, result: P) => P;
     /** Framework internal use. */
-    onFromRecordedLiteralValue?: (value: any, info: FieldInfo, obs: Observable<L>) => Observable<L>;
+    onFromRecordedLiteralValue?: (value: any, info: FieldInfo, result: P) => P;
     /** Framework internal use. */
-    onFromDirectRaw?: (rawValue: NodeJS.ReadableStream, info: FieldInfo, obs: Observable<L>) => Observable<L>;
+    onFromDirectRaw?: (rawValue: Observable<ResponseLike<NodeJS.ReadableStream>>, info: FieldInfo, result: Observable<ResponseLike<P>>) => Observable<ResponseLike<P>>;
     /** Framework internal use. */
-    onToLiteralValue?: (value: L, info: FieldInfo, obs: Observable<L>) => Observable<L>;
+    onToLiteralValue?: (value: P, info: FieldInfo, result: any) => any;
     /** Framework internal use. */
-    onToDirectRaw?: (value: L, info: FieldInfo, obs: Observable<NodeJS.ReadableStream>) => Observable<NodeJS.ReadWriteStream>;
+    onToDirectRaw?: (value: P, info: FieldInfo, result: Observable<ResponseLike<NodeJS.ReadableStream>>) => Observable<ResponseLike<NodeJS.ReadableStream>>;
 }

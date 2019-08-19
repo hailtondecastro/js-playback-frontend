@@ -6,7 +6,7 @@ import * as memStreams from 'memory-streams';
 //import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
 import { TypeLike } from '../typeslike-dev';
-import { LazyRef, StringStream, StringStreamMarker, BinaryStream } from '../api/lazy-ref';
+import { LazyRef, StringStream, StringStreamMarker, BinaryStream, NonWritableStreamExtraMethods } from '../api/lazy-ref';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
@@ -377,45 +377,50 @@ export namespace RecorderDecoratorsInternal {
     export const DateProcessor: IFieldProcessor<Date> = {
         fromLiteralValue: (value, info) => {
             if (value instanceof Number || typeof(value) === 'number') {
-                return of(new Date(value as number));
+                return new Date(value as number);
             } else if (value instanceof String || typeof(value) === 'string') {
-                return of(new Date(value as string));
+                return new Date(value as string);
             } else {
-                return of(null);
+                return null;
             }
         },
         toLiteralValue: (value, info) => {
             if (value) {
-                return of(value.getTime());
+                return value.getTime();
             } else {
-                return of(null);
+                return null;
             }
         }
     };
+
     export const BufferProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {
-                return of(Buffer.from(value, 'base64'));
+                return Buffer.from(value, 'base64');
             } else {
-                return of(null);
+                return null;
             }
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
-                return from(
-                    streamToObservable(stream)
-                        .forEach((chunk) => {
-                            chunkConcatArrRef.value.push(chunk as Buffer);
-                        })
-                ).pipe(
-                    map(() => {
-                        return Buffer.concat(chunkConcatArrRef.value);
-                    })
-                );
-            } else {
-                of(null);
-            }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream) {
+                        const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
+                        return from(
+                            streamToObservable(respStream.body)
+                                .forEach((chunk) => {
+                                    chunkConcatArrRef.value.push(chunk as Buffer);
+                                })
+                        ).pipe(
+                            map(() => {
+                                return { body: Buffer.concat(chunkConcatArrRef.value) };
+                            })
+                        );
+                    } else {
+                        return of({ body: null });
+                    }
+                })
+            );
         },
         toLiteralValue: (value, info) => {
             if (value) {
@@ -429,9 +434,9 @@ export namespace RecorderDecoratorsInternal {
             if (value) {
                 // let ws = new memStreams.WritableStream();
                 // ws.write(value);
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
-                //myReadableStreamBuffer.push(value);
-                return of(null);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
+                myReadableStreamBuffer.push(value);
+                return of({ body: myReadableStreamBuffer} );
                 // return of(null).pipe(
                 //     tap(() => {
                 //         myReadableStreamBuffer.emit('end');
@@ -441,52 +446,53 @@ export namespace RecorderDecoratorsInternal {
                 //     })
                 // );
             } else {
-                return of(null);
+                return of({ body: null });
             }
         }
     };
     export const StringProcessor: IFieldProcessor<String> = {
         fromLiteralValue: (value, info) => {
-            return of(value);
+            return value;
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
-                return from(
-                    streamToObservable(stream)
-                        .forEach((chunk) => {
-                            chunkConcatArrRef.value.push(chunk as Buffer);
-                        })
-                ).pipe(
-                    map(() => {
-                        let bufferConc = Buffer.concat(chunkConcatArrRef.value);
-                        return bufferConc.toString('utf8');
-                    })
-                );
-            } else {
-                of(null);
-            }
-            // if (stream) {
-            //     if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
-            //         let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
-            //         return from(resultPrmStr);
-            //     } else {
-            //         throw new Error('Not supported');
-            //     }
-            // } else {
-            //     return of(null);
-            // }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream.body) {
+                        respStream.body.setEncoding('utf8');
+                        const chunkConcatArrRef: {value: string[]} = {value:[]};
+                        return from(
+                            streamToObservable(respStream.body)
+                                .forEach((chunk) => {
+                                    if (typeof(chunk) === 'string') {
+                                        chunkConcatArrRef.value.push(chunk);
+                                    } else if (chunk instanceof String) {
+                                        chunkConcatArrRef.value.push(chunk.toString());
+                                    } else {
+                                        throw new Error('Not supported!: chunk: ' + chunk);
+                                    }
+                                })
+                        ).pipe(
+                            map(() => {
+                                let bufferConc = ''.concat(...chunkConcatArrRef.value);
+                                return bufferConc;
+                            })
+                        );
+                    } else {
+                        return of(null);
+                    }
+                })
+            );
         },
         toLiteralValue: (value, info) => {
-            return of(value);
+            return value;
         },
         toDirectRaw: (value, info) => {
             if (value) {
                 let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
                 myReadableStreamBuffer.setEncoding('utf-8');
-                return of(myReadableStreamBuffer);
+                    return of( { body: myReadableStreamBuffer } );
             } else {
-                return of(null);
+                return of( { body: null });
             }
         }
     };
@@ -494,86 +500,78 @@ export namespace RecorderDecoratorsInternal {
         fromLiteralValue: (value, info) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                myReadableStreamBuffer.push(base64AB);
-                return of(myReadableStreamBuffer);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(base64AB.toString()); 
+                let binaryWRStream: BinaryStream = Object.assign(myReadableStreamBuffer, NonWritableStreamExtraMethods);
+                return binaryWRStream;
             } else {
-                return of(null);
+                return null;
             }
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                if ((stream as NodeJS.ReadableStream).addListener && (stream as NodeJS.ReadableStream).pipe) {
-                    return of(stream);
-                } else {
-                    throw new Error('Not supported');
-                }
-            } else {
-                return of(null);
-            }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream.body) {
+                        if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
+                            return of(respStream);
+                        } else {
+                            throw new Error('Not supported');
+                        }
+                    } else {
+                        return of({ body: null });
+                    }
+                })
+            );
         },
         toDirectRaw: (value, info) => {
             if (value) {
-                return of(value);
+                return of({ body: value });
             } else {
-                return of(null);
+                return of({ body: null });
             }
         },
         toLiteralValue: (value, info) => {
-            if (value) {
-                return BufferProcessor.fromDirectRaw(value, info).pipe(
-                    flatMap((buffer) => {
-                        return BufferProcessor.toLiteralValue(buffer, info);
-                    })                    
-                );
-            } else {
-                return of(null);
-            }
+            throw new Error('Not supported!');
         }
     };
     export const StringStreamProcessor: IFieldProcessor<StringStream> = {
             fromLiteralValue: (value, info) => {
                 if (value) {
                     let valueBuffer = Buffer.from(value, 'utf8');
-                    let ws = new memStreams.WritableStream();
-                    ws.write(valueBuffer);
-                    let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                    myReadableStreamBuffer.push(valueBuffer);
+                    // let ws = new memStreams.WritableStream();
+                    // ws.write(valueBuffer);
+                    let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value); 
                     myReadableStreamBuffer.setEncoding('utf-8');
-                    return of(myReadableStreamBuffer);
+                    return myReadableStreamBuffer as any as StringStream;
                 } else {
-                    return of(null);
+                    return null;
                 }
             },
-            fromDirectRaw: (stream, info) => {
-                if (stream) {
-                    if (stream.addListener && stream.pipe) {
-                        (stream as any as NodeJS.ReadableStream).setEncoding('utf-8');
-                        return of(stream);
-                    } else {
-                        throw new Error('Not supported');
-                    }
-                } else {
-                    return of(null);
-                }
+            fromDirectRaw: (respStream$, info) => {
+                return respStream$.pipe(
+                    flatMap((respStream) => {
+                        if (respStream.body) {
+                            if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
+                                (respStream.body as NodeJS.ReadStream).setEncoding('utf-8');
+                                return of(respStream);
+                            } else {
+                                throw new Error('Not supported');
+                            }
+                        } else {
+                            return of({ body: null});
+                        }
+                    })
+                )
             },
             toDirectRaw: (value, info) => {
                 if (value) {
-                    return of(value);
+                    value.setEncoding('utf8');
+                    return of({ body: value });
                 } else {
-                    return of(null);
+                    return of({ body: null });
                 }
             },
             toLiteralValue: (value, info) => {
-                if (value) {
-                    return StringProcessor.fromDirectRaw(value, info).pipe(
-                        flatMap((value) => {
-                            return StringProcessor.toLiteralValue(value, info);
-                        })
-                    );
-                } else {
-                    return of(null);
-                }
+                throw new Error('Not supported!');
             }
     };
 }
