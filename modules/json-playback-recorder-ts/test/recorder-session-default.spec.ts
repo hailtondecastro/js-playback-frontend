@@ -257,7 +257,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
