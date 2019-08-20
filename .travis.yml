@@ -19,3 +19,12 @@ script:
 #  - npm install --no-package-lock
 #  - npm run test
 #  - cd ../..
+
+deploy:
+  provider: script
+  script: "cd ./modules/json-playback-recorder-ts && cp .npmrc.template .npmrc && npm publish ../../dist/json-playback-recorder-ts && cd ../.."
+  skip_cleanup: true
+  on:
+    tags: true
+    all_branches: true
+    condition: $TRAVIS_TAG =~ ^(deploy_.*|publish_.*)$
