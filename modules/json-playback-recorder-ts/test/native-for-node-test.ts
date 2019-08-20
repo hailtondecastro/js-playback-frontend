@@ -224,11 +224,11 @@ export namespace ForNodeTest {
                         ).pipe(
                             map(() => {
                                 let bufferConc = ''.concat(...chunkConcatArrRef.value);
-                                return bufferConc;
+                                return { body: bufferConc };
                             })
                         );
                     } else {
-                        return of(null);
+                        return of({ body: null });
                     }
                 })
             );

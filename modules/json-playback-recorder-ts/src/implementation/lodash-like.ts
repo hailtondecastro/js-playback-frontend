@@ -90,6 +90,7 @@ export namespace LodashLike {
                         if (isNil(proptMergeResult)) {
                             throw new Error('Customizer can not return null!');
                         }
+                        newValue = proptMergeResult.value;
                         visitedMap.set(prpSourceValue, proptMergeResult.value);
                     } else {
                         newValue = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
@@ -104,6 +105,7 @@ export namespace LodashLike {
                     if (isNil(proptMergeResult)) {
                         throw new Error('Customizer can not return null!');
                     }
+                    newValue = proptMergeResult.value;
                 } else {
                     newValue = asyncMergeWithDeep(prpObjectValue, prpSourceValue, visitedMap, extraOptions);
                 }

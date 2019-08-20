@@ -4,6 +4,7 @@ import * as chai from 'chai';
 import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError, combineLatest } from 'rxjs';
 import pSnapshotMasterLiteral from './master-a-test.json';
 import pSnapshotMasterList1000Literal from './master-a-list-1000-test.json';
+import pSnapshotMasterAWrapperLiteral from './master-a-wrapper-tes.json';
 import pSnapshotMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
 import pSnapshotMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import pSnapshotMasterADetailAMinTestLiteral from './master-a-detail-a-min-test.json';
@@ -33,6 +34,7 @@ import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream
 import { DetailAEnt } from './entities/detail-a-ent.js';
 import { RecorderSessionImplementor } from '../src/implementation/recorder-session-default.js';
 import { MasterMinEnt } from './entities/master-min-ent.js';
+import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
 {
     describe('RecorderManagerDefault', () => {
@@ -243,82 +245,141 @@ import { MasterMinEnt } from './entities/master-min-ent.js';
 
         // });
 
-        // it('RecorderManagerDefault.master-a-list-1000-test-sync', 1 == 1 ? (done) => {done();} : (done) => {
-        //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+        //it('RecorderManagerDefault.master-a-list-1000-test-sync', 1 == 1 ? (done) => {done();} : (done) => {
+        it('RecorderManagerDefault.master-a-list-1000-test-sync', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-        //     let recorderSession: RecorderSession;
-        //     let config: RecorderConfig = new RecorderConfigDefault()
-        //         .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-        //         .configCacheHandler(newCacheHandler)
-        //         .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
 
-        //     let asyncCount = new AsyncCount();
-        //     let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
 
-        //     newCacheHandler.callback = (operation, cacheKey, stream) => {
-        //         // console.log(operation + ', ' + cacheKey + ', ' + stream);
-        //     }
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
 
-        //     config.configLazyObservableProvider(
-        //         {
-        //             generateObservable: (signature, info) => {
-        //                 let responseResult: ResponseLike<Object> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult).pipe(delay(1));
-        //             },
-        //             generateObservableForDirectRaw: (signature, info) => {
-        //                 let responseResult: ResponseLike<BinaryStream> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult).pipe(delay(1));
-        //             }
-        //         }
-        //     );
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
 
-        //     let manager: RecorderManager = new RecorderManagerDefault(
-        //         config);
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
 
-        //     recorderSession = manager.createSession();
-        //     let masterAArr$: Observable<MasterAEnt[]> = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterList1000Literal)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     masterAArr$.subscribe(
-        //         {
-        //             next: (masterA) => {
-        //                 masterA[0].blobLazyA.subscribe( 
-        //                     {
-        //                         next: (valueStream) => {
-        //                             asyncCount.doNonObservableIncrement();
-        //                             let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(valueStream, null)
-        //                             .pipe(
-        //                                 asyncCount.registerRxOpr(),
-        //                                 asyncCountdown.registerRxOpr()
-        //                             );
-        //                             fromDirectRaw$.subscribe((streamStr) => {
-        //                                 asyncCount.doNonObservableIncrement();
-        //                                 chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr);
-        //                             });
-        //                         },
-        //                         complete: () => {
-        //                         }
-        //                     }
-        //                 );
-        //             }
-        //         }
-        //     );
+            recorderSession = manager.createSession();
+            let masterAArr: MasterAEnt[] = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterList1000Literal);
+            masterAArr[0].blobLazyA.subscribe( 
+                {
+                    next: (valueStream) => {
+                        asyncCount.doNonObservableIncrement();
+                        let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: valueStream }), null)
+                        .pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        );
+                        fromDirectRaw$.subscribe((streamStr) => {
+                            asyncCount.doNonObservableIncrement();
+                            chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr.body);
+                        });
+                    },
+                    complete: () => {
+                    }
+                }
+            );
 
-        //     asyncCountdown.createCountdownEnds().pipe(
-        //         flatMap(() => {
-        //             return recorderSession.createSerialPendingTasksWaiting();
-        //         })
-        //     ).subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
-        //         done();
-        //     });
-        // });
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting();
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                done();
+            });
+        });
+
+        it('RecorderManagerDefault.master-a-wrapper-test', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
+
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
+
+            recorderSession = manager.createSession();
+            let masterAArr: MasterAWrapper[] = recorderSession.processPlayerSnapshotArray(MasterAWrapper, pSnapshotMasterAWrapperLiteral);
+            masterAArr[0].masterA.blobLazyA.subscribe( 
+                {
+                    next: (valueStream) => {
+                        asyncCount.doNonObservableIncrement();
+                        let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: valueStream }), null)
+                        .pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        );
+                        fromDirectRaw$.subscribe((streamStr) => {
+                            asyncCount.doNonObservableIncrement();
+                            chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr.body);
+                        });
+                    },
+                    complete: () => {
+                    }
+                }
+            );
+
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting();
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                done();
+            });
+        });
+
 
         // it('RecorderManagerDefault.master-a-test-async', (done) => {
         //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -658,169 +719,125 @@ import { MasterMinEnt } from './entities/master-min-ent.js';
         //     });
         // });
 
-        // it('RecorderManagerDefault.master-a-test-sync', (done) => {
-        //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+        it('RecorderManagerDefault.master-a-test-sync', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-        //     let recorderSession: RecorderSession;
-        //     let config: RecorderConfig = new RecorderConfigDefault()
-        //         .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-        //         .configCacheHandler(newCacheHandler)
-        //         .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);            
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);            
 
-        //     let asyncCount = new AsyncCount();
-        //     let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
 
-        //     newCacheHandler.callback = (operation, cacheKey, stream) => {
-        //         // console.log(operation + ', ' + cacheKey + ', ' + stream);
-        //     }
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
 
-        //     let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-        //     let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-        //     let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-        //     let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
-        //     propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'vcharA' || fieldName === 'vcharB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     };
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'vcharA' || fieldName === 'vcharB';
+                        }
+                    );
+                return result;
+            };
 
-        //     propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     };
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                        }
+                    );
+                return result;
+            };
 
-        //     propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         ).pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     }
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                        }
+                    );
+                return result;
+            }
 
-        //     propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'blobA' || fieldName === 'blobB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         ).pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     }
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobA' || fieldName === 'blobB';
+                        }
+                    );
+                return result;
+            }
 
-        //     config.configLazyObservableProvider(
-        //         {
-        //             generateObservable: (signature, info) => {
-        //                 let responseResult: ResponseLike<Object> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult).pipe(delay(1));
-        //             },
-        //             generateObservableForDirectRaw: (signature, info) => {
-        //                 let responseResult: ResponseLike<BinaryStream> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult).pipe(delay(1));
-        //             }
-        //         }
-        //     );
-        //     let manager: RecorderManager = new RecorderManagerDefault(
-        //         config
-        //         );
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
-        //     let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
-        //     propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     }
+            propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                return result;
+            }
 
-        //     recorderSession = manager.createSession();
-        //     let masterA$: Observable<MasterAEnt> = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLiteral)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     masterA$.subscribe(
-        //         {
-        //             next: (masterA) => {
-        //                 masterA.blobLazyA.subscribe( 
-        //                     {
-        //                         next: (valueStream) => {
-        //                             let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(valueStream, null)
-        //                             .pipe(
-        //                                 asyncCount.registerRxOpr(),
-        //                                 asyncCountdown.registerRxOpr()
-        //                             );
-        //                             fromDirectRaw$.subscribe((streamStr) => {
-        //                                 chai.expect('MasterAEnt_REG01_BlobLazyA').to.eq(streamStr);
-        //                             });
-        //                         },
-        //                         complete: () => {
-        //                         }
-        //                     }
-        //                 );
-        //             }
-        //         }
-        //     );
+            recorderSession = manager.createSession();
+            let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLiteral);
+            masterA.blobLazyA.subscribe( 
+                {
+                    next: (valueStream) => {
+                        let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: valueStream }), null).pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        );
+                        fromDirectRaw$.subscribe((respStreamStr) => {
+                            chai.expect('MasterAEnt_REG01_BlobLazyA').to.eq(respStreamStr.body);
+                        });
+                    },
+                    complete: () => {
+                    }
+                }
+            );
 
-        //     asyncCountdown.createCountdownEnds().pipe(
-        //         flatMap(() => {
-        //             return recorderSession.createSerialPendingTasksWaiting()
-        //         })
-        //     ).subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
-        //         done();
-        //     });
-        // });
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting()
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(1, 'asyncCount');
+                done();
+            });
+        });
 
         // it('RecorderManagerDefault.detail-a-master-a-async', (done) => {
         //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -976,189 +993,142 @@ import { MasterMinEnt } from './entities/master-min-ent.js';
         //     });
         // });
 
-        // it('RecorderManagerDefault.master-min-detail-min-test-sync', (done) => {
-        //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+        it('RecorderManagerDefault.master-min-detail-min-test-sync', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
 
-        //     let recorderSession: RecorderSession;
-        //     let config: RecorderConfig = new RecorderConfigDefault()
-        //         .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-        //         .configCacheHandler(newCacheHandler)
-        //         .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);
-                
-        //     let asyncCount = new AsyncCount();
-        //     let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);            
 
-        //     newCacheHandler.callback = (operation, cacheKey, stream) => {
-        //         // console.log(operation + ', ' + cacheKey + ', ' + stream);
-        //     }
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
 
-        //     let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
-        //     let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
-        //     let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
-        //     let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
 
-        //     propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'vcharA' || fieldName === 'vcharB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr()
-        //         );
-        //     };
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
 
-        //     propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     };
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'vcharA' || fieldName === 'vcharB';
+                        }
+                    );
+                return result;
+            };
 
-        //     propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );;
-        //     };
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                        }
+                    );
+                return result;
+            };
 
-        //     propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 chai.expect(info.fieldName)
-        //                     .to.satisfy(
-        //                         (fieldName: string) => {
-        //                             return fieldName === 'blobA' || fieldName === 'blobB';
-        //                         }
-        //                     );
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     };
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                        }
+                    );
+                return result;
+            }
 
-        //     config.configLazyObservableProvider(
-        //         {
-        //             generateObservable: (signature, info) => {
-        //                 let responseResult: ResponseLike<Object> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult);
-        //             },
-        //             generateObservableForDirectRaw: (signature, info) => {
-        //                 let responseResult: ResponseLike<BinaryStream> = {
-        //                     body: null
-        //                 }
-        //                 return of(responseResult);
-        //             }
-        //         });
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobA' || fieldName === 'blobB';
+                        }
+                    );
+                return result;
+            }
 
-        //     let manager: RecorderManager = new RecorderManagerDefault(
-        //         config
-        //         );
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
 
-        //     let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
-        //         Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
 
-        //     propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, obs) => {
-        //         return obs.pipe(
-        //             (source) => {
-        //                 return source;
-        //             }
-        //         )
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );;
-        //     }
+            propertyOptions.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                return result;
+            }
 
-        //     recorderSession = manager.createSession();
-        //     let master$: Observable<MasterMinEnt> = recorderSession.processPlayerSnapshot(MasterMinEnt, pSnapshotMasterMinDetailMinTestLiteral)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr(),
-        //         );
-        //     master$.subscribe(
-        //         {
-        //             next: (masterA) => {
-        //                 let detailAEntCol$ = masterA.detailAEntCol.asObservable()
-        //                     .pipe(
-        //                         asyncCount.registerRxOpr(),
-        //                         asyncCountdown.registerRxOpr()
-        //                     );
-        //                 let sub = detailAEntCol$.subscribe((coll) => {
-        //                     asyncCount.doNonObservableIncrement();
-        //                     let detailAEntArr = Array.from(coll);
-        //                     for (let index = 0; index < detailAEntArr.length; index++) {
-        //                         const detailAItem = detailAEntArr[index];
-        //                         let compIdMasterA$ = detailAItem.compId.masterA.asObservable()
-        //                             .pipe(
-        //                                 asyncCount.registerRxOpr(),
-        //                                 asyncCountdown.registerRxOpr()
-        //                             );
-        //                         let subB = compIdMasterA$.subscribe( (detMasterA) => {
-        //                             chai.expect(masterA)
-        //                                 .to.eq(detMasterA);
-        //                             if (subB) {
-        //                                 subB.unsubscribe();
-        //                             }
-        //                         });
-        //                     }
-        //                     if (sub) {
-        //                         sub.unsubscribe();
-        //                     }
-        //                 });
-        //             }
-        //         }
-        //     );
+            recorderSession = manager.createSession();
 
-        //     asyncCountdown.createCountdownEnds().pipe(
-        //         flatMap(() => {
-        //             return recorderSession.createSerialPendingTasksWaiting()
-        //         }),
-        //         catchError((err, caugth) => {
-        //             return throwError(err);
-        //         })
-        //     ).subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(5, 'asyncCount');
-        //         done();
-        //     });
-        // });
+
+            let masterMin: MasterMinEnt = recorderSession.processPlayerSnapshot(MasterMinEnt, pSnapshotMasterMinDetailMinTestLiteral);
+
+            let detailAEntCol$ = masterMin.detailAEntCol.asObservable().pipe(
+                asyncCount.registerRxOpr(),
+                asyncCountdown.registerRxOpr()
+            );
+            let sub = detailAEntCol$.subscribe((coll) => {
+                asyncCount.doNonObservableIncrement();
+                let detailAEntArr = Array.from(coll);
+                for (let index = 0; index < detailAEntArr.length; index++) {
+                    const detailAItem = detailAEntArr[index];
+                    let compIdMasterA$ = detailAItem.compId.masterA.asObservable()
+                        .pipe(
+                            asyncCount.registerRxOpr(),
+                            asyncCountdown.registerRxOpr()
+                        );
+                    let subB = compIdMasterA$.subscribe( (detMasterA) => {
+                        asyncCount.doNonObservableIncrement();
+                        chai.expect(masterMin)
+                            .to.eq(detMasterA);
+                        if (subB) {
+                            subB.unsubscribe();
+                        }
+                    });
+                }
+                if (sub) {
+                    sub.unsubscribe();
+                }
+            });
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting()
+                }),
+                catchError((err, caugth) => {
+                    return throwError(err);
+                })
+            ).subscribe(() => {
+                chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
+                done();
+            });
+        });
 
         // it('RecorderManagerDefault.master-a-detail-a-min-test-sync', (done) => {
         //     let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);

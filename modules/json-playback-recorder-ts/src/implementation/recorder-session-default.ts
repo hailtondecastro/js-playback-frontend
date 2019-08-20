@@ -1197,7 +1197,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
     private newEntityInstanceWithCreationId<T extends object>(entityType: TypeLike<T>, creationId: number): T {
         const thisLocal = this;
-        const asyncCombineObsArr: Observable<any>[] = [];
         if (!this.isOnRestoreEntireStateFromLiteral() && !this.isRecording()){
             throw new Error('Invalid operation. It is not recording. is this Error correct?!');
         }
@@ -1232,7 +1231,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is a Collection, fieldEtc.otmCollectionType: ' + fieldEtc.otmCollectionType.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
                         let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
-                        let setLazyObjOnLazyLoadingNoNext$ = lazyRefSet.setLazyObjOnLazyLoadingNoNext(this.createCollection(fieldEtc.otmCollectionType, entityObj, keyItem));
+                        lazyRefSet.setLazyObjOnLazyLoadingNoNext(this.createCollection(fieldEtc.otmCollectionType, entityObj, keyItem));
                         // setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
                         //     tap(
                         //         {
@@ -1240,7 +1239,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         //         }
                         //     )
                         // );
-                        asyncCombineObsArr.push(setLazyObjOnLazyLoadingNoNext$);
 
                         lazyRefSet.instanceId = this.nextMultiPurposeInstanceId();
 
@@ -1806,9 +1804,29 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             // callFromLiteralValue$ = callFromLiteralValue$.pipe(this.addSubscribedObsRxOpr());
                             //here for debug purpose
                             refererKey === 'blobLazyA';
-                            lr.setLazyObjOnLazyLoadingNoNext(fromLiteralValue);
+                            if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                                lr.setLazyObjOnLazyLoadingNoNext(fromLiteralValue);
+                            } else {
+                                lr.attachRefId =  thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+                                lr.respObs = fieldEtc.fieldProcessorCaller.callToDirectRaw(fromLiteralValue, fieldEtc.fieldInfo).pipe(
+                                    flatMap((respDirRaw) => {
+                                        return thisLocal.manager.config.cacheHandler.putOnCache(lr.attachRefId, respDirRaw.body);
+                                    }),
+                                    share(),
+                                    flatMap(() => {
+                                        return thisLocal.manager.config.cacheHandler.getFromCache(lr.attachRefId);
+                                    }),
+                                    map((stream) => {
+                                        return { body: stream } as ResponseLike<NodeJS.ReadableStream>;
+                                    })
+                                );
+                            }
                         } else {
-                            lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
+                            if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                                lr.setLazyObjOnLazyLoadingNoNext(literalLazyObj);
+                            } else {
+                                throw new Error('LazyRef is lazyDirectRawWrite and has no fromLiteralValue processor.\n' + lr.toString());
+                            }
                         }
                     } else if (!isValueByFieldProcessor.value) {
                         let resultEntityPriv = this.processResultEntityPriv(fieldEtc.lazyLoadedObjType, literalLazyObj, refMap);
@@ -2251,7 +2269,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         resultInternalRef.result = DummyUndefinedForMergeAsync;
                         let correctSrcValueColl = thisLocal.createCollection(fieldEtc.otmCollectionType, object, key);
                         
-                        let processResultEntityPrivArr: any[] = [];
                         thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
                             const entityArr: T[] = [];
                             for (let index = 0; index < srcValue.length; index++) { 
@@ -2261,7 +2278,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             for (const entityItem of entityArr) {
                                 thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
                             }
-                            return of(null);
                             resultInternalRef.result = correctSrcValueColl;
                         });
                         //nothing for now
@@ -2286,7 +2302,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
                             resultInternalRef.result = lazyRef;
-                            resultInternalRef.setted = true;
+                            resultInternalRef.setted = false;
                             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                     ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
@@ -2311,6 +2327,24 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 LodashLike.set(object, key, resultInternalRef.result);
                             });                            
                         }
+                    } else if (thisLocal.isCollection(fieldEtc.prpType)) {
+                        if (!fieldEtc.prpGenType.gParams[0]) {
+                            throw new Error('Ivalid non persistent collection with por property ' + 
+                                object.constructor.name + '.' + key +':\n' + fieldEtc.prpGenType);
+                        }
+                        const nonPersistentCollection = this.createCollection(fieldEtc.prpType, object, key);
+                        thisLocal.lazyLoadTemplateCallback(nonPersistentCollection, () => {
+                            for (const item of srcValue) {
+                                thisLocal.addOnCollection(
+                                    nonPersistentCollection,
+                                    thisLocal.processResultEntityPriv(
+                                        fieldEtc.prpGenType.gParams[0] as TypeLike<any>,
+                                        item,
+                                        refMap));
+                            }
+                        });
+                        resultInternalRef.result = nonPersistentCollection;
+                        resultInternalRef.setted = false;                         
                     }
                 } else if (LodashLike.isObject(srcValue, new Set([Date, Buffer]))
                         && !fieldEtc.propertyOptions.lazyDirectRawRead) {
