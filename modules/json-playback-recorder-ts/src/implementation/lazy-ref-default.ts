@@ -697,6 +697,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         error?: (error: any) => void,
         complete?: () => void): Subscription {
         const thisLocal = this;
+
         let resultSubs: Subscription = null;
         if (observerOrNext instanceof Subscriber) {
             resultSubs = super.subscribe(observerOrNext);
@@ -745,7 +746,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         +'Means that we already loaded this object by signature with another lazyRef.\n'
                         +'We will get from session signature cache call next()');
                 }
-                thisLocal.respObs = null;
                 thisLocalNextOnAsync.value = true;
                 thisLocal.setLazyObjOnLazyLoading(<L> this.session.getCachedBySignature(this.signatureStr));
                 if (!observerNew.closed) {
@@ -756,6 +756,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         thisLocal.consoleLikeSubs.groupEnd();
                     }
                     //aqui o metodo original sera chamado
+                    thisLocal.respObs = null;
                     thisLocal.next(thisLocal.lazyLoadedObj);
                 } else {
                     if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -842,11 +843,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 return processResponseOnLazyLoading;
                             })
                         );
-                //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
-                //lazyDirectRawWrite is always readed from cache.
-                if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                    thisLocal.respObs = null;
-                }
 
                 thisLocalNextOnAsync.value = true;
                 observerNew.next = (value: L) => {
@@ -883,6 +879,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
                 thisLocalNextOnAsync.value = true;
                 localObs$ = localObs$.pipe(
+                    tap(() => {
+                        //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
+                        //lazyDirectRawWrite is always readed from cache.
+                        if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                            thisLocal.respObs = null;
+                        }
+                    }),
                     thisLocal.session.registerProvidedObservablesRxOpr(),
                     share()
                 );
@@ -1205,8 +1208,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                                 thisLocal.consoleLikeProcResp.debug(thisLocal.lazyLoadedObj);
                                 thisLocal.consoleLikeProcResp.groupEnd();
                             }
-                            
-                            thisLocal.respObs = null;
                         }
                         return lazyLoadedObjValueB;
                     }
@@ -1218,6 +1219,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 share()
             ),
             lazyLoadedObj$.subscribe((lazyLoadedObj) => {
+                thisLocal.respObs = null;
                 this.setLazyObjOnLazyLoadingNoNext(lazyLoadedObj);
             });
         }

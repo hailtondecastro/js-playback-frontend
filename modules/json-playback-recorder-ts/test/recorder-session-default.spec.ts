@@ -556,7 +556,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesSync);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -667,15 +667,29 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     }
                 }
             );
+            
             masterA.detailAEntCol.subscribeToModify((detailAEntCol) => {
                 asyncCountdown.doNonObservableCountDown();
                 const detailAEntArr = Array.from(detailAEntCol);
                 //detailAEntArr[0].vcharA = "detailAEntArr[0].vcharA_changed";
                 const detailACompMasterB = detailAEntArr[0].detailAComp.masterB.asObservable().pipe(
                     asyncCount.registerRxOpr(),
-                    asyncCountdown.registerRxOpr()
+                    asyncCountdown.registerRxOpr(),
+                    tap((masterB) => {
+                        asyncCount.doNonObservableIncrement();
+                        const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
+                        chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
+                        detailAEntArr[0].detailAComp.masterB.signatureStr
+                    })
                 );
                 detailACompMasterB.subscribe((masterB) => {
+                    asyncCount.doNonObservableIncrement();
+                    const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
+                    chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
+                    detailAEntArr[0].detailAComp.masterB.signatureStr
+                });
+                detailACompMasterB.subscribe((masterB) => {
+                    asyncCount.doNonObservableIncrement();
                     const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
                     chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
                     detailAEntArr[0].detailAComp.masterB.signatureStr
@@ -687,7 +701,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(13, 'asyncCount');
                 done();
             });
         });
