@@ -312,7 +312,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(3000);
 
         it('RecorderManagerDefault.master-a-wrapper-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
