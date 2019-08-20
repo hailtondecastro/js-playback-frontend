@@ -1923,7 +1923,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (bMd.$signature$) {
             lr.signatureStr = bMd.$signature$;
             entityValue = this._objectsBySignature.get(bMd.$signature$);
-            lr.setLazyObjOnLazyLoadingNoNext(entityValue);
+            if (entityValue) {
+                lr.setLazyObjOnLazyLoadingNoNext(entityValue);
+            }
         } else {
         }
     }

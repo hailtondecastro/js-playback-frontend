@@ -838,7 +838,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         .pipe(thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'))
                         .pipe(
                             thisLocal.mapJustOnceKeepAllFlagsRxOpr((responseLike) => {
-                                return thisLocal.processResponseOnLazyLoading(responseLike);
+                                const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(responseLike);
+                                return processResponseOnLazyLoading;
                             })
                         );
                 //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
@@ -1219,23 +1220,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             lazyLoadedObj$.subscribe((lazyLoadedObj) => {
                 this.setLazyObjOnLazyLoadingNoNext(lazyLoadedObj);
             });
-            return thisLocal.lazyLoadedObj;
         }
-        // let result$ = lazyLoadedObj$;
-
-        // const isSynchronouslyDone = { value: false, result: null as L};
-        // result$ = result$.pipe(
-        //     tap((result)=>{
-        //         isSynchronouslyDone.value = true;
-        //         isSynchronouslyDone.result = result;
-        //     })
-        // );
-
-        // if (isSynchronouslyDone.value) {
-        //     return of(isSynchronouslyDone.result);
-        // } else {
-        //     return result$;
-        // }
+        return thisLocal.lazyLoadedObj;
     }
 
     private lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: PlayerMetadatas, fieldEtc: FieldEtc<L, any>, playerSnapshot: PlayerSnapshot): void {

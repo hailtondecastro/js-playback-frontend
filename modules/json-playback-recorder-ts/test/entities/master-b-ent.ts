@@ -125,6 +125,7 @@ export class MasterBEnt {
     private _masterBComp: MasterBComp;
 
 	@RecorderDecorators.property()
+	@RecorderDecorators.playerObjectId()
 	public get compId(): MasterBCompId {
 		return this._compId;
 	}
