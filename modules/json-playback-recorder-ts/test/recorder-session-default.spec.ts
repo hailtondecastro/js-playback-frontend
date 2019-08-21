@@ -12,6 +12,7 @@ import pSnapshotMasterMinDetailMinTestLiteral from './master-min-detail-min-test
 import pSnapshotDetailALiteral from './detail-a-by-sig.json';
 import pSnapshotMasterADetailACollTestLiteral from './master-detail-a-col.json';
 import pSnapshotWSnapMasterBBySign from './wsnap-master-b-by-sign-map.json';
+import pSnapshotMasterAListFirstTwiceTest from './master-a-list-first-twice-test.json';
 import { MasterAEnt } from './entities/master-a-ent';
 import { Readable, Stream } from 'stream';
 import * as memStreams from 'memory-streams';
@@ -313,6 +314,51 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 done();
             });
         }).timeout(3000);
+
+        it('RecorderManagerDefault.master-a-list-first-twice-test', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntriesAsync);            
+
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000});
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config);
+
+            recorderSession = manager.createSession();
+            let masterAArr: MasterAEnt[] = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterAListFirstTwiceTest);
+            chai.expect(masterAArr[0]).to.eq(masterAArr[1]);
+
+            masterAArr = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterAListFirstTwiceTest);
+            chai.expect(masterAArr[0]).to.eq(masterAArr[1]);
+            done();
+        });
 
         it('RecorderManagerDefault.master-a-wrapper-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerSync);

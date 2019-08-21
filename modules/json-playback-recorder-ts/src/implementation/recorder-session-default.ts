@@ -1661,6 +1661,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity is already processed on this session. Found by signature: ' + bMd.$signature$);
             }
+            if(!bMd.$id$) {
+                throw new Error('entity is already processed on this session. But thre is no metadatas.$id$. signature: ' + bMd.$signature$);
+            }
+            refMap.set(bMd.$id$, entityValue);
             resultEntityAlreadyProcessed.alreadyProcessed = true;
             resultEntityAlreadyProcessed.entityValue = entityValue;
         } else {
