@@ -2341,12 +2341,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         const nonPersistentCollection = this.createCollection(fieldEtc.prpType, object, key);
                         thisLocal.lazyLoadTemplateCallback(nonPersistentCollection, () => {
                             for (const item of srcValue) {
-                                thisLocal.addOnCollection(
-                                    nonPersistentCollection,
-                                    thisLocal.processResultEntityPriv(
-                                        fieldEtc.prpGenType.gParams[0] as TypeLike<any>,
-                                        item,
-                                        refMap));
+                                if (!LodashLike.isNil(item)) {
+                                    thisLocal.addOnCollection(
+                                        nonPersistentCollection,
+                                        thisLocal.processResultEntityPriv(
+                                            fieldEtc.prpGenType.gParams[0] as TypeLike<any>,
+                                            item,
+                                            refMap));
+                                } else {
+                                    thisLocal.addOnCollection(nonPersistentCollection, null);
+                                }
                             }
                         });
                         resultInternalRef.result = nonPersistentCollection;

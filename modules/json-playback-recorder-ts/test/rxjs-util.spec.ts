@@ -1,12 +1,55 @@
 import * as chai from 'chai';
-import { Observable, of } from 'rxjs';
-import { delay, tap } from 'rxjs/operators';
+import { Observable, of, BehaviorSubject, interval, zip, combineLatest } from 'rxjs';
+import { delay, tap, combineAll, take } from 'rxjs/operators';
 import { combineFirstSerial } from '../src/implementation/rxjs-util.js';
 import { AsyncCountdown } from './async-countdown.js';
 import { AsyncCount } from './async-count.js';
 
 {
     describe('rxjs-util-test', () => {
+        it('rxjs-util-test.combineAll', (done) => {
+            //let asyncCount = 0;
+            const debugTimeFactor = 1;
+            let asyncCount = new AsyncCount();
+            const executionArr: Number[] = [];
+            let asyncCountdown = new AsyncCountdown({ count: 10, timeOut: 1000 * debugTimeFactor});
+
+            const bSub0 = new BehaviorSubject<string>('b0');
+            const bSub1 = new BehaviorSubject<string>('b1');
+            const bSub2 = new BehaviorSubject<string>('b2');
+            const d0 = interval(50 * debugTimeFactor).pipe(
+                tap((i)=> {
+                    bSub0.next('b0: ' + i);
+                }),
+                take(3),
+            ).subscribe(() => {});
+            const d1 = interval(60 * debugTimeFactor).pipe(
+                tap((i)=> {
+                    bSub1.next('b1: ' + i);
+                }),
+                take(3),
+            ).subscribe(() => {});
+            const d2 = interval(70 * debugTimeFactor).pipe(
+                tap((i)=> {
+                    bSub2.next('b1: ' + i);
+                }),
+                take(3),
+            ).subscribe(() => {});
+
+            of(bSub0, bSub1, bSub2).pipe(
+                combineAll((b0, b1, b2) => {
+                    return [b0, b1, b2];
+                }),
+                asyncCountdown.registerRxOpr()
+            ).subscribe(([bs0, bs1, bs2]) => {
+                console.log(bs0, bs1, bs2);
+            });
+
+            asyncCountdown.createCountdownEnds().subscribe(() => {
+                done();
+            });
+        });
+
         it('rxjs-util-test.combineFirstSerial_4-items', (done) => {
             //let asyncCount = 0;
             const debugTimeFactor = 1;

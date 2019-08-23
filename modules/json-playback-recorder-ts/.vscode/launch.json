@@ -50,6 +50,7 @@
                 //"rxjs-util-test.combineFirstSerial_4-items",
                 //"rxjs-util-test.combineFirstSerial_so-many-items",
                 //"rxjs-util-test.combineFirstSerial_0-items",
+                //"rxjs-util-test.combineAll",
                 "dist-dev/**/**.spec.js"
             ],
             "sourceMaps": true,
