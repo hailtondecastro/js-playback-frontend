@@ -1,7 +1,7 @@
 {
   "name": "json-playback-recorder-ts",
   "description": "Framework for integrate entity object graph operations (field, collections modifications, etc) between backend and frontend.",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
