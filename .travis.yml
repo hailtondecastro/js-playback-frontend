@@ -13,12 +13,12 @@ script:
   - npm run test
   - npm run test
   - cp .npmrc.template .npmrc
-  - npm deprecate json-playback-recorder-ts@0.1.0 "Combining a large number of Observables has proved totally impractical. Use version 0.2.0."
+  #- npm deprecate json-playback-recorder-ts@0.1.0 "Combining a large number of Observables has proved totally impractical. Use version 0.2.0."
   - cd ../..
   - cd ./modules/json-pr-integration-test
   - npm install --no-package-lock
   - npm run test
-  - cd ../..
+  - cd ../..   
 
 deploy:
   provider: script
