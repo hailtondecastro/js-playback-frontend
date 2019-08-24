@@ -7,7 +7,6 @@
       "$playerObjectId$" : 1
     },
     "id" : 1,
-    "vcharA" : "MasterAEnt_REG01_REG01_VcharA",
     "vcharB" : "MasterAEnt_REG01_REG01_VcharB",
     "dateA" : 1546300800000,
     "datetimeA" : 1546304461000,
@@ -30,6 +29,7 @@
         "$isLazyProperty$" : true
       }
     },
+    "vcharA" : "MasterAEnt_REG01_REG01_VcharA",
     "blobLazyB" : {
       "$metadatas$" : {
         "$iAmPlayerMetadatas$" : true,

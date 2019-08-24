@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig-parent",
+  "compilerOptions": {
+    "module": "es2015",
+    "outDir": "../../dist/json-playback-recorder-ts/es2015",
+  },
+}

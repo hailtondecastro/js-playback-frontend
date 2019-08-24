@@ -1,12 +1,8 @@
-import { DetailAEnt } from './detail-a-ent';
-import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker } from 'json-playback-recorder-ts';
-import { RecorderDecorators } from 'json-playback-recorder-ts';
-import { GenericNodeNotNow, GenericTokenizer } from 'json-playback-recorder-ts';
-import { Stream } from 'stream';
-import { ReadLine } from 'readline';
+import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker, RecorderDecorators, GenericNodeNotNow, GenericTokenizer } from 'json-playback-recorder-ts';
+import { DetailMinEnt } from './detail-min-ent';
 
 @RecorderDecorators.playerType({playerType: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
-export class MasterAEnt {
+export class MasterMinEnt {
     private _id: number;
     private _vcharA: string;
     private _vcharB: string;
@@ -15,12 +11,12 @@ export class MasterAEnt {
     private _blobA: Buffer;
     private _blobB: Buffer;
     private _hbVersion: number;
-    private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
-    private _blobLazyA: LazyRefPrp<BinaryStream>;
+    private _detailAEntCol: LazyRefOTM<Set<DetailMinEnt>>;
+	private _blobLazyA: LazyRefPrp<BinaryStream>;
     private _blobLazyB: LazyRefPrp<BinaryStream>;
     private _clobLazyA: LazyRefPrp<StringStream>;
 	private _clobLazyB: LazyRefPrp<StringStream>;
-
+	
 	@RecorderDecorators.property()
 	public get id(): number {
 		return this._id;
@@ -62,8 +58,8 @@ export class MasterAEnt {
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
-	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailMinEnt).gt().gt().tree))
+	public get detailAEntCol(): LazyRefOTM<Set<DetailMinEnt>> {
 		return this._detailAEntCol;
 	}
 
@@ -123,7 +119,7 @@ export class MasterAEnt {
 		this._hbVersion = value;
 	}
 
-	public set detailAEntCol(value: LazyRefOTM<Set<DetailAEnt>>) {
+	public set detailAEntCol(value: LazyRefOTM<Set<DetailMinEnt>>) {
 		this._detailAEntCol = value;
 	}
 

@@ -14,3 +14,4 @@ export { RecorderSessionImplementor } from './src/implementation/recorder-sessio
 export * from './src/implementation/rxjs-util';
 export * from './src/implementation/mem-stream-readable-stream-auto-end';
 export * from './src/implementation/recorder-constants';
+export * from './src/typeslike';

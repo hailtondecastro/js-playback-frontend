@@ -2,12 +2,27 @@ import { ObservableInput, OperatorFunction, Subject, Observable } from "rxjs";
 import { tap } from "rxjs/operators";
 
 export class AsyncCountdown {
-    constructor(count: number) {
-        this._count = count;
-        this._countRemain = count;
+    constructor(options: {count: number, timeOut?: number}) {
+        if (!options) {
+            throw new Error('options can not be null');
+        }
+        const thisLocal = this;
+        this._count = options.count;
+        this._countRemain = options.count;
+        this._timeOut = options.timeOut;
+
+        setTimeout(() => {
+            if (thisLocal._countRemain !== 0) {
+                thisLocal._allAsyncEndedSub.error(new Error('Invalid async count remain on timeout: ' + thisLocal._countRemain));
+            }
+            if (thisLocal._countRemain === 0) {
+                thisLocal._allAsyncEndedSub.next(null);
+            }
+        },
+        thisLocal._timeOut);
     }
     private _registerRxOprCallCount: number = 0;
-    private _countup: number = 0;
+    private _timeOut: number = 0;
     private _countRemain: number;
     private _count: number;
     private _allAsyncEndedSub = new Subject<void>();
@@ -20,11 +35,14 @@ export class AsyncCountdown {
     
     private doCountDown() {
         const thisLocal = this;
-        thisLocal._countup++;
-        if (--thisLocal._countRemain === 0) {
-            setTimeout(() => {thisLocal._allAsyncEndedSub.next(null);});
-        } else if (thisLocal._countRemain < 0) {
-            throw new Error('Invalid async count remain: ' + thisLocal._countRemain);
+        if (thisLocal._timeOut) {
+            --thisLocal._countRemain;
+        } else {
+            if (--thisLocal._countRemain === 0) {
+                setTimeout(() => {thisLocal._allAsyncEndedSub.next(null);});
+            } else if (thisLocal._countRemain < 0) {
+                throw new Error('Invalid async count remain: ' + thisLocal._countRemain);
+            }
         }
     }
     

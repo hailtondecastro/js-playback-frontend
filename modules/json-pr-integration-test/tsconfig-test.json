@@ -10,6 +10,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./dist-test",
+    "rootDir": ".",
     "noImplicitAny": true,
     "noFallthroughCasesInSwitch": true,
     "inlineSourceMap": false,
@@ -18,12 +19,16 @@
     "typeRoots": [
       "node_modules/@types"
     ],
+    "types": [
+      "mocha",
+      "jasmine",
+      "node"
+    ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,
     "target": "es5",
     "resolveJsonModule": true,
     "esModuleInterop": true ,
-    "rootDirs": [],
     "alwaysStrict": false,
     "noImplicitUseStrict": true
   },

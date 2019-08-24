@@ -42,7 +42,7 @@ import { AsyncCount } from './async-count.js';
                 }),
                 asyncCountdown.registerRxOpr()
             ).subscribe(([bs0, bs1, bs2]) => {
-                console.log(bs0, bs1, bs2);
+                //console.log(bs0, bs1, bs2);
             });
 
             asyncCountdown.createCountdownEnds().subscribe(() => {

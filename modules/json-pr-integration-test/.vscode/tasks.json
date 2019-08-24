@@ -74,6 +74,35 @@
                     ]
                 }
             ],
+        },
+        {
+            "group": "build",
+            "label": "rebuild dist",
+            "args": [
+                //"build.out.txt"
+                "npm run build-vscode-rebuild-dist"
+            ],
+            "problemMatcher": [
+                "$tsc",
+                "$tsc-watch",
+                {
+                    "owner": "rebuild",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ]
+                }
+            ],
         }
     ]
 }

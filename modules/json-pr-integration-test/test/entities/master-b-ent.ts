@@ -1,9 +1,5 @@
 import { DetailAEnt } from './detail-a-ent';
-import { RecorderDecorators } from 'json-playback-recorder-ts';
-import { GenericNodeNotNow } from 'json-playback-recorder-ts';
-import { GenericTokenizer } from 'json-playback-recorder-ts';
-import { LazyRef } from 'json-playback-recorder-ts';
-import { LazyRefOTM } from 'json-playback-recorder-ts';
+import { RecorderDecorators, GenericNodeNotNow, LazyRefOTM, GenericTokenizer, LazyRef } from 'json-playback-recorder-ts';
 
 @RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
 export class MasterBCompComp {
@@ -126,6 +122,7 @@ export class MasterBEnt {
     private _masterBComp: MasterBComp;
 
 	@RecorderDecorators.property()
+	@RecorderDecorators.playerObjectId()
 	public get compId(): MasterBCompId {
 		return this._compId;
 	}

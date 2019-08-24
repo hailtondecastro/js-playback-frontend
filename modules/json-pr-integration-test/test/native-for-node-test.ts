@@ -2,7 +2,7 @@ import { from, of, Subject } from "rxjs";
 import { map, flatMap, delay } from "rxjs/operators";
 import { Readable, Stream } from "stream";
 import streamToObservable from 'stream-to-observable';
-import { IFieldProcessor, MemStreamReadableStreamAutoEnd, CacheHandler, BinaryStream, StringStream, StringStreamMarker, BinaryStreamMarker } from "json-playback-recorder-ts";
+import { IFieldProcessor, MemStreamReadableStreamAutoEnd, CacheHandler, BinaryStream, StringStream, StringStreamMarker, BinaryStreamMarker, NonWritableStreamExtraMethods } from "json-playback-recorder-ts";
 
 export namespace ForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();
@@ -75,16 +75,16 @@ export namespace ForNodeTest {
     export const CacheHandlerAsync: CacheHandler = 
         {
             clearCache: () => {
-                return CacheHandlerSync.clearCache().pipe(delay(10));
+                return CacheHandlerSync.clearCache().pipe(delay(1));
             },
             getFromCache: (cacheKey) => {
-                return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(10));
+                return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(1));
             },
             putOnCache: (cacheKey, stream) => {
-                return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(10));
+                return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(1));
             },
             removeFromCache: (cacheKey) => {
-                return CacheHandlerSync.removeFromCache(cacheKey).pipe(delay(10));
+                return CacheHandlerSync.removeFromCache(cacheKey).pipe(delay(1));
             }
         };
 
@@ -121,18 +121,18 @@ export namespace ForNodeTest {
     export const DateSyncProcessor: IFieldProcessor<Date> = {
         fromLiteralValue: (value, info) => {
             if (value instanceof Number || typeof(value) === 'number') {
-                return of(new Date(value as number));
+                return new Date(value as number);
             } else if (value instanceof String || typeof(value) === 'string') {
-                return of(new Date(value as string));
+                return new Date(value as string);
             } else {
-                return of(null);
+                return null;
             }
         },
         toLiteralValue: (value, info) => {
             if (value) {
-                return of(value.getTime());
+                return value.getTime();
             } else {
-                return of(null);
+                return null;
             }
         }
     };
@@ -140,34 +140,38 @@ export namespace ForNodeTest {
     export const BufferSyncProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {
-                return of(Buffer.from(value, 'base64'));
+                return Buffer.from(value, 'base64');
             } else {
-                return of(null);
+                return null;
             }
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
-                return from(
-                    streamToObservable(stream)
-                        .forEach((chunk) => {
-                            chunkConcatArrRef.value.push(chunk as Buffer);
-                        })
-                ).pipe(
-                    map(() => {
-                        return Buffer.concat(chunkConcatArrRef.value);
-                    })
-                );
-            } else {
-                of(null);
-            }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream) {
+                        const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
+                        return from(
+                            streamToObservable(respStream.body)
+                                .forEach((chunk) => {
+                                    chunkConcatArrRef.value.push(chunk as Buffer);
+                                })
+                        ).pipe(
+                            map(() => {
+                                return { body: Buffer.concat(chunkConcatArrRef.value) };
+                            })
+                        );
+                    } else {
+                        return of({ body: null });
+                    }
+                })
+            );
         },
         toLiteralValue: (value, info) => {
             if (value) {
                 let base64Str = value.toString('base64');
-                return of(base64Str);
+                return base64Str;
             } else {
-                return of(null);
+                return null;
             }
         },
         toDirectRaw: (value, info) => {
@@ -176,7 +180,7 @@ export namespace ForNodeTest {
                 // ws.write(value);
                 let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
                 myReadableStreamBuffer.push(value);
-                return of(myReadableStreamBuffer);
+                return of({ body: myReadableStreamBuffer} );
                 // return of(null).pipe(
                 //     tap(() => {
                 //         myReadableStreamBuffer.emit('end');
@@ -186,59 +190,53 @@ export namespace ForNodeTest {
                 //     })
                 // );
             } else {
-                return of(null);
+                return of({ body: null });
             }
         }
     };
     export const StringSyncProcessor: IFieldProcessor<String> = {
         fromLiteralValue: (value, info) => {
-            return of(value);
+            return value;
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                stream.setEncoding('utf8');
-                const chunkConcatArrRef: {value: string[]} = {value:[]};
-                return from(
-                    streamToObservable(stream)
-                        .forEach((chunk) => {
-                            if (typeof(chunk) === 'string') {
-                                chunkConcatArrRef.value.push(chunk);
-                            } else if (chunk instanceof String) {
-                                chunkConcatArrRef.value.push(chunk.toString());
-                            } else {
-                                throw new Error('Not supported!: chunk: ' + chunk);
-                            }
-                        })
-                ).pipe(
-                    map(() => {
-                        let bufferConc = ''.concat(...chunkConcatArrRef.value);
-                        return bufferConc;
-                    })
-                );
-            } else {
-                return of(null);
-            }
-            // if (stream) {
-            //     if ((stream as Stream).addListener && (stream as Stream).pipe) {
-            //         let resultPrmStr = getStream(stream, {encoding: 'utf8', maxBuffer: 1024 * 1024});
-            //         return from(resultPrmStr);
-            //     } else {
-            //         throw new Error('Not supported');
-            //     }
-            // } else {
-            //     return of(null);
-            // }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream.body) {
+                        respStream.body.setEncoding('utf8');
+                        const chunkConcatArrRef: {value: string[]} = {value:[]};
+                        return from(
+                            streamToObservable(respStream.body)
+                                .forEach((chunk) => {
+                                    if (typeof(chunk) === 'string') {
+                                        chunkConcatArrRef.value.push(chunk);
+                                    } else if (chunk instanceof String) {
+                                        chunkConcatArrRef.value.push(chunk.toString());
+                                    } else {
+                                        throw new Error('Not supported!: chunk: ' + chunk);
+                                    }
+                                })
+                        ).pipe(
+                            map(() => {
+                                let bufferConc = ''.concat(...chunkConcatArrRef.value);
+                                return { body: bufferConc };
+                            })
+                        );
+                    } else {
+                        return of({ body: null });
+                    }
+                })
+            );
         },
         toLiteralValue: (value, info) => {
-            return of(value);
+            return value;
         },
         toDirectRaw: (value, info) => {
             if (value) {
                 let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
                 myReadableStreamBuffer.setEncoding('utf-8');
-                return of(myReadableStreamBuffer);
+                    return of( { body: myReadableStreamBuffer } );
             } else {
-                return of(null);
+                return of( { body: null });
             }
         }
     };
@@ -246,41 +244,37 @@ export namespace ForNodeTest {
         fromLiteralValue: (value, info) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                myReadableStreamBuffer.push(base64AB);
-                return of(myReadableStreamBuffer);
+                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(base64AB.toString()); 
+                let binaryWRStream: BinaryStream = Object.assign(myReadableStreamBuffer, NonWritableStreamExtraMethods);
+                return binaryWRStream;
             } else {
-                return of(null);
+                return null;
             }
         },
-        fromDirectRaw: (stream, info) => {
-            if (stream) {
-                if ((stream as Stream).addListener && (stream as Stream).pipe) {
-                    return of(stream);
-                } else {
-                    throw new Error('Not supported');
-                }
-            } else {
-                return of(null);
-            }
+        fromDirectRaw: (respStream$, info) => {
+            return respStream$.pipe(
+                flatMap((respStream) => {
+                    if (respStream.body) {
+                        if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
+                            return of(respStream);
+                        } else {
+                            throw new Error('Not supported');
+                        }
+                    } else {
+                        return of({ body: null });
+                    }
+                })
+            );
         },
         toDirectRaw: (value, info) => {
             if (value) {
-                return of(value);
+                return of({ body: value });
             } else {
-                return of(null);
+                return of({ body: null });
             }
         },
         toLiteralValue: (value, info) => {
-            if (value) {
-                return BufferSyncProcessor.fromDirectRaw(value, info).pipe(
-                    flatMap((buffer) => {
-                        return BufferSyncProcessor.toLiteralValue(buffer, info);
-                    })                    
-                );
-            } else {
-                return of(null);
-            }
+            throw new Error('Not supported!');
         }
     };
     export const StringStreamSyncProcessor: IFieldProcessor<StringStream> = {
@@ -289,75 +283,69 @@ export namespace ForNodeTest {
                     let valueBuffer = Buffer.from(value, 'utf8');
                     // let ws = new memStreams.WritableStream();
                     // ws.write(valueBuffer);
-                    let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(''); 
-                    myReadableStreamBuffer.push(valueBuffer);
+                    let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value); 
                     myReadableStreamBuffer.setEncoding('utf-8');
-                    return of(myReadableStreamBuffer);
+                    return myReadableStreamBuffer as any as StringStream;
                 } else {
-                    return of(null);
+                    return null;
                 }
             },
-            fromDirectRaw: (stream, info) => {
-                if (stream) {
-                    if ((stream as Stream).addListener && (stream as Stream).pipe) {
-                        (stream as any as Readable).setEncoding('utf-8');
-                        return of(stream);
-                    } else {
-                        throw new Error('Not supported');
-                    }
-                } else {
-                    return of(null);
-                }
+            fromDirectRaw: (respStream$, info) => {
+                return respStream$.pipe(
+                    flatMap((respStream) => {
+                        if (respStream.body) {
+                            if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
+                                (respStream.body as any as Readable).setEncoding('utf-8');
+                                return of(respStream);
+                            } else {
+                                throw new Error('Not supported');
+                            }
+                        } else {
+                            return of({ body: null});
+                        }
+                    })
+                )
             },
             toDirectRaw: (value, info) => {
                 if (value) {
                     value.setEncoding('utf8');
-                    return of(value);
+                    return of({ body: value });
                 } else {
-                    return of(null);
+                    return of({ body: null });
                 }
             },
             toLiteralValue: (value, info) => {
-                if (value) {
-                    value.setEncoding('utf8');
-                    return StringSyncProcessor.fromDirectRaw(value, info).pipe(
-                        flatMap((value) => {
-                            return StringSyncProcessor.toLiteralValue(value, info);
-                        })
-                    );
-                } else {
-                    return of(null);
-                }
+                throw new Error('Not supported!');
             }
     };
 
     export const BufferAsyncProcessor: IFieldProcessor<Buffer> = {
-        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info); },
+        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info); }
     };
     export const StringAsyncProcessor: IFieldProcessor<String> = {
-            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info); },
+            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info); }
     };
     export const BinaryStreamAsyncProcessor: IFieldProcessor<BinaryStream> = {
-            fromLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return BinaryStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return BinaryStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.fromLiteralValue(value, info); },
+            fromDirectRaw: (stream, info) => { return BinaryStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return BinaryStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.toLiteralValue(value, info); }
     };
     export const StringStreamAsyncProcessor: IFieldProcessor<StringStream> = {
-            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(10)); },
-            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(10)); },
-            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info); },
+            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info); }
     };
     export const DateAsyncProcessor: IFieldProcessor<Date> = {
-        fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info).pipe(delay(10)); },
-        toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info).pipe(delay(10)); }
+        fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info); },
+        toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info); }
     };
 
     export const TypeProcessorEntriesAsync = 

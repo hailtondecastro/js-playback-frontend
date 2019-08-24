@@ -14,3 +14,5 @@ Framework for integrate entity object graph operations (field, collections modif
   1. Secret variables (DISPLAY VALUE IN BUILD LOG "off" and remember escape special character):
       - GPG_PASSPHRASE: same of GPG_PASSPHRASE defined on [travis.gpg](https://github.com/hailtondecastro/json-playback-player-hibernate#travis-cicom);
       - NPM_PUBLISH_TOKEN: npm Access Token;
+
+### I need read more about https://2ality.com/2017/04/setting-up-multi-platform-packages.html

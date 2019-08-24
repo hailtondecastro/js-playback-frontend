@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig-parent",
+  "compilerOptions": {
+    "module": "esnext",
+    "outDir": "../../dist/json-playback-recorder-ts/esnext",
+  },
+}

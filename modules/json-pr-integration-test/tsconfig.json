@@ -7,7 +7,7 @@
     "declaration": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "module": "esnext",
+    "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "./dist-dev",
     "rootDir": ".",
@@ -17,6 +17,11 @@
     "lib": ["es6", "dom"],
     "typeRoots": [
       "node_modules/@types"
+    ],
+    "types": [
+      "mocha",
+      "jasmine",
+      "node"
     ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,

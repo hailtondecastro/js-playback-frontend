@@ -1,7 +1,7 @@
 {
   "name": "json-pr-integration-test",
   "description": "For integration test. Not for publish/deploy.",
-  "version": "0.0.7",
+  "version": "0.2.6",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -36,6 +36,7 @@
     "typescript": "3.5.3"
   },
   "dependencies": {
+    "@types/mocha": "^5.2.7",
     "@types/node": "^10.14.14",
     "blob-to-stream": "^1.0.3",
     "chai": "^4.2.0",
