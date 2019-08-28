@@ -1,7 +1,7 @@
 {
   "name": "json-playback-recorder-ts",
   "description": "Framework for integrate entity object graph operations (field, collections modifications, etc) between backend and frontend.",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "es2015": "./es2015/index.js",
   "esnext": "./esnext/index.js",
   "main": "./umd/index.js",
@@ -13,7 +13,7 @@
     "build-es2015": "        npm run build:prepare-es2015-folder    && tsc -p tsconfig-es2015.json   --extendedDiagnostics && npm run rename-typeslike-es2015    && npm run embed-source-contents-es2015    && npm run copy-recusive-es2015",
     "build-esnext": "        npm run build:prepare-esnext-folder    && tsc -p tsconfig-esnext.json   --extendedDiagnostics && npm run rename-typeslike-esnext    && npm run embed-source-contents-esnext    && npm run copy-recusive-esnext",
     "build-dist-test": "     npm run build:prepare-dist-test-folder && tsc -p tsconfig-test.json     --extendedDiagnostics && npm run rename-typeslike-dist-test && npm run embed-source-contents-dist-test && npm run copy-recusive-dist-test",
-    "build-dist-dev": "      npm run build:prepare-dist-dev-folder  && tsc                           --extendedDiagnostics && npm run rename-typeslike-dist-dev  && npm run embed-source-contents-dist-dev  && npm run copy-recusive-dist-dev",
+    "build-dist-dev": "      npm run build:prepare-dist-dev-folder  && tsc                           --extendedDiagnostics && npm run rename-typeslike-dist-dev                                             && npm run copy-recusive-dist-dev",
     "build-dist-dev-incr": " npm run build:prepare-dist-dev-folder  && tsc --build                                         && npm run rename-typeslike-dist-dev  && npm run embed-source-contents-dist-dev  && npm run copy-recusive-dist-dev",
     "build-vscode-incr": "        npm run build-dist-dev-incr",
     "build-vscode-rebuild": "     npm run clear-dist-dev && npm run build-dist-dev",

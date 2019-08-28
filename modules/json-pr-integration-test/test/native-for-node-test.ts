@@ -137,7 +137,7 @@ export namespace ForNodeTest {
         }
     };
 
-    export const BufferSyncProcessor: IFieldProcessor<Buffer> = {
+    export const BufferProcessor: IFieldProcessor<Buffer> = {
         fromLiteralValue: (value, info) => {
             if (value) {
                 return Buffer.from(value, 'base64');
@@ -194,7 +194,7 @@ export namespace ForNodeTest {
             }
         }
     };
-    export const StringSyncProcessor: IFieldProcessor<String> = {
+    export const StringProcessor: IFieldProcessor<String> = {
         fromLiteralValue: (value, info) => {
             return value;
         },
@@ -240,7 +240,7 @@ export namespace ForNodeTest {
             }
         }
     };
-    export const BinaryStreamSyncProcessor: IFieldProcessor<BinaryStream> = {
+    export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = {
         fromLiteralValue: (value, info) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
@@ -258,6 +258,8 @@ export namespace ForNodeTest {
                         if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
                             return of(respStream);
                         } else {
+                            //for debug purpose
+                            info === info
                             throw new Error('Not supported');
                         }
                     } else {
@@ -277,7 +279,7 @@ export namespace ForNodeTest {
             throw new Error('Not supported!');
         }
     };
-    export const StringStreamSyncProcessor: IFieldProcessor<StringStream> = {
+    export const StringStreamProcessor: IFieldProcessor<StringStream> = {
             fromLiteralValue: (value, info) => {
                 if (value) {
                     let valueBuffer = Buffer.from(value, 'utf8');
@@ -319,76 +321,76 @@ export namespace ForNodeTest {
             }
     };
 
-    export const BufferAsyncProcessor: IFieldProcessor<Buffer> = {
-        fromLiteralValue: (value, info) => { return BufferSyncProcessor.fromLiteralValue(value, info); },
-        fromDirectRaw: (stream, info) => { return BufferSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
-        toDirectRaw: (value, info) => { return BufferSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
-        toLiteralValue: (value, info) => { return BufferSyncProcessor.toLiteralValue(value, info); }
-    };
-    export const StringAsyncProcessor: IFieldProcessor<String> = {
-            fromLiteralValue: (value, info) => { return StringSyncProcessor.fromLiteralValue(value, info); },
-            fromDirectRaw: (stream, info) => { return StringSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
-            toDirectRaw: (value, info) => { return StringSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
-            toLiteralValue: (value, info) => { return StringSyncProcessor.toLiteralValue(value, info); }
-    };
-    export const BinaryStreamAsyncProcessor: IFieldProcessor<BinaryStream> = {
-            fromLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.fromLiteralValue(value, info); },
-            fromDirectRaw: (stream, info) => { return BinaryStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
-            toDirectRaw: (value, info) => { return BinaryStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
-            toLiteralValue: (value, info) => { return BinaryStreamSyncProcessor.toLiteralValue(value, info); }
-    };
-    export const StringStreamAsyncProcessor: IFieldProcessor<StringStream> = {
-            fromLiteralValue: (value, info) => { return StringStreamSyncProcessor.fromLiteralValue(value, info); },
-            fromDirectRaw: (stream, info) => { return StringStreamSyncProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
-            toDirectRaw: (value, info) => { return StringStreamSyncProcessor.toDirectRaw(value, info).pipe(delay(1)); },
-            toLiteralValue: (value, info) => { return StringStreamSyncProcessor.toLiteralValue(value, info); }
-    };
-    export const DateAsyncProcessor: IFieldProcessor<Date> = {
-        fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info); },
-        toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info); }
-    };
+    // export const BufferProcessor: IFieldProcessor<Buffer> = {
+    //     fromLiteralValue: (value, info) => { return BufferProcessor.fromLiteralValue(value, info); },
+    //     fromDirectRaw: (stream, info) => { return BufferProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+    //     toDirectRaw: (value, info) => { return BufferProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+    //     toLiteralValue: (value, info) => { return BufferProcessor.toLiteralValue(value, info); }
+    // };
+    // export const StringProcessor: IFieldProcessor<String> = {
+    //         fromLiteralValue: (value, info) => { return StringProcessor.fromLiteralValue(value, info); },
+    //         fromDirectRaw: (stream, info) => { return StringProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+    //         toDirectRaw: (value, info) => { return StringProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+    //         toLiteralValue: (value, info) => { return StringProcessor.toLiteralValue(value, info); }
+    // };
+    // export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = {
+    //         fromLiteralValue: (value, info) => { return BinaryStreamProcessor.fromLiteralValue(value, info); },
+    //         fromDirectRaw: (stream, info) => { return BinaryStreamProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+    //         toDirectRaw: (value, info) => { return BinaryStreamProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+    //         toLiteralValue: (value, info) => { return BinaryStreamProcessor.toLiteralValue(value, info); }
+    // };
+    // export const StringStreamProcessor: IFieldProcessor<StringStream> = {
+    //         fromLiteralValue: (value, info) => { return StringStreamProcessor.fromLiteralValue(value, info); },
+    //         fromDirectRaw: (stream, info) => { return StringStreamProcessor.fromDirectRaw(stream, info).pipe(delay(1)); },
+    //         toDirectRaw: (value, info) => { return StringStreamProcessor.toDirectRaw(value, info).pipe(delay(1)); },
+    //         toLiteralValue: (value, info) => { return StringStreamProcessor.toLiteralValue(value, info); }
+    // };
+    // export const DateProcessor: IFieldProcessor<Date> = {
+    //     fromLiteralValue: (value, info) => { return DateSyncProcessor.fromLiteralValue(value, info); },
+    //     toLiteralValue: (value, info) => { return DateSyncProcessor.toLiteralValue(value, info); }
+    // };
 
-    export const TypeProcessorEntriesAsync = 
+    // export const TypeProcessorEntriesAsync = 
+    // [ 
+    //     {
+    //         type: Buffer,
+    //         processor: BufferProcessor
+    //     },
+    //     {                
+    //         type: String,
+    //         processor: StringProcessor
+    //     },
+    //     {                
+    //         type: BinaryStreamMarker,
+    //         processor: BinaryStreamProcessor
+    //     },
+    //     {
+    //         type: StringStreamMarker,
+    //         processor: StringProcessor
+    //     },
+    //     {
+    //         type: Date,
+    //         processor: DateProcessor
+    //     }
+    // ];
+
+    export const TypeProcessorEntries = 
     [ 
         {
             type: Buffer,
-            processor: BufferAsyncProcessor
+            processor: BufferProcessor
         },
         {                
             type: String,
-            processor: StringAsyncProcessor
+            processor: StringProcessor
         },
         {                
             type: BinaryStreamMarker,
-            processor: BinaryStreamAsyncProcessor
+            processor: BinaryStreamProcessor
         },
         {
             type: StringStreamMarker,
-            processor: StringAsyncProcessor
-        },
-        {
-            type: Date,
-            processor: DateAsyncProcessor
-        }
-    ];
-
-    export const TypeProcessorEntriesSync = 
-    [ 
-        {
-            type: Buffer,
-            processor: BufferSyncProcessor
-        },
-        {                
-            type: String,
-            processor: StringSyncProcessor
-        },
-        {                
-            type: BinaryStreamMarker,
-            processor: BinaryStreamSyncProcessor
-        },
-        {
-            type: StringStreamMarker,
-            processor: StringSyncProcessor
+            processor: StringProcessor
         },
         {
             type: Date,

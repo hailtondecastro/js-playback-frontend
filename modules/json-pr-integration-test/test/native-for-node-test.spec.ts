@@ -12,6 +12,8 @@ import { AsyncCount } from './async-count.js';
 import { ForNodeTest } from './native-for-node-test.js';
 import { FieldInfo, MemStreamReadableStreamAutoEnd, BinaryStream, NonWritableStreamExtraMethods, StringStream, NonReadableStreamExtraMethods, timeoutDecorateRxOpr } from 'json-playback-recorder-ts';
 import { delay, tap, map } from 'rxjs/operators';
+
+
 {
     describe('ForNodeTest', () => {
         it('ForNodeTest.timeoutDecorateRxOpr', 1 == 1 ? (done) => { done(); } : (done) => {
@@ -45,12 +47,12 @@ import { delay, tap, map } from 'rxjs/operators';
                     ownerType: Object,
                     ownerValue: {}
                 };
-            let toDirectRaw$ = ForNodeTest.StringSyncProcessor.toDirectRaw(originalValue, fieldInfo)
+            let toDirectRaw$ = ForNodeTest.StringProcessor.toDirectRaw(originalValue, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
-            let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
+            let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -61,7 +63,7 @@ import { delay, tap, map } from 'rxjs/operators';
 
             let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
             myReadableStream.setEncoding('utf8');
-            fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
+            fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -88,7 +90,7 @@ import { delay, tap, map } from 'rxjs/operators';
                     ownerType: Object,
                     ownerValue: {}
                 };
-            let toDirectRaw$ = ForNodeTest.BufferSyncProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
+            let toDirectRaw$ = ForNodeTest.BufferProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr(),
@@ -96,7 +98,7 @@ import { delay, tap, map } from 'rxjs/operators';
                         respStream.body.setEncoding('utf8'); 
                     })
                 );
-            let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
+            let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -106,7 +108,7 @@ import { delay, tap, map } from 'rxjs/operators';
             });
 
             let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            fromDirectRaw$ = ForNodeTest.BufferSyncProcessor.fromDirectRaw(
+            fromDirectRaw$ = ForNodeTest.BufferProcessor.fromDirectRaw(
                 of({ body: myReadableStream}),
                 fieldInfo).pipe(
                 asyncCount.registerRxOpr(),
@@ -121,10 +123,10 @@ import { delay, tap, map } from 'rxjs/operators';
             });
             //myReadableStream\.emit\('end'\);
 
-            let literalValue = ForNodeTest.BufferSyncProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
+            let literalValue = ForNodeTest.BufferProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
             chai.expect(literalValue).to.eq('b3JpZ2luYWxWYWx1ZV9GT09fQkFB');
 
-            let fromLiteralValue = ForNodeTest.BufferSyncProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+            let fromLiteralValue = ForNodeTest.BufferProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
             chai.expect((fromLiteralValue as Buffer).toString('utf8')).to.eq(originalValue);
 
             asyncCountdown.createCountdownEnds().subscribe(() => {
@@ -145,14 +147,14 @@ import { delay, tap, map } from 'rxjs/operators';
                 };
             let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
             let binaryWRStream: BinaryStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-            let toDirectRaw$ = ForNodeTest.BinaryStreamSyncProcessor.toDirectRaw(binaryWRStream, fieldInfo)
+            let toDirectRaw$ = ForNodeTest.BinaryStreamProcessor.toDirectRaw(binaryWRStream, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             toDirectRaw$.subscribe((respStream) => {
                 respStream.body.setEncoding('utf8');
-                let fromDirectRaw$ = ForNodeTest.StringAsyncProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -163,14 +165,14 @@ import { delay, tap, map } from 'rxjs/operators';
             });
 
             myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let fromDirectRaw$ = ForNodeTest.BinaryStreamSyncProcessor.fromDirectRaw(of({ body: myReadableStream } ), fieldInfo)
+            let fromDirectRaw$ = ForNodeTest.BinaryStreamProcessor.fromDirectRaw(of({ body: myReadableStream } ), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             
             fromDirectRaw$.subscribe((respStream) => {
-                let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -184,8 +186,8 @@ import { delay, tap, map } from 'rxjs/operators';
             myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
             binaryWRStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
 
-            let fromLiteralValue = ForNodeTest.BinaryStreamSyncProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
-            let fromDirectRawB$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: fromLiteralValue }), fieldInfo).pipe(
+            let fromLiteralValue = ForNodeTest.BinaryStreamProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+            let fromDirectRawB$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue }), fieldInfo).pipe(
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             );
@@ -213,13 +215,13 @@ import { delay, tap, map } from 'rxjs/operators';
 
             let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
             let stringStream: StringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-            let toDirectRaw$ = ForNodeTest.StringStreamSyncProcessor.toDirectRaw(stringStream, fieldInfo)
+            let toDirectRaw$ = ForNodeTest.StringStreamProcessor.toDirectRaw(stringStream, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             toDirectRaw$.subscribe((respStream) => {
-                let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -232,7 +234,7 @@ import { delay, tap, map } from 'rxjs/operators';
             myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
             let myWriStream: NodeJS.WritableStream = new memStreams.WritableStream();
             stringStream = Object.assign(myWriStream, NonReadableStreamExtraMethods);
-            let fromDirectRaw$ = ForNodeTest.StringStreamSyncProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
+            let fromDirectRaw$ = ForNodeTest.StringStreamProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -241,7 +243,7 @@ import { delay, tap, map } from 'rxjs/operators';
             fromDirectRaw$.subscribe((respStream) => {
                 asyncCount.doNonObservableIncrement();
                 respStream.body.setEncoding('utf8');
-                let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -253,8 +255,8 @@ import { delay, tap, map } from 'rxjs/operators';
             //myReadableStream\.emit\('end'\);
             //myReadableStream\.emit\('end'\);
 
-            let fromLiteralValue = ForNodeTest.StringStreamSyncProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo);
-            let fromDirectRawB$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: fromLiteralValue}), fieldInfo);
+            let fromLiteralValue = ForNodeTest.StringStreamProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo);
+            let fromDirectRawB$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue}), fieldInfo);
             fromDirectRawB$.subscribe((respStreamStr) => {
                 chai.expect(originalValue).to.eq(respStreamStr.body);
             })
@@ -265,7 +267,7 @@ import { delay, tap, map } from 'rxjs/operators';
             });
         });
 
-        // it('ForNodeTest.StringAsyncProcessor', (done) => {
+        // it('ForNodeTest.StringProcessor', (done) => {
         //     let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
         //     let asyncCount = new AsyncCount();
         //     let originalValue = 'originalValue_FOO_BAA';
@@ -275,7 +277,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //             ownerType: Object,
         //             ownerValue: {}
         //         };
-        //     let toDirectRaw$ = ForNodeTest.StringAsyncProcessor.toDirectRaw(originalValue, fieldInfo)
+        //     let toDirectRaw$ = ForNodeTest.StringProcessor.toDirectRaw(originalValue, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -292,7 +294,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
 
         //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.StringAsyncProcessor.fromDirectRaw(myReadableStream, fieldInfo)
+        //     let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(myReadableStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -309,7 +311,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         // });
 
-        // it('ForNodeTest.BufferAsyncProcessor', (done) => {
+        // it('ForNodeTest.BufferProcessor', (done) => {
         //     let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
         //     let asyncCount = new AsyncCount();
         //     let originalValue = 'originalValue_FOO_BAA';
@@ -319,7 +321,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //             ownerType: Object,
         //             ownerValue: {}
         //         };
-        //     let toDirectRaw$ = ForNodeTest.BufferAsyncProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
+        //     let toDirectRaw$ = ForNodeTest.BufferProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -336,7 +338,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
 
         //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.BufferAsyncProcessor.fromDirectRaw(myReadableStream, fieldInfo)
+        //     let fromDirectRaw$ = ForNodeTest.BufferProcessor.fromDirectRaw(myReadableStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -347,7 +349,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         //     //myReadableStream\.emit\('end'\);
 
-        //     let toLiteralValue$ = ForNodeTest.BufferAsyncProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
+        //     let toLiteralValue$ = ForNodeTest.BufferProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -358,7 +360,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //         //console.log(literalValue);
         //     });
 
-        //     let fromLiteralValue$ = ForNodeTest.BufferAsyncProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+        //     let fromLiteralValue$ = ForNodeTest.BufferProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -373,7 +375,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         // });
 
-        // it('ForNodeTest.BinaryStreamAsyncProcessor', (done) => {
+        // it('ForNodeTest.BinaryStreamProcessor', (done) => {
         //     let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
         //     let asyncCount = new AsyncCount();
         //     let originalValue = 'originalValue_FOO_BAA';
@@ -385,7 +387,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //         };
         //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
         //     let binaryWRStream: BinaryStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toDirectRaw$ = ForNodeTest.BinaryStreamAsyncProcessor.toDirectRaw(binaryWRStream, fieldInfo)
+        //     let toDirectRaw$ = ForNodeTest.BinaryStreamProcessor.toDirectRaw(binaryWRStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -402,7 +404,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
 
         //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.BinaryStreamAsyncProcessor.fromDirectRaw(myReadableStream, fieldInfo)
+        //     let fromDirectRaw$ = ForNodeTest.BinaryStreamProcessor.fromDirectRaw(myReadableStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -422,7 +424,7 @@ import { delay, tap, map } from 'rxjs/operators';
 
         //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
         //     binaryWRStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toLiteralValue$ = ForNodeTest.BinaryStreamAsyncProcessor.toLiteralValue(binaryWRStream, fieldInfo)
+        //     let toLiteralValue$ = ForNodeTest.BinaryStreamProcessor.toLiteralValue(binaryWRStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -434,7 +436,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         //     //myReadableStream\.emit\('end'\);
 
-        //     let fromLiteralValue$ = ForNodeTest.BinaryStreamAsyncProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+        //     let fromLiteralValue$ = ForNodeTest.BinaryStreamProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -456,7 +458,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         // });
 
-        // it('ForNodeTest.StringStreamAsyncProcessor', (done) => {
+        // it('ForNodeTest.StringStreamProcessor', (done) => {
         //     let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
         //     let asyncCount = new AsyncCount();
         //     let originalValue = 'originalValue_FOO_BAA';
@@ -469,7 +471,7 @@ import { delay, tap, map } from 'rxjs/operators';
 
         //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
         //     let stringStream: StringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toDirectRaw$ = ForNodeTest.StringStreamAsyncProcessor.toDirectRaw(stringStream, fieldInfo)
+        //     let toDirectRaw$ = ForNodeTest.StringStreamProcessor.toDirectRaw(stringStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -488,7 +490,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
         //     let myWriStream: NodeJS.WritableStream = new memStreams.WritableStream();
         //     stringStream = Object.assign(myWriStream, NonReadableStreamExtraMethods);
-        //     let fromDirectRaw$ = ForNodeTest.StringStreamAsyncProcessor.fromDirectRaw(myReadableStream, fieldInfo)
+        //     let fromDirectRaw$ = ForNodeTest.StringStreamProcessor.fromDirectRaw(myReadableStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -508,7 +510,7 @@ import { delay, tap, map } from 'rxjs/operators';
 
         //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
         //     stringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toLiteralValue$ = ForNodeTest.StringStreamAsyncProcessor.toLiteralValue(stringStream, fieldInfo)
+        //     let toLiteralValue$ = ForNodeTest.StringStreamProcessor.toLiteralValue(stringStream, fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -520,7 +522,7 @@ import { delay, tap, map } from 'rxjs/operators';
         //     });
         //     //myReadableStream\.emit\('end'\);
 
-        //     let fromLiteralValue$ = ForNodeTest.StringStreamAsyncProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo)
+        //     let fromLiteralValue$ = ForNodeTest.StringStreamProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo)
         //         .pipe(
         //             asyncCount.registerRxOpr(),
         //             asyncCountdown.registerRxOpr()
@@ -567,7 +569,7 @@ import { delay, tap, map } from 'rxjs/operators';
                         asyncCountdown.registerRxOpr()
                     );
                 getFromCache$.subscribe((stream) => {
-                    let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(of({ body: stream }), null)
+                    let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: stream }), null)
                         .pipe(
                             asyncCount.registerRxOpr(),
                             asyncCountdown.registerRxOpr()

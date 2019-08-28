@@ -1,7 +1,7 @@
 import { LazyRef, LazyRefPrpMarker} from '../api/lazy-ref';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { catchError, map, flatMap, delay, finalize, mapTo, tap, share, timeout } from 'rxjs/operators';
-import { throwError, Observable, of, OperatorFunction, PartialObserver, ObservableInput, combineLatest } from 'rxjs';
+import { throwError, Observable, of, OperatorFunction, PartialObserver, ObservableInput, combineLatest, isObservable } from 'rxjs';
 import { RecorderConstants } from './recorder-constants';
 import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
@@ -535,7 +535,22 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         if (!lazyRef.iAmLazyRef) {
                             throw new Error(originalLiteralValueEntry.ownerFieldName + ' is not a LazyRef for ' + ownerEnt);    
                         }
-                        lazyRef.processResponse({ body: originalLiteralValueEntry.playerSnapshot });
+                        const processResponseResult = lazyRef.processResponse({ body: originalLiteralValueEntry.playerSnapshot });
+                        if (isObservable(processResponseResult)) {
+                            const processResponseResult$ = (processResponseResult as Observable<any>).pipe(
+                                thisLocal.registerProvidedObservablesRxOpr(),
+                                share()
+                            );
+                            processResponseResult$.subscribe((valueL) => {
+                                thisLocal.consoleLikeRestoreState.debug(
+                                    'RecorderSessionDefault.restoreEntireStateFromLiteral\n'+
+                                    '  -> processResponseResult$.subscribe(): (!ownerEnt): '+
+                                    'No owner entity for original literal value entry, and lazyRef.processResponse() returned Observable. '+
+                                    'This must be an LazyRefPrp marked with lazyDirectRawRead, it meas tgis LazytRef is usink cache.\n'+
+                                    'lazyRef:\n' +
+                                    this.jsonStringfyWithMax(lazyRef));
+                            });
+                        }
                     } else {
                         if (thisLocal.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeRestoreState.debug('RecorderSessionDefault.restoreEntireStateFromLiteral: (!ownerEnt): '+
@@ -1770,7 +1785,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const resultVoidInnerResultRef = {value: of(undefined)};
         if (LodashLike.isNil(literalLazyObj)) {
             //LodashLike.isNil(srcValue) means LazyRef object instance is null.
-            lr.setLazyObjOnLazyLoadingNoNext(null);
+            if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                lr.setLazyObjOnLazyLoadingNoNext(null);
+            } else {
+                lr.setRealResponseDoneDirectRawWrite(true);
+                lr.respObs = of({ body: null });
+            }
         } else {
             if (lr.lazyLoadedObj) {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1811,7 +1831,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
                                 lr.setLazyObjOnLazyLoadingNoNext(fromLiteralValue);
                             } else {
-                                lr.attachRefId =  thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+                                lr.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+                                lr.setRealResponseDoneDirectRawWrite(true);
                                 lr.respObs = fieldEtc.fieldProcessorCaller.callToDirectRaw(fromLiteralValue, fieldEtc.fieldInfo).pipe(
                                     flatMap((respDirRaw) => {
                                         return thisLocal.manager.config.cacheHandler.putOnCache(lr.attachRefId, respDirRaw.body);
@@ -1875,7 +1896,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const thisLocal = this;
         //const asyncCombineObsArr: Observable<any>[] = [];
         let propertyOptions: RecorderDecorators.PropertyOptions<L> = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, refererObj, refererKey);
-        if (!propertyOptions){
+        if (!propertyOptions) {
             throw new Error('@RecorderDecorators.property() not defined for ' + refererObj.constructor.name + '.' + refererKey);
         }
         let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(genericNode, literalLazyObj, refererObj, refererKey, refMap);
@@ -1906,6 +1927,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!lr.signatureStr) {
                     throw new Error('Signature not found\n' + lr.toString());
                 }
+                // if(propertyOptions.lazyDirectRawWrite) {
+                //     lr.attachRefId =  thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+                // }
                 lr.respObs = this.manager.config.lazyObservableProvider.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
             }
         }
@@ -2565,7 +2589,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             newValue: undefined as T
         }
         let resultObservableValue$: Observable<{asyncAddTapeAction: boolean,newValue: T}> = of(resultObservableValue);
-        options.action.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+        if (!options.action.attachRefId) {
+            //non LazyRef lazyDirectRawWrite fields has not unchengable attachRefId.
+            options.action.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+        }
         if (options.fieldEtc.fieldProcessorCaller && options.fieldEtc.fieldProcessorCaller.callToDirectRaw) {
             let toDirectRaw$ = options.fieldEtc.fieldProcessorCaller.callToDirectRaw(options.value, options.fieldEtc.fieldInfo);
             // toDirectRaw$ = toDirectRaw$.pipe(thisLocal.addSubscribedObsRxOpr());
@@ -2591,7 +2618,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             }),
                             map((stream) => {
                                 resultObservableValue.newValue = stream as any as T;
-                                return of(resultObservableValue);
+                                return resultObservableValue;
                             })
                         );
                         return putOnCacheGetFromCache$;

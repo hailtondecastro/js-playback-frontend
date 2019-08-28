@@ -1,0 +1,39 @@
+import { LazyInfo } from "./lazy-observable-provider";
+import { LazyRef } from "./lazy-ref";
+
+export class LazyDirectRawWriteOnReadingError<L extends Object, I> implements Error {
+
+	constructor(lazyRef: LazyRef<L, I>, message?: string) {
+        this._message = message;
+		this._lazyRef = lazyRef;
+	}
+	private _message: string;
+	private _lazyRef: LazyRef<L, I>;
+	private _stack: string;
+	private _name: string;
+
+	public get name(): string {
+		return this._name;
+	}
+	public set name(value: string) {
+		this._name = value;
+	}
+	public get stack(): string {
+		return this._stack;
+	}
+	public set stack(value: string) {
+		this._stack = value;
+	}
+	public get lazyRef(): LazyRef<L, I> {
+		return this._lazyRef;
+	}
+	public get message(): string {
+		return this._message;
+	}
+	public set message(value: string) {
+		this._message = value;
+	}
+	public set lazyRef(value: LazyRef<L, I>) {
+		this._lazyRef = value;
+	}	
+}

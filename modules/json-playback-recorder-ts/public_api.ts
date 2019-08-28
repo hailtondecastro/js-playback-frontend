@@ -8,6 +8,7 @@ export * from './src/api/recorder-manager';
 export * from './src/api/player-metadatas';
 export * from './src/api/session';
 export * from './src/api/tape';
+// export * from './src/api/lazy-direct-Raw-write-on-reading-error';
 export { RecorderManagerDefault } from './src/implementation/recorder-manager-default';
 export { RecorderConfigDefault, ConsoleLikeBase } from './src/implementation/recorder-config-default';
 export { RecorderSessionImplementor } from './src/implementation/recorder-session-default';

@@ -202,28 +202,14 @@ export namespace RecorderDecoratorsInternal {
                                         //     }
                                         // }
                                     } else if (fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callToLiteralValue) {
-                                        let toLiteralValue$ = fieldEtc.fieldProcessorCaller.callToLiteralValue(
+                                        let processedValue = fieldEtc.fieldProcessorCaller.callToLiteralValue(
                                             value, 
                                             fieldEtc.fieldInfo);
                                         // toLiteralValue$ = toLiteralValue$.pipe(session.addSubscribedObsRxOpr());
-                                        asyncAddTapeAction.value = true;
-                                        toLiteralValue$ = toLiteralValue$.pipe(
-                                            tap(
-                                                {
-                                                    next: (processedValue: any) => {
-                                                        action.simpleSettedValue = processedValue;
-                                                        session.addTapeAction(action);
-                                                    }
-                                                }
-                                            ),
-                                            session.registerProvidedObservablesRxOpr(),
-                                            share()
-                                        );
-                                        toLiteralValue$.subscribe(() => {
-                                            //nothing
-                                        })
+                                        asyncAddTapeAction.value = false;
+                                        action.simpleSettedValue = processedValue;
                                     } else {
-                                        
+                                        action.simpleSettedValue = value;
                                     }
 
                                     if (!asyncAddTapeAction.value) {
