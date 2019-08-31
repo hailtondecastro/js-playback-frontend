@@ -1681,6 +1681,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             refMap.set(bMd.$id$, entityValue);
             resultEntityAlreadyProcessed.alreadyProcessed = true;
+            //AHHHHHHHHHHHHHHHHHH! need mergeWith to save instances in refMap
             resultEntityAlreadyProcessed.entityValue = entityValue;
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
