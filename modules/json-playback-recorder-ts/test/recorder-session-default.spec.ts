@@ -915,7 +915,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1038,12 +1038,24 @@ import { pipe } from '@angular/core/src/render3/pipe';
             //     chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
             // });
 
+            detailAFirstSecondArr[0].compId.masterA.asObservable().pipe(
+                asyncCountdown.registerRxOpr()
+            ).subscribe((masterA0) => {
+                asyncCount.doNonObservableIncrement();
+                detailASecondThirdArr[1].compId.masterA.pipe(
+                    asyncCountdown.registerRxOpr()
+                ).subscribe((masterA2) => {
+                    asyncCount.doNonObservableIncrement();
+                    chai.expect(masterA0).to.be.eq(masterA2);
+                })
+            })
+
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
                     return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
         });

@@ -1657,11 +1657,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!wrappedSnapshotField) {
             throw new Error('snapshotField can not be null');
         }
-        const resultEntityAlreadyProcessed = {
-            alreadyProcessed: false,
-            entityValue: undefined as L,
-            allMD: undefined as ResolveMetadataReturn
-        };
+        // const resultEntityAlreadyProcessed = {
+        //     alreadyProcessed: false,
+        //     entityValue: undefined as L,
+        //     allMD: undefined as ResolveMetadataReturn
+        // };
         //resolveMetadatas is synchronous, so everything here need to be into a
         // piped block! Can you see that?! Sometime i can't!
         this.validatePlayerSideLiteralObject(wrappedSnapshotField);
@@ -1670,7 +1670,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let bMd = allMD.objectMd;
         let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
 
-        resultEntityAlreadyProcessed.allMD = allMD;
+        //resultEntityAlreadyProcessed.allMD = allMD;
 
         if (!LodashLike.isNil(entityValue)) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
@@ -1680,9 +1680,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 throw new Error('entity is already processed on this session. But thre is no metadatas.$id$. signature: ' + bMd.$signature$);
             }
             refMap.set(bMd.$id$, entityValue);
-            resultEntityAlreadyProcessed.alreadyProcessed = true;
-            //AHHHHHHHHHHHHHHHHHH! need mergeWith to save instances in refMap
-            resultEntityAlreadyProcessed.entityValue = entityValue;
+            
+            LodashLike.set(entityValue, RecorderConstants.ENTITY_EXISTS_BY_SIGN_FROM_PREVIOUS_PROCESSING, true);
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
@@ -1692,15 +1691,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (LodashLike.isNil(entityValue)) {
                     throw new Error('entity not foun for idRef: ' + bMd.$idRef$);
                 }
-                if (!LodashLike.isNil(entityValue)) {
-                    //
-                    resultEntityAlreadyProcessed.alreadyProcessed = true;
-                    resultEntityAlreadyProcessed.entityValue = entityValue;
-                }
+                // if (!LodashLike.isNil(entityValue)) {
+                //     //
+                //     resultEntityAlreadyProcessed.alreadyProcessed = true;
+                //     resultEntityAlreadyProcessed.entityValue = entityValue;
+                // }
             }
         }
         if (LodashLike.isNil(entityValue)) {
-            resultEntityAlreadyProcessed.entityValue = new entityType();
+            entityValue = new entityType();
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity was not processed yet on this session.' + 
                   ' Creating new instance for: ' + entityType.name);
@@ -1710,19 +1709,23 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!wrappedSnapshotField) {
             throw new Error('snapshotField can not be null');
         }
-        
-        if (!resultEntityAlreadyProcessed.alreadyProcessed) {
-            this.validatingMetaFieldsExistence(entityType);
-            entityValue = resultEntityAlreadyProcessed.entityValue;
-            LodashLike.set(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
-            this.removeNonUsedKeysFromLiteral(entityValue as any, wrappedSnapshotField);
 
-            if (bMd.$id$) {
-                refMap.set(bMd.$id$, entityValue);
-            } else {
+        // if (LodashLike.get(entityValue, RecorderConstants.ENTITY_EXISTS_BY_SIGN_FROM_PREVIOUS_PROCESSING)) {
+        this.validatingMetaFieldsExistence(entityType);
+        // entityValue = resultEntityAlreadyProcessed.entityValue;
+        LodashLike.set(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
+        this.removeNonUsedKeysFromLiteral(entityValue as any, wrappedSnapshotField);
+
+        if (bMd.$id$) {
+            refMap.set(bMd.$id$, entityValue);
+        } else {
+            if (!bMd.$idRef$) {
                 throw new Error('This should not happen 1');
             }
-            
+        }
+        
+        if (!bMd.$idRef$) {
+            //literal source values with $idRef$ no need deep processing!
             entityValue = this.lazyLoadTemplateCallback(entityValue, () => {
                 this.tryCacheInstanceBySignature(
                     {
@@ -1744,9 +1747,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     }
                 );   
             });
-        } else {
-            // nothing
         }
+        // } else {
+        //     // nothing
+        // }
         return entityValue;
     }
 
@@ -2226,11 +2230,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             if (mdSrcValue.$isComponent$ && fieldEtc.prpGenType && fieldEtc.lazyRefMarkerType === LazyRef) {
                 throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
             }
-            const resultInternalRef = { setted: false, result: null as any};
-
+            const customizerResult = { needSet: true, value: null as any};
+            const existsBySignFromPreviousProcessing = LodashLike.get(object, RecorderConstants.ENTITY_EXISTS_BY_SIGN_FROM_PREVIOUS_PROCESSING);
             if (key === thisLocal.manager.config.playerMetadatasName) {
-                resultInternalRef.result = mdSource;
-                resultInternalRef.setted = true;
+                customizerResult.value = mdSource;
+                customizerResult.needSet = false;
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function: (key === thisLocal.manager.config.playerMetadatasName). srcValue and mdSource:');
                     thisLocal.consoleLikeMerge.debug(srcValue);
@@ -2246,36 +2250,42 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         'final instance because resolveMetadatas() is synchronous: \n' + 
                         JSON.stringify(correctSrcValueAsMetadata, null, 2));
                 }
-                LodashLike.set(object as any, key, correctSrcValueAsMetadata);
+                if(!existsBySignFromPreviousProcessing) {
+                    LodashLike.set(object as any, key, correctSrcValueAsMetadata);
+                }
 
                 if (mdPlayerObjectId.$isComponent$) {
-                    resultInternalRef.result = DummyUndefinedForMergeAsync;
+                    customizerResult.value = DummyUndefinedForMergeAsync;
                     //let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
                     let playerObjectIdValue = thisLocal.processResultEntityPriv(fieldEtc.objectIdPrpType, mdSource.$playerObjectId$, refMap);
                     correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
-                    resultInternalRef.result = correctSrcValueAsMetadata;
+                    customizerResult.value = correctSrcValueAsMetadata;
                     //isDoneRef.result = mdPlayerObjectId;
-                    resultInternalRef.setted = true;   
+                    customizerResult.needSet = false;   
                     //mdPlayerObjectId.$playerObjectId$ = playerObjectIdValue;
-                    LodashLike.set(object, key, resultInternalRef.result);
+                    if(!existsBySignFromPreviousProcessing) {
+                        LodashLike.set(object, key, customizerResult.value);
+                    }
                 } 
             } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                resultInternalRef.result = DummyUndefinedForMergeAsync;
+                customizerResult.value = DummyUndefinedForMergeAsync;
                 let callFromLiteralValue = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
-                resultInternalRef.result = callFromLiteralValue;
-                resultInternalRef.setted = true;  
+                customizerResult.value = callFromLiteralValue;
+                customizerResult.needSet = false;  
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.debug('(Async) mergeWithCustomizerPropertyReplection => function =>'+
                         ' createSerialAsyncTasksWaiting().pipe() => this.mapJustOnceKeepAllFlagsRxOpr().'+
                         ' Object resolved by fieldEtc.fieldProcessorCaller.callFromLiteralValue:\n' + 
                         this.jsonStringfyWithMax(srcValue));
                 }
-                LodashLike.set(object, key, resultInternalRef.result);
+                if(!existsBySignFromPreviousProcessing) {
+                    LodashLike.set(object, key, customizerResult.value);
+                }
             } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
-                resultInternalRef.result = DummyUndefinedForMergeAsync;
-                resultInternalRef.result = refMap.get(mdSrcValue.$idRef$);
-                resultInternalRef.setted = true;
-                if (!resultInternalRef.result) {
+                customizerResult.value = DummyUndefinedForMergeAsync;
+                customizerResult.value = refMap.get(mdSrcValue.$idRef$);
+                customizerResult.needSet = false;
+                if (!customizerResult.value) {
                     throw new Error('This should not happen 2');
                 }
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
@@ -2285,7 +2295,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         object.constructor.name + '; owner field: ' + key);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
-                LodashLike.set(object, key, resultInternalRef.result);
+                if(!existsBySignFromPreviousProcessing) {
+                    LodashLike.set(object, key, customizerResult.value);
+                }
             } else if (fieldEtc.prpType) {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
@@ -2297,7 +2309,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function.'+
                                 ' fieldEtc.otmCollectionType ' + fieldEtc.otmCollectionType.name);
                         }
-                        resultInternalRef.result = DummyUndefinedForMergeAsync;
+                        customizerResult.value = DummyUndefinedForMergeAsync;
                         let correctSrcValueColl = thisLocal.createCollection(fieldEtc.otmCollectionType, object, key);
                         
                         thisLocal.lazyLoadTemplateCallback(correctSrcValueColl, () => {
@@ -2309,7 +2321,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             for (const entityItem of entityArr) {
                                 thisLocal.addOnCollection(correctSrcValueColl, entityItem);                                                    
                             }
-                            resultInternalRef.result = correctSrcValueColl;
+                            customizerResult.value = correctSrcValueColl;
                         });
                         //nothing for now
                     } else if (fieldEtc.lazyRefMarkerType === LazyRef || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
@@ -2320,7 +2332,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
-                            resultInternalRef.result = DummyUndefinedForMergeAsync;
+                            customizerResult.value = DummyUndefinedForMergeAsync;
                             let lazyRef = thisLocal.createNotLoadedLazyRef(fieldEtc.prpGenType, srcValue, refMap, object, key);
                             //for debug purpose
                             srcValue === srcValue;
@@ -2332,8 +2344,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.consoleLikeMerge.debug(object);
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
-                            resultInternalRef.result = lazyRef;
-                            resultInternalRef.setted = false;
+                            customizerResult.value = lazyRef;
+                            customizerResult.needSet = true;
                             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function.'+
                                     ' Returning null because of createNotLoadedLazyRef$.subscribe().'+
@@ -2342,7 +2354,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
                         } else {
-                            resultInternalRef.result = DummyUndefinedForMergeAsync;
+                            customizerResult.value = DummyUndefinedForMergeAsync;
                             let lazyRef = thisLocal.createLoadedLazyRef(fieldEtc, srcValue, refMap, object, key);
                             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...)'+
@@ -2352,10 +2364,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.consoleLikeMerge.debug(object);
                                 thisLocal.consoleLikeMerge.groupEnd();
                             }
-                            resultInternalRef.result = lazyRef;
-                            resultInternalRef.setted = true;
+                            customizerResult.value = lazyRef;
+                            customizerResult.needSet = true;
                             keepAllFlagsTemplateCallback(() => {
-                                LodashLike.set(object, key, resultInternalRef.result);
+                                LodashLike.set(object, key, customizerResult.value);
                             });                            
                         }
                     } else if (thisLocal.isCollection(fieldEtc.prpType)) {
@@ -2378,12 +2390,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 }
                             }
                         });
-                        resultInternalRef.result = nonPersistentCollection;
-                        resultInternalRef.setted = false;                         
+                        customizerResult.value = nonPersistentCollection;
+                        customizerResult.needSet = true;                         
                     }
                 } else if (LodashLike.isObject(srcValue, new Set([Date, Buffer]))
                         && !fieldEtc.propertyOptions.lazyDirectRawRead) {
-                    resultInternalRef.result = DummyUndefinedForMergeAsync;
+                    customizerResult.value = DummyUndefinedForMergeAsync;
                     let correctSrcValueSubs = thisLocal.processResultEntityPriv(fieldEtc.prpType, srcValue, refMap);
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('(Asynchronous of Asynchronous of...) mergeWithCustomizerPropertyReplection =>'+
@@ -2392,8 +2404,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    resultInternalRef.result = correctSrcValueSubs;
-                    resultInternalRef.setted = true;
+                    customizerResult.value = correctSrcValueSubs;
+                    customizerResult.needSet = true;
                     keepAllFlagsTemplateCallback(() => {
                         LodashLike.set(object, key, correctSrcValueSubs);
                     });
@@ -2404,7 +2416,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    resultInternalRef.result = DummyUndefinedForMergeAsync;
+                    customizerResult.value = DummyUndefinedForMergeAsync;
                     isFromLiteralValue.value = true;
                     let fromLiteralValue = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
@@ -2414,11 +2426,13 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    resultInternalRef.result = fromLiteralValue;
-                    resultInternalRef.setted = true;
-                    keepAllFlagsTemplateCallback(() => {
-                        LodashLike.set(object, key, resultInternalRef.result);
-                    });
+                    customizerResult.value = fromLiteralValue;
+                    customizerResult.needSet = false;
+                    if(!existsBySignFromPreviousProcessing) {
+                        keepAllFlagsTemplateCallback(() => {
+                            LodashLike.set(object, key, customizerResult.value);
+                        });
+                    }
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Returning null because of fromLiteralValue$.pipe(tap()). property \''+key+'\'.');
                         thisLocal.consoleLikeMerge.debug(fromLiteralValue);
@@ -2430,15 +2444,17 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    resultInternalRef.result = srcValue;
-                    resultInternalRef.setted = true;
-                    let correctSrcValue = resultInternalRef.result;
+                    customizerResult.value = srcValue;
+                    customizerResult.needSet = false;
+                    let correctSrcValue = customizerResult.value;
                     if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. noTranslation$.pipe(thisLocal.mapJustOnceKeepAllFlagsRxOpr()). Transformation is not necessary for property \''+key+'\'.');
                         thisLocal.consoleLikeMerge.debug(object);
                         thisLocal.consoleLikeMerge.groupEnd();
                     }
-                    LodashLike.set(object, key, correctSrcValue);
+                    if(!existsBySignFromPreviousProcessing) {
+                        LodashLike.set(object, key, correctSrcValue);
+                    }
                 }
             } else if (LodashLike.has(object, key)) {
                 throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
@@ -2446,26 +2462,24 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
                 }
-                resultInternalRef.result = undefined;
-                resultInternalRef.setted = true;
+                customizerResult.value = undefined;
+                customizerResult.needSet = false;
             } else {
                 if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. Property \''+key+'\'. Using same value.');
-                    thisLocal.consoleLikeMerge.debug(resultInternalRef.result);
+                    thisLocal.consoleLikeMerge.debug(customizerResult.value);
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
             }
             if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeMerge.group('mergeWithCustomizerPropertyReplection => function. return');
-                thisLocal.consoleLikeMerge.debug(resultInternalRef.result);
+                thisLocal.consoleLikeMerge.debug(customizerResult.value);
                 thisLocal.consoleLikeMerge.groupEnd();
             }
-            return (
-                {
-                    needSet: !resultInternalRef.setted,
-                    value: resultInternalRef.result
-                }
-            );
+            if (customizerResult.needSet && existsBySignFromPreviousProcessing) {
+                customizerResult.needSet = false;
+            }
+            return customizerResult;
         }
     }
 
