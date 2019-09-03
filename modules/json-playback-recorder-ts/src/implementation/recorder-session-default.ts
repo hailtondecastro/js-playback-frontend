@@ -159,6 +159,8 @@ export interface RecorderSessionImplementor extends RecorderSession {
                 }
             >;
     jsonStringfyWithMax(literalObj: any): string;
+    /** Framework internal use. */
+    registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L>;
 }
 
 class UndefinedForMergeAsync {
@@ -2688,6 +2690,61 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
     
+    private pendingLazyRefSubscriptionBySign: Map<string, Observable<any>> = new Map();
+    registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L> {
+        let thisLocal = this;
+
+        //BEGIN: Used to find losted obs.subscribed()
+        const stackSubscriberRef = {value: ''};
+        try {
+            throw new Error('TRACKING');
+        } catch (error) {
+            stackSubscriberRef.value = error.stack;
+        }
+        ;
+        //END: Used to find losted obs.subscribed()
+        const resultOpr: OperatorFunction<L, L> = (source: Observable<L>) => {
+            const sourceRef = { value: source };
+            //thisLocal.testObservableHasCircle(source);
+            let result$ = source;
+            const pendingLazyRefSubscription = thisLocal.pendingLazyRefSubscriptionBySign.get(signature);
+            if (pendingLazyRefSubscription) {
+                result$ = pendingLazyRefSubscription;
+            } else {
+                result$ = of(null).pipe(
+                    tap(
+                        {
+                            next: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
+                            },
+                            error: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
+                            }
+                        }
+                    ),
+                    flatMap(() => {
+                        sourceRef.value = source;
+                        return source;
+                    }),
+                    tap(
+                        {
+                            next: (value) => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
+                            },
+                            error: (err) => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
+                            }
+                        }
+                    )
+                    // ,
+                    // timeoutDecorateRxOpr()
+                );
+            }
+            return result$;
+        }
+        return resultOpr;
+    }
+
     jsonStringfyWithMax(literalObj: any): string {
         let result = '';
         if (literalObj) {

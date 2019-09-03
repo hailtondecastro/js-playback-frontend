@@ -17,232 +17,6 @@ import { RecorderLogger } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
 import { LodashLike } from './lodash-like';
-import { Stream } from 'stream';
-// import { LazyDirectRawWriteOnReadingError } from '../api/lazy-direct-Raw-write-on-reading-error';
-
-// export interface StringStream extends NodeJS.ReadableStream, NodeJS.WritableStream {
-//            /**
-//              * Event emitter
-//              * The defined events on documents including:
-//              * 1. close
-//              * 2. data
-//              * 3. end
-//              * 4. readable
-//              * 5. error
-//              */
-//             addListener(event: "close", listener: () => void): this;
-//             addListener(event: "data", listener: (chunk: string) => void): this;
-//             addListener(event: "end", listener: () => void): this;
-//             addListener(event: "readable", listener: () => void): this;
-//             addListener(event: "error", listener: (err: Error) => void): this;
-//             addListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-//             emit(event: "close"): boolean;
-//             emit(event: "data", chunk: any): boolean;
-//             emit(event: "end"): boolean;
-//             emit(event: "readable"): boolean;
-//             emit(event: "error", err: Error): boolean;
-//             emit(event: string | symbol, ...args: any[]): boolean;
-
-//             on(event: "close", listener: () => void): this;
-//             on(event: "data", listener: (chunk: string) => void): this;
-//             on(event: "end", listener: () => void): this;
-//             on(event: "readable", listener: () => void): this;
-//             on(event: "error", listener: (err: Error) => void): this;
-//             on(event: string | symbol, listener: (...args: any[]) => void): this;
-
-//             once(event: "close", listener: () => void): this;
-//             once(event: "data", listener: (chunk: any) => void): this;
-//             once(event: "end", listener: () => void): this;
-//             once(event: "readable", listener: () => void): this;
-//             once(event: "error", listener: (err: Error) => void): this;
-//             once(event: string | symbol, listener: (...args: any[]) => void): this;
-
-//             prependListener(event: "close", listener: () => void): this;
-//             prependListener(event: "data", listener: (chunk: string) => void): this;
-//             prependListener(event: "end", listener: () => void): this;
-//             prependListener(event: "readable", listener: () => void): this;
-//             prependListener(event: "error", listener: (err: Error) => void): this;
-//             prependListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-//             prependOnceListener(event: "close", listener: () => void): this;
-//             prependOnceListener(event: "data", listener: (chunk: string) => void): this;
-//             prependOnceListener(event: "end", listener: () => void): this;
-//             prependOnceListener(event: "readable", listener: () => void): this;
-//             prependOnceListener(event: "error", listener: (err: Error) => void): this;
-//             prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-//             removeListener(event: "close", listener: () => void): this;
-//             removeListener(event: "data", listener: (chunk: string) => void): this;
-//             removeListener(event: "end", listener: () => void): this;
-//             removeListener(event: "readable", listener: () => void): this;
-//             removeListener(event: "error", listener: (err: Error) => void): this;
-//             removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
-// }
-
-// /**
-//  * Base class to use as marker for {@link reflect-metadata#Reflect.metadata} with 
-//  * {@link ./generic-tokenizer#GenericTokenizer GenericTokenizer}.
-//  * 
-//  * Do not use this as the field type, use {@link LazyRefMTO} or {@link LazyRefOTM}.
-//  * Use this as 'interface like' to do your own implementation if you need! 
-//  * See {@link RecorderSession#createApropriatedLazyRef}
-//  * 
-//  * Code sample:
-//  * ```ts
-//    ...
-//    private _myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>>;
-//    @RecorderDecorators.property()
-//    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(MyChildEntity).gt().gt().tree))
-//    public get myChildEntitiesSet(): LazyRefOTM<Set<MyChildEntity>> {
-//      return this._myChildEntitiesSet;
-//    }
-//    ...
-//  * ```
-//  * or
-//  * ```ts
-//    ...
-//    private _myParentEntity(): LazyRefMTO<MyParentEntity, Number>;
-//    @RecorderDecorators.property()
-//    @Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MyParentEntity).comma().tp(Number).gt().tree))
-//    public get myParentEntity(): LazyRefMTO<MyParentEntity, Number> {
-//      return this._myParentEntity;
-//    }
-//    ...
-//  * ```
-//  */
-// export class JsHbLazyRef<L extends object, I> extends LazyRef<L, I> {
-//     /**
-//      * Alternative to instance of.
-//      */
-//     iAmLazyRef: boolean = true;
-//     /**
-//      * Attache id that will be used on lazyDirectRawRead and 
-//      */
-//     attachRefId: string;
-
-//     /**
-//      * Player object Id. This is accessible even before lazy loading.
-//      */
-//     playerObjectId: I;
-//     /**
-//      * Signature identifier generated by backend server.
-//      */
-//     signatureStr: string;
-//     bMdRefererObj: PlayerMetadatas;
-//     bMdLazyLoadedObj: PlayerMetadatas;
-//     bMdPlayerObjectIdMetadata: PlayerMetadatas;
-
-//     consoleLike: ConsoleLike;
-// 	consoleLikeSubs: ConsoleLike;
-//     consoleLikeProcResp: ConsoleLike;
-//     /**
-//      * Unlike the common subscribe, which must be executed every time the data
-//      * changed, it is only executed once and triggers a next to
-//      * that all other subscriptions (pipe async's for example) are called.
-//      * so it does not return Subscription, after all it does not subscribe permanently
-//      * on the observer's list.  
-//      * Call {@link RecorderSession#notifyAllLazyrefsAboutEntityModification} after modification and {@link Subscription#unsubscribe}.
-//      * @param observerOrNext
-//      * @param error
-//      * @param complete
-//      */
-//     subscribeToModify(observer?: PartialObserver<L>): void;
-//     subscribeToModify(next?: (value: L) => void, error?: (error: any) => void, complete?: () => void): void;
-//     subscribeToModify(): void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); }
-//     /**
-//      * TODO:
-//      * @param lazyLoadedObj 
-//      */
-//     setLazyObj(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** Framework internal use. */
-//     setLazyObjOnLazyLoading(lazyLoadedObj: L): Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** Framework internal use. */
-//     setLazyObjNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** Framework internal use. */
-//     setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : Observable<void> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** Framework internal use. */
-//     notifyModification(lazyLoadedObj: L) : void { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /**
-//      * true if it is lazy loaded.
-//      * @returns true if it is lazy loaded.
-//      */
-//     isLazyLoaded(): boolean { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** 
-//      * TODO:  
-//      * Framework internal use.
-//      */
-//     processResponse(responselike: { body: any }): Observable<L> { throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!'); };
-//     /** Framework internal use. */
-//     get genericNode(): GenericNode {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-//     set genericNode(value: GenericNode) {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public get refererObj(): any {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public set refererObj(value: any) {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public get refererKey(): string {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public set refererKey(value: string) {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public get session(): RecorderSession {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public set session(value: RecorderSession) {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-// 	public get lazyLoadedObj(): L {
-// 		throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-//     public get respObs(): Observable<HttpResponseLike<Object>> {
-//         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-//     public set respObs(value: Observable<HttpResponseLike<Object>>) {
-//         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-//     /** Framework internal use. */
-//     public get fieldProcessorEvents(): IFieldProcessorEvents<L> {
-//         throw new Error('LazyRef is not the real implementation base, Do not instantiate it!!');
-//     }
-
-//     public toString(): string {
-//         let thisLocal = this;
-//         return JSON.stringify(
-//             {
-//                 instanceId: (thisLocal as any).instanceId,
-//                 iAmLazyRef: thisLocal.iAmLazyRef,
-//                 refererKey: thisLocal.refererKey,
-//                 refererObj:
-//                     thisLocal.refererObj
-//                         && thisLocal.refererObj.constructor
-//                         && thisLocal.refererObj.constructor.name ?
-//                     thisLocal.refererObj.constructor.name
-//                     : null,
-//                 "isLazyLoaded()": thisLocal.isLazyLoaded(),
-//                 genericNode: thisLocal.genericNode? thisLocal.genericNode.toString(): null,
-//                 signatureStr: thisLocal.signatureStr
-//             },
-//             null,
-//             2);
-//     }
-// }
 
 export class LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
     /** Framework internal use. */
@@ -525,15 +299,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             this._isOnLazyLoading = false;
         }
     }
-
-    // private lazyLoadingCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
-    //     const thisLocal = this;
-    //     this._isOnLazyLoading = true;
-    //     return callback().pipe(finalize(() => {
-    //         thisLocal._isOnLazyLoading = false;
-    //     }));
-    // }
-
+    
     private noNextCallbackTemplate<R>(callback: () => R): R {
         try {
             this._needCallNextOnSetLazyObj = false;
@@ -542,14 +308,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
             this._needCallNextOnSetLazyObj = true;
         }
     }
-
-    // private noNextCallbackAsyncTemplate<R>(callback: () => Observable<R>): Observable<R> {
-    //     const thisLocal = this;
-    //     this._needCallNextOnSetLazyObj = false;
-    //     return callback().pipe(finalize(() => {
-    //         thisLocal._needCallNextOnSetLazyObj = false;
-    //     }));
-    // }
 
     public setLazyObj(lazyLoadedObj: L): void {
         const thisLocal = this;
@@ -724,14 +482,9 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 throw new Error('LazyRefBase.subscribe: thisLocal.attachRefId is not null but this is not lazyDirectRawWrite. Me:\n' +
                     this);
             }
-            //thisLocalNextOnAsync.value = true;
             let localObs$ = thisLocal.respObs;
-            // thisLocal.directRawWriteOnReading = true;
             const localObsL$ = (localObs$ as Observable<ResponseLike<NodeJS.ReadableStream>>).pipe(
                 thisLocal.flatMapKeepAllFlagsRxOpr((respLikeStream) => {
-                    // respLikeStream.body.addListener('end', () => {
-                    //     thisLocal.directRawWriteOnReading = false;
-                    // });
                     const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(respLikeStream);
                     if (isObservable(processResponseOnLazyLoading)) {
                         const processResponseOnLazyLoading$ = processResponseOnLazyLoading as Observable<L>;
@@ -740,6 +493,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         return this.thrownError(new Error('This should not happen soud not happen.This LazyRef is lazyDirectRawWrite'));
                     }
                 }),
+                //thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
+                thisLocal.session.registerProvidedObservablesRxOpr(),
                 tap(
                     {
                         next: (valueL: L) => {
@@ -752,24 +507,15 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     }
                 ),
                 share(),
-                thisLocal.session.registerProvidedObservablesRxOpr(),
             );
             return localObsL$;
         }
     }
 
-
-
     subscribe(observerOrNext?: PartialObserver<L> | ((value: L) => void),
         error?: (error: any) => void,
         complete?: () => void): Subscription {
         const thisLocal = this;
-        
-        // if (thisLocal.directRawWriteOnReading) {
-        //     throw new LazyDirectRawWriteOnReadingError(
-        //         thisLocal,
-        //         'This LazyRef is lazyDirectRawWrite and it is on reading now.\n' + thisLocal.toString());
-        // }
 
         let resultSubs: Subscription = null;
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
@@ -799,7 +545,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
         }
         let observerNew: PartialObserver<L> = {...observerOriginal};
 
-        //let setLazyObjOnLazyLoading$: Observable<void>;
         const thisLocalNextOnAsync = {value: false};
 
         if (thisLocal.lazyLoadedObj == null) {
@@ -831,7 +576,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                         thisLocal.consoleLikeSubs.debug('calling this.next()'); thisLocal.consoleLikeSubs.debug(thisLocal.lazyLoadedObj);
                         thisLocal.consoleLikeSubs.groupEnd();
                     }
-                    //aqui o metodo original sera chamado
+                    //here the original method will be called
                     thisLocal.respObs = null;
                     thisLocal.next(thisLocal.lazyLoadedObj);
                 } else {
@@ -909,14 +654,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 }
                 //return thisLocal.processResponseOnLazyLoading(response);
                 let localObs$: Observable<L> = 
-                    thisLocal.respObs
-                        .pipe(thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'))
-                        .pipe(
-                            thisLocal.mapJustOnceKeepAllFlagsRxOpr((responseLike) => {
-                                const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(responseLike);
-                                return processResponseOnLazyLoading as L;
-                            })
-                        );
+                    thisLocal.respObs.pipe(
+                        thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'),
+                        thisLocal.mapJustOnceKeepAllFlagsRxOpr((responseLike) => {
+                            const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(responseLike);
+                            return processResponseOnLazyLoading as L;
+                        })
+                    );
 
                 thisLocalNextOnAsync.value = true;
                 observerNew.next = (value: L) => {
@@ -953,6 +697,8 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
 
                 thisLocalNextOnAsync.value = true;
                 localObs$ = localObs$.pipe(
+                    thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
+                    thisLocal.session.registerProvidedObservablesRxOpr(),
                     tap(() => {
                         //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
                         //lazyDirectRawWrite is always readed from cache.
@@ -960,7 +706,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                             thisLocal.respObs = null;
                         }
                     }),
-                    thisLocal.session.registerProvidedObservablesRxOpr(),
                     share()
                 );
                 localObs$.subscribe(observerNew);
@@ -1060,7 +805,7 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
     private firstPutOnCacheRef = {value: undefined as Observable<void>};
     public processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>): L | Observable<L> {
         const thisLocal = this;
-        const asyncCombineObsArr: Observable<any>[] = [];
+        //const asyncCombineObsArr: Observable<any>[] = [];
         let lazyLoadedObj$: Observable<L>;
         let isLazyRefOfCollection = false;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
@@ -1125,24 +870,29 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                 if (fieldEtc.propertyOptions.lazyDirectRawWrite) {
                     thisLocal._lazyLoadedObj = null;
                     //setting next respObs
-                    
-                    thisLocal.respObs = of(null).pipe(
-                        flatMap(() => {
-                            return thisLocal.firstPutOnCacheRef.value?
-                                thisLocal.firstPutOnCacheRef.value :
-                                of(null);
-                        }),
-                        flatMap(() => {
-                            return thisLocal.session.manager.config.cacheHandler.getFromCache(thisLocal.attachRefId);
-                        }),
-                        map((stream) => {
-                            return { body: stream};
-                        })
-                    );
+                    if (!LodashLike.isNil(responselike.body)) {
+                        thisLocal.respObs = of(null).pipe(
+                            flatMap(() => {
+                                return thisLocal.firstPutOnCacheRef.value?
+                                    thisLocal.firstPutOnCacheRef.value :
+                                    of(null);
+                            }),
+                            flatMap(() => {
+                                return thisLocal.session.manager.config.cacheHandler.getFromCache(thisLocal.attachRefId);
+                            }),
+                            map((stream) => {
+                                return { body: stream};
+                            })
+                        );
+                    } else {
+                        thisLocal.firstPutOnCacheRef.value = undefined;
+                        thisLocal.setRealResponseDoneDirectRawWrite(true);
+                        thisLocal.respObs = of({ body: null });
+                    }
 
                     let putOnCache$: Observable<void>;
-                    const isOriginalResponseDoneLocal = thisLocal.isRealResponseDoneDirectRawWrite();
-                    if (!isOriginalResponseDoneLocal) {
+                    const isRealResponseDoneDirectRawWriteLocal = thisLocal.isRealResponseDoneDirectRawWrite();
+                    if (!isRealResponseDoneDirectRawWriteLocal) {
                         thisLocal.attachRefId = this.session.manager.config.cacheStoragePrefix + this.session.nextMultiPurposeInstanceId().toString();
                         if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: fieldEtc.propertyOptions.lazyDirectRawWrite.'+
@@ -1158,13 +908,13 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     } else {
                         if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: fieldEtc.propertyOptions.lazyDirectRawWrite.'+
-                                '(thisLocal.isOriginalResponseDone()). Already have value on CacheHandler!"\n' + this);
+                                '(thisLocal.isOriginalResponseDone()). Already have value on CacheHandler or responselike.body is null!"\n' + this);
                         }
                         putOnCache$ = of(undefined);
                     }
 
                     let getFromCache$: Observable<NodeJS.ReadableStream>;
-                    if (!isOriginalResponseDoneLocal) {
+                    if (!isRealResponseDoneDirectRawWriteLocal) {
                         getFromCache$ = putOnCache$.pipe(
                             share(),
                             flatMap( () => {
@@ -1199,35 +949,10 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     }
 
                     return afterGetFromCache$;
-
-                    // if (fieldEtc.fieldProcessorCaller.callFromDirectRaw) {
-                    //     let fromDirectRaw$ = fieldEtc.fieldProcessorCaller.callFromDirectRaw(
-                    //         thisLocal.respObs as Observable<ResponseLike<NodeJS.ReadableStream>>,
-                    //         fieldEtc.fieldInfo);
-                    //     return fromDirectRaw$.pipe(
-                    //         thisLocal.mapJustOnceKeepAllFlagsRxOpr((reqFromDirectRaw) => {
-                    //             return reqFromDirectRaw.body;
-                    //         })
-                    //     );
-                    // } else {
-                    //     return (thisLocal.respObs as Observable<ResponseLike<L>>).pipe(
-                    //         thisLocal.mapJustOnceKeepAllFlagsRxOpr((reqFromDirectRaw) => {
-                    //             return reqFromDirectRaw.body;
-                    //         })
-                    //     );
-                    // }
                 } else if (fieldEtc.fieldProcessorCaller.callFromDirectRaw) {
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRefPrp is "lazyDirectRawRead" and has "IFieldProcessor.fromDirectRaw".');
-                    }                    
-                    // let putOnCache$ = this.session.manager.config.cacheHandler.putOnCache(thisLocal.attachRefId, responselike.body as NodeJS.ReadStream);
-                    // let getFromCache$ = 
-                    //     putOnCache$.pipe(
-                    //         flatMapJustOnceRxOpr( () => {
-                    //             return thisLocal.session.manager.config.cacheHandler.getFromCache(thisLocal.attachRefId);
-                    //         })
-                    //     );
-
+                    }           
                     let fromDirectRaw$ = fieldEtc.fieldProcessorCaller.callFromDirectRaw(of(responselike as ResponseLike<NodeJS.ReadableStream>), fieldEtc.fieldInfo);
 
                     lazyLoadedObj$ = 
@@ -1255,13 +980,6 @@ export class LazyRefDefault<L extends object, I> extends LazyRefImplementor<L, I
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
                         thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: LazyRef is "lazyDirectRawRead" and has NO "IFieldProcessor.fromDirectRaw". Using "responselike.body"');
                     }
-                    // lazyLoadedObj$ = 
-                    //     this.setLazyObjOnLazyLoadingNoNext(responselike.body as L)
-                    //         .pipe(
-                    //             map(() => {
-                    //                 return responselike.body as L;
-                    //             })
-                    //         );
                 }
             } else if (
                     (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker && !fieldEtc.propertyOptions.lazyDirectRawRead)

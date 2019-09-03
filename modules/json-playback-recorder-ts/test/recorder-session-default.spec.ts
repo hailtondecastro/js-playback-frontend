@@ -10,7 +10,7 @@ import pSnapshotMasterADetailATestLiteral from './master-a-detail-a-test.json';
 import pSnapshotMasterADetailAMinTestLiteral from './master-a-detail-a-min-test.json';
 import pSnapshotMasterMinDetailMinTestLiteral from './master-min-detail-min-test.json';
 import pSnapshotDetailALiteral from './detail-a-by-sig.json';
-import pSnapshotMasterADetailACollTestLiteral from './master-detail-a-col.json';
+import pSnapshotMasterDetailAColLiteral from './master-detail-a-col.json';
 import pSnapshotWSnapMasterBBySign from './wsnap-master-b-by-sign-map.json';
 import pSnapshotMasterAListFirstTwiceLiteral from './master-a-list-first-twice-test.json';
 import pSnapshotDetailAFirstSecondLiteral from './detail-a-first-second-test.json';
@@ -422,7 +422,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -553,7 +553,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -850,7 +850,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -992,7 +992,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -1056,6 +1056,175 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                done();
+            });
+        });
+
+        it('RecorderManagerDefault.detail-a-master-a-only-one-request-with-share', (done) => {
+            let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
+
+            let recorderSession: RecorderSession;
+            let config: RecorderConfig = new RecorderConfigDefault()
+                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
+                .configCacheHandler(newCacheHandler)
+                .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
+
+            let asyncCount = new AsyncCount();
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+
+            newCacheHandler.callback = (operation, cacheKey, stream) => {
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
+            }
+
+            let propertyOptionsString: RecorderDecorators.PropertyOptions<String> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'vcharA');
+            let propertyOptionsBlobDirectRaw: RecorderDecorators.PropertyOptions<BinaryStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+            let propertyOptionsClobDirectRaw: RecorderDecorators.PropertyOptions<StringStream> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'clobLazyA');
+            let propertyOptionsBlob: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobA');
+
+            propertyOptionsString.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'vcharA' || fieldName === 'vcharB';
+                        }
+                    );
+                return result;
+            };
+
+            propertyOptionsBlobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobLazyA' || fieldName === 'blobLazyB';
+                        }
+                    );
+                return result;
+            };
+
+            propertyOptionsClobDirectRaw.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'clobLazyA' || fieldName === 'clobLazyB';
+                        }
+                    );
+                return result;
+            }
+
+            propertyOptionsBlob.fieldProcessorEvents.onFromLiteralValue = (rawValue, info, result) => {
+                chai.expect(info.fieldName)
+                    .to.satisfy(
+                        (fieldName: string) => {
+                            return fieldName === 'blobA' || fieldName === 'blobB';
+                        }
+                    );
+                return result;
+            };
+
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        let responseResult: ResponseLike<Object> = {
+                            body: pSnapshotMasterLiteral
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+
+            const obsRespAsyncCount = new AsyncCount();
+            config.configLazyObservableProvider(
+                {
+                    generateObservable: (signature, info) => {
+                        if (info.fieldName === 'detailAEntCol') {
+                            let responseResult: ResponseLike<Object> = {
+                                body: pSnapshotMasterDetailAColLiteral
+                            }
+                            return of(responseResult).pipe(delay(1));
+                        } else if (info.fieldName === 'masterB') {
+                            let responseResult: ResponseLike<Object> = {
+                                body: (pSnapshotWSnapMasterBBySign as any)[signature]
+                            }
+                            return of(responseResult).pipe(
+                                delay(1)
+                            );
+                        } else if (info.fieldName === 'masterA' ) {
+                            let responseResult: ResponseLike<Object> = {
+                                body: pSnapshotMasterLiteral
+                            }
+                            return of(responseResult).pipe(
+                                delay(1),
+                                obsRespAsyncCount.registerRxOpr(),
+                                asyncCountdown.registerRxOpr(),
+                                tap((value)=> {
+                                    console.log('obsRespAsyncCount.count: ' + obsRespAsyncCount.count);
+                                }),
+                                share()
+                            );
+                        } else {
+                            let responseResult: ResponseLike<Object> = {
+                                body: null
+                            }
+                            return of(responseResult).pipe(delay(1));
+                        }
+                    },
+                    generateObservableForDirectRaw: (signature, info) => {
+                        let responseResult: ResponseLike<BinaryStream> = {
+                            body: null
+                        }
+                        return of(responseResult).pipe(delay(1));
+                    }
+                }
+            );
+            let manager: RecorderManager = new RecorderManagerDefault(
+                config
+                );
+
+            let propertyOptions: RecorderDecorators.PropertyOptions<Buffer> =
+                Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, new MasterAEnt(), 'blobLazyA');
+
+            recorderSession = manager.createSession();
+            let detailACol: DetailAEnt[] = recorderSession.processPlayerSnapshotArray(DetailAEnt, pSnapshotDetailALiteral);
+            const masterRef0 = {value: undefined as MasterAEnt};
+            const masterRef0AsObs = {value: undefined as MasterAEnt};
+            const masterRef1 = {value: undefined as MasterAEnt};
+            const masterRef1AsObs = {value: undefined as MasterAEnt};
+            detailACol[0].compId.masterA.subscribe((masterA) => {
+                asyncCount.doNonObservableIncrement();
+                masterRef0.value = masterA;
+            });
+            detailACol[0].compId.masterA.asObservable().subscribe((masterA) => {
+                asyncCount.doNonObservableIncrement();
+                masterRef0AsObs.value = masterA;
+            });
+            detailACol[1].compId.masterA.subscribe((masterA) => {
+                asyncCount.doNonObservableIncrement();
+                masterRef1.value = masterA;
+            });
+            detailACol[1].compId.masterA.asObservable().subscribe((masterA) => {
+                asyncCount.doNonObservableIncrement();
+                masterRef1AsObs.value = masterA;
+            });
+
+            asyncCountdown.createCountdownEnds().pipe(
+                flatMap(() => {
+                    return recorderSession.createSerialPendingTasksWaiting()
+                })
+            ).subscribe(() => {
+                chai.expect(masterRef0.value).to.be.eq(masterRef0AsObs.value, 'detailA.compId.masterA');
+                chai.expect(masterRef0.value).to.be.eq(masterRef1.value, 'detailA.compId.masterA');
+                chai.expect(masterRef0.value).to.be.eq(masterRef1AsObs.value, 'detailA.compId.masterA');
+                chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
                 done();
             });
         });
@@ -1267,7 +1436,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -1428,7 +1597,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -1581,7 +1750,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
@@ -1945,7 +2114,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     generateObservable: (signature, info) => {
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
-                                body: pSnapshotMasterADetailACollTestLiteral
+                                body: pSnapshotMasterDetailAColLiteral
                             }
                             return of(responseResult).pipe(delay(10));
                         } else if (info.fieldName === 'masterB') {
