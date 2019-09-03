@@ -1826,7 +1826,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1800 });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2000 });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2042,7 +2042,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 chai.expect(cacheGetAsyncCount.count).to.eq(testParamByIntervalIndex.length, 'cacheGetAsyncCount');
                 done();
             });
-        });
+        }).timeout(3000);
 
         //it('RecorderManagerDefault.master-a-detail-a-record', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefault.master-a-detail-a-record', (done) => {
