@@ -493,7 +493,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -638,7 +638,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(13, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
                 done();
             });
         });
@@ -915,7 +915,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1055,7 +1055,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
                 done();
             });
         });
@@ -1224,7 +1224,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 chai.expect(masterRef0.value).to.be.eq(masterRef0AsObs.value, 'detailA.compId.masterA');
                 chai.expect(masterRef0.value).to.be.eq(masterRef1.value, 'detailA.compId.masterA');
                 chai.expect(masterRef0.value).to.be.eq(masterRef1AsObs.value, 'detailA.compId.masterA');
-                chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
         });
