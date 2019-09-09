@@ -1,31 +1,31 @@
-import { LazyRef, LazyRefPrpMarker} from '../api/lazy-ref';
+import { LazyRef, LazyRefPrpMarker, LazyRefPrp, LazyRefPrpImplementor, LazyRefOTMMarker, LazyRefMTOMarker, LazyRefMTO, LazyRefMTOImplementor} from '../api/lazy-ref';
 import { RecorderManagerDefault } from './recorder-manager-default';
-import { catchError, map, flatMap, delay, finalize, mapTo, tap, share, timeout } from 'rxjs/operators';
-import { throwError, Observable, of, OperatorFunction, PartialObserver, ObservableInput, combineLatest, isObservable } from 'rxjs';
+import { map, flatMap, tap, share, timeout } from 'rxjs/operators';
+import { Observable, of, OperatorFunction, ObservableInput, isObservable } from 'rxjs';
 import { RecorderConstants } from './recorder-constants';
 import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
 import { v1 as uuidv1} from 'uuid';
-import { FieldEtc } from './field-etc';
-import { flatMapJustOnceRxOpr, mapJustOnceRxOpr, combineFirstSerial, timeoutDecorateRxOpr } from './rxjs-util';
-import { OriginalLiteralValueEntry, RecorderSession as RecorderSession, EntityRef, SessionState, PlayerSnapshot } from '../api/session';
+import { FieldEtc } from '../api/field-etc';
+import { mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
+import { OriginalLiteralValueEntry, RecorderSession as RecorderSession, EntityRef, SessionState, PlayerSnapshot, RecorderSessionImplementor } from '../api/recorder-session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
 import { RecorderManager } from '../api/recorder-manager';
 import { GenericNode } from '../api/generic-tokenizer';
-import { GenericTokenizer } from '../api/generic-tokenizer';
 import { LazyInfo } from '../api/lazy-observable-provider';
-import { LazyRefImplementor, LazyRefDefault } from './lazy-ref-default';
+import { LazyRefImplementor } from '../api/lazy-ref';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { TapeAction, Tape, TapeActionType } from '../api/tape';
 import { TapeActionDefault, TapeDefault } from './tape-default';
-import { EventEmitter } from 'events';
 import { LodashLike } from './lodash-like';
 import { ResponseLike } from '../typeslike';
+import { LazyRefOTMDefault } from './lazy-ref-otm-default';
+import { LazyRefMTODefault } from './lazy-ref-mto-default';
+import { LazyRefPrpDefault } from './lazy-ref-prp-default';
 
-declare type prptype = any;
 
 interface ResolveMetadataReturn {
     refererObjMd: PlayerMetadatas,
@@ -34,133 +34,6 @@ interface ResolveMetadataReturn {
     refererObjMdFound: boolean,
     objectMdFound: boolean,
     playerObjectIdMdFound: boolean
-}
-
-/**
- * Contract
- */
-export interface RecorderSessionImplementor extends RecorderSession {
-    /** Framework internal use. */
-    isOnRestoreEntireStateFromLiteral(): boolean;
-    /** Framework internal use. */
-    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
-    /** Framework internal use. */
-    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
-    /** Framework internal use. */
-    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
-    ///** Framework internal use. */
-    //combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any>;
-    /** Framework internal use. */
-    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
-    /** Framework internal use. */
-    getCachedBySignature<T extends object>(signatureStr: string): T;
-    /** Framework internal use. */
-    addTapeAction(action: TapeAction): void;
-    /** Framework internal use. */
-    isRecording(): boolean;
-    /** Framework internal use. */
-    storeOriginalLiteralEntry(originalValueEntry: OriginalLiteralValueEntry): void;
-    /** Framework internal use. */
-    tryCacheInstanceBySignature(
-        tryOptions:
-            {
-                realInstance: any,
-                playerSnapshot: PlayerSnapshot,
-                lazySignature?: string
-            }): void;
-    validatePlayerSideLiteralObject(literalObject: {}): void;
-    validatePlayerSideResponseLike(responseLike: ResponseLike<{} | NodeJS.ReadableStream>): void;
-    /**
-     * Framework internal use.
-     */
-    processWrappedSnapshotFieldInternal<L>(entityType: TypeLike<L>, wrappedSnapshotField: any): L;
-    /**
-     * Framework internal use. Used exclusively in lazy load.
-     */
-    processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, wrappedSnapshotField: any[]): void;
-    /** Framework internal use.  Collection utility. */
-    createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any;
-    /** Framework internal use.  Collection utility. */
-    isCollection(typeTested: TypeLike<any>): any;
-    /** Framework internal use.  Collection utility. */
-    addOnCollection(collection: any, element: any): void;
-    /** Framework internal use.  Collection utility. */
-    removeFromCollection(collection: any, element: any): void;
-    /** Framework internal use. */
-    registerEntityAndLazyref(entity: object, LazyRefImplementor: LazyRef<any, any>): void;
-    /** Framework internal use. */
-    unregisterEntityAndLazyref(entity: object, lazyRef: LazyRefImplementor<any, any>): void;
-    /** Framework internal use. */
-    nextMultiPurposeInstanceId(): number;
-    /** Framework internal use. */
-    notifyAllLazyrefsAboutEntityModification(entity: object, lazyRef: LazyRefImplementor<any, any>): void;
-    /** Framework internal use. */
-    recordAtache(attach: Observable<NodeJS.ReadableStream>): string;
-    /** Framework internal use. */
-    fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>;
-    /** Framework internal use. */
-    logRxOpr<T>(id: string): OperatorFunction<T, T>;
-    /** Framework internal use. All framework internal pipe over provided observables.  
-     * Note that it is piped just for Observables that are provided for framework  
-     * extension points, like IFieldProcessor.fromLiteralValue, are internaly subscribed.  
-     * Observables from:  
-     * - IFieldProcessor.fromLiteralValue
-     * - IFieldProcessor.fromRecordedLiteralValue
-     * - IFieldProcessor.fromDirectRaw
-     * - IFieldProcessor.toLiteralValue
-     * - IFieldProcessor.toDirectRaw
-     * - CacheHandler.getFromCache
-     * - CacheHandler.removeFromCache
-     * - CacheHandler.putOnCache
-     * - CacheHandler.clearCache
-     * - LazyObservableProvider.generateObservable
-     * - LazyObservableProvider.generateObservableForDirectRaw
-     */
-    // addSubscribedObsRxOpr<T>(): OperatorFunction<T, T>;
-    registerProvidedObservablesRxOpr<T>(): OperatorFunction<T, T>;
-    /** Framework internal use. This Operator replace internal subscribe call.*/
-    // doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
-    // doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
-    /**
-     * Framework internal use.  
-     * This put the PlayerMetadatas's on options.refMap by PlayerMetadatas#$id$  
-     * and resolves PlayerMetadatas's by PlayerMetadatas#$idRef$ if it exists.
-     */
-    resolveMetadatas(
-        options: 
-            {
-                object?: any,
-                literalObject?: any,
-                key?: string,
-                refererObject?: Object,
-                refererLiteralObject?: any,
-                refMap?: Map<Number, any>
-            }) :
-            {
-                refererObjMd: PlayerMetadatas,
-                objectMd: PlayerMetadatas,
-                playerObjectIdMd: PlayerMetadatas,
-                refererObjMdFound: boolean,
-                objectMdFound: boolean,
-                playerObjectIdMdFound: boolean
-            };
-    processTapeActionAttachRefId<T>(
-        options:
-            {
-                action: TapeAction,
-                fieldEtc: FieldEtc<T, any>,
-                value: T,
-                propertyKey: string
-            }) : 
-            Observable<
-                {
-                    asyncAddTapeAction: boolean,
-                    newValue: T
-                }
-            >;
-    jsonStringfyWithMax(literalObj: any): string;
-    /** Framework internal use. */
-    registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L>;
 }
 
 class UndefinedForMergeAsync {
@@ -192,7 +65,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     private _currentTape: Tape = null;
     private _latestTape: Array<Tape> = null;
     private _currentRecordedAtaches: Map<String, Observable<NodeJS.ReadableStream>> = null;
-    private _latestRecordedAtaches: Map<String, String | Observable<NodeJS.ReadableStream>> = null;
     private _isOnRestoreEntireStateFromLiteral = false;
     private _sessionId: string;
     //private _asyncTasksWaitingArr: Set<Observable<any>> = new Set();
@@ -259,37 +131,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return resultOpr;
     }
 
-    // addSubscribedObsRxOpr<T>(): OperatorFunction<T, T> {
-    //     let thisLocal = this;
-
-    //     //BEGIN: Used to find losted obs.subscribed()
-    //     const stackSubscriberRef = {value: ''};
-    //     try {
-    //         throw new Error('TRACKING');
-    //     } catch (error) {
-    //         stackSubscriberRef.value = error.stack;
-    //     }
-    //     //END: Used to find losted obs.subscribed()
-    //     const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-    //         const isDone = { value: false };
-    //         const result$ = source.pipe(
-    //             map((value) => {
-    //                 isDone.value = true;
-    //                 thisLocal._asyncTasksWaitingArr.delete(result$);
-    //                 return value;
-    //             })
-    //         );
-    //         if (!isDone.value) {
-    //             //BEGIN: Used to find losted obs.subscribed()
-    //             (result$ as any).stackSubscriberRef = stackSubscriberRef;
-    //             //END: Used to find losted obs.subscribed()
-    //             thisLocal._asyncTasksWaitingArr.add(result$);
-    //         }
-    //         return result$;
-    //     }
-    //     return resultOpr;
-    // }
-
     registerProvidedObservablesRxOpr<T>(): OperatorFunction<T, T> {
         let thisLocal = this;
 
@@ -302,7 +143,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
         //END: Used to find losted obs.subscribed()
         const resultOpr: OperatorFunction<T, T> = (source: Observable<T>) => {
-            const isDone = { value: false };
             const sourceRef = { value: source };
             //thisLocal.testObservableHasCircle(source);
             const result$ = of(null).pipe(
@@ -327,18 +167,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }),
                 tap(
                     {
-                        next: (value) => {
+                        next: () => {
                             thisLocal._asyncTasksWaitingArrNew.delete(result$);
                             thisLocal._asyncTasksWaitingSourcesArrNew.delete(sourceRef.value);
                         }
-                        // ,
-                        // error: (err) => {
-                        //     thisLocal._asyncTasksWaitingArrNew.delete(result$);
-                        // }
                     }
                 )
-                // ,
-                // timeoutDecorateRxOpr()
             );
             return result$;
         }
@@ -356,10 +190,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.logRxOpr('createSerialAsyncTasksWaitingNew'),
                     map(() => { return undefined; }),
                     timeout(3000)
-                    //,
-                    // flatMap(() => {
-                    //     return thisLocal.createSerialAsyncTasksWaitingNew();
-                    // })
                 );
         } else {
             result$ = of(null);
@@ -367,47 +197,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
 
         return result$;
     }
-
-    // createAsyncTasksWaiting(): Observable<void> {
-    //     const thisLocal = this;
-    //     let combineLatest$: Observable<void>;
-    //     if (thisLocal._asyncTasksWaitingArr.size > 0) {
-    //         combineLatest$ = combineLatest(Array.from(this._asyncTasksWaitingArr))
-    //             .pipe(
-    //                 map((value)=>{
-    //                     if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Debug)) {
-    //                         thisLocal.consoleLike.debug('generateAsyncTasksWaiting -> map: ' + value);
-    //                     }
-    //                 }),
-    //                 flatMap(() => {
-    //                     return thisLocal.createAsyncTasksWaiting();
-    //                 })
-    //             );
-    //     } else {
-    //         combineLatest$ = of(null);
-    //     }
-
-    //     return combineLatest$;
-    // }
-
-    // createSerialAsyncTasksWaiting(): Observable<void> {
-    //     const thisLocal = this;
-    //     let result$: Observable<void>;
-
-    //     if (thisLocal._asyncTasksWaitingArr.size > 0) {
-    //         result$ = thisLocal.combineFirstSerialPreserveAllFlags(Array.from(thisLocal._asyncTasksWaitingArr))
-    //             .pipe(
-    //                 thisLocal.logRxOpr('createSerialAsyncTasksWaiting'),
-    //                 flatMap(() => {
-    //                     return thisLocal.createSerialAsyncTasksWaiting();
-    //                 })
-    //             );
-    //     } else {
-    //         result$ = of(null);
-    //     }
-
-    //     return result$;
-    // }
 
     constructor(private _manager: RecorderManager) {
         const thisLocal = this;
@@ -458,19 +247,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }),
             );
         return createSerialAsyncTasksWaitingNew$;
-
-        // const isSynchronouslyDone = { value: false };
-        // createSerialAsyncTasksWaitingNew$ = createSerialAsyncTasksWaitingNew$.pipe(
-        //     tap(() => {
-        //         isSynchronouslyDone.value = true;
-        //     })
-        // );
-
-        // if (!isSynchronouslyDone.value) {
-        //     return createSerialAsyncTasksWaitingNew$;
-        // } else {
-        //     return of(isSynchronouslyDone.value);
-        // }
     }
 
     private restoreEntireStateCallbackTemplate<R>(callback: () => R): R {
@@ -543,7 +319,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                 thisLocal.registerProvidedObservablesRxOpr(),
                                 share()
                             );
-                            processResponseResult$.subscribe((valueL) => {
+                            processResponseResult$.subscribe(() => {
                                 thisLocal.consoleLikeRestoreState.debug(
                                     'RecorderSessionDefault.restoreEntireStateFromLiteral\n'+
                                     '  -> processResponseResult$.subscribe(): (!ownerEnt): '+
@@ -668,8 +444,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
         const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
 
-        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
-
         let newOp: OperatorFunction<T, R> = (source) => {
             let projectExtentend = (value: T, index: number) => {
                 if (!isPipedCallbackDone.value || when === 'eachPipe') {
@@ -700,41 +474,26 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
             return source
                 .pipe(
-                    flatMap(projectExtentend, concurrent),
-                    (source) => {
-                        if (!LodashLike.isNil(source)) {
-                            let currSource = source;
-                            do {
-                                if(thisLocal.repeatedValueSet.has(currSource)) {
-                                    //console.error(errorForStack + '\n' + errorForStack.stack);
-                                } else {
-                                    //thisLocal.repeatedValueSet.add(currSource);
-                                }
-                                currSource = currSource.source;
-                            } while (currSource);
-                            thisLocal.repeatedValueSet.add(source);
-                        } 
-                        return source;
-                    }
-                );
+                    flatMap(projectExtentend, concurrent)
+                ) as Observable<R>;
         }
 
         return newOp;
     }
 
-    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R): OperatorFunction<T, R> {
         return this.mapKeepAllFlagsRxOprPriv('justOnce',  {lazyLoad: 'none', restoreStare: 'none'}, lazyLoadedObj, project);
     }
 
-    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R): OperatorFunction<T, R> {
         return this.mapKeepAllFlagsRxOprPriv('eachPipe',  {lazyLoad: 'none', restoreStare: 'none'}, lazyLoadedObj, project);
     }
 
-    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>): OperatorFunction<T, R> {
         return this.flatMapKeepAllFlagsRxOprPriv('justOnce', {lazyLoad: 'none', restoreStare: 'none'}, lazyLoadedObj, project);
     }
 
-    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>): OperatorFunction<T, R> {
         return this.flatMapKeepAllFlagsRxOprPriv('eachPipe', {lazyLoad: 'none', restoreStare: 'none'}, lazyLoadedObj, project);
     }
 
@@ -848,7 +607,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
      */
     private rerunByPlaybacksIgnoreCreateInstance(): void {
         const thisLocal = this;
-        const asyncCombineObsArr: Observable<any>[] = [];
         //let obsArr: Observable<void>[] = [];
         let allPlaybacks: Tape[] = [
             ...this._latestTape.slice(),
@@ -1035,16 +793,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         };
     }
 
-    // private getFromRefMap<T>(objectMd: PlayerMetadatas, refMap: Map<number, any>): T {
-    //     let result: T;
-    //     if (objectMd.$idRef$) {
-    //         result = refMap.get(objectMd.$idRef$) as T;
-    //     } else if (objectMd.$id$) {
-    //         result = refMap.get(objectMd.$id$) as T;
-    //     }
-    //     return result;
-    // }
-
     public createLiteralRefForEntity<T>(realEntity: T): any {
         if (!realEntity) {
             throw new Error('realEntity can not be null');
@@ -1140,39 +888,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             thisLocal.consoleLike.groupEnd();
         }
         return result;
-        // result$ = thisLocal.createSerialAsyncTasksWaitingNew().pipe(
-        //     flatMap((resultL) => {
-        //         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-        //             thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntity<L>() => result$.pipe(). resultL:');
-        //             thisLocal.consoleLike.debug(resultL);
-        //             thisLocal.consoleLike.groupEnd();
-        //         }
-        //         return this.processResultEntityPriv(entityType, playerSnapshot.wrappedSnapshot, refMap);
-        //     }),
-        //     share()
-        // );
-        // return result$;
-        // result$ = result$.pipe(
-        //     tap((resultL) => {
-        //         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-        //             thisLocal.consoleLike.group('RecorderSessionDefault.processResultEntity<L>() => result$.pipe(). resultL:');
-        //             thisLocal.consoleLike.debug(resultL);
-        //             thisLocal.consoleLike.groupEnd();
-        //         }
-        //     })
-        // );
-
-        // const isSynchronouslyDone = { value: false, result: null as L};
-        // result$.subscribe((result)=>{
-        //     isSynchronouslyDone.value = true;
-        //     isSynchronouslyDone.result = result;
-        // });
-
-        // if (!isSynchronouslyDone.value) {
-        //     return result$;
-        // } else {
-        //     return of(isSynchronouslyDone.result);
-        // }
     }
 
     public processPlayerSnapshotArray<L>(entityType: TypeLike<L>, playerSnapshot: PlayerSnapshot): Array<L> {
@@ -1243,19 +958,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     }
 
                     let allMD = this.resolveMetadatas({refererObject: entityObj, key: keyItem});
-                    if (fieldEtc.otmCollectionType) {
+                    if (fieldEtc.lazyRefMarkerType === LazyRefOTMMarker) {
                         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is a Collection, fieldEtc.otmCollectionType: ' + fieldEtc.otmCollectionType.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
-                        let lazyRefSet: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
+                        let lazyRefSet: LazyRefOTMDefault<any> = new LazyRefOTMDefault<any>(thisLocal);
                         lazyRefSet.setLazyObjOnLazyLoadingNoNext(this.createCollection(fieldEtc.otmCollectionType, entityObj, keyItem));
-                        // setLazyObjOnLazyLoading$ = setLazyObjOnLazyLoading$.pipe(
-                        //     tap(
-                        //         {
-                        //             next: () => {}
-                        //         }
-                        //     )
-                        // );
 
                         lazyRefSet.instanceId = this.nextMultiPurposeInstanceId();
 
@@ -1266,11 +974,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         lazyRefSet.bMdRefererObj = allMD.refererObjMd;
                         lazyRefSet.pbMdRefererPlayerObjectId = allMD.playerObjectIdMd;
                         LodashLike.set(entityObj, keyItem, lazyRefSet);
-                    } else {
+                    } else if (fieldEtc.lazyRefMarkerType === LazyRefMTOMarker) {
                         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                            thisLocal.consoleLike.debug('GenericNode found, it is a LazyRef, and it is not a Collection, fieldEtc.lazyLoadedObjType: ' + fieldEtc.lazyLoadedObjType.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
+                            thisLocal.consoleLike.debug('GenericNode found, it is a LazyRefMTO, and it is not a Collection, fieldEtc.lazyLoadedObjType: ' + fieldEtc.lazyLoadedObjType.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
                         }
-                        let lazyRef: LazyRefDefault<any, any> = new LazyRefDefault<any, any>(thisLocal);
+                        let lazyRef: LazyRefMTODefault<any, any> = new LazyRefMTODefault<any, any>(thisLocal);
                         lazyRef.instanceId = this.nextMultiPurposeInstanceId();
                         lazyRef.refererObj = entityObj;
                         lazyRef.refererKey = keyItem;
@@ -1279,6 +987,21 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         lazyRef.bMdRefererObj = allMD.refererObjMd;
                         lazyRef.pbMdRefererPlayerObjectId = allMD.playerObjectIdMd;
                         LodashLike.set(entityObj, keyItem, lazyRef);
+                    } else if (fieldEtc.lazyRefMarkerType === LazyRefMTOMarker) {
+                        if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                            thisLocal.consoleLike.debug('GenericNode found, it is a LazyRefMTO, and it is not a Collection, fieldEtc.lazyLoadedObjType: ' + fieldEtc.lazyLoadedObjType.name + ' . Property key \'' + keyItem + '\' of ' + entityType.name);
+                        }
+                        let lazyRef: LazyRefPrpDefault<any> = new LazyRefPrpDefault<any>(thisLocal);
+                        lazyRef.instanceId = this.nextMultiPurposeInstanceId();
+                        lazyRef.refererObj = entityObj;
+                        lazyRef.refererKey = keyItem;
+                        lazyRef.session = this;
+                        lazyRef.bMdLazyLoadedObj = allMD.objectMd;
+                        lazyRef.bMdRefererObj = allMD.refererObjMd;
+                        lazyRef.pbMdRefererPlayerObjectId = allMD.playerObjectIdMd;
+                        LodashLike.set(entityObj, keyItem, lazyRef);
+                    } else {
+                        throw new Error('Property \'' + keyItem + ' of \'' + entityObj.constructor + '\'. LazyRef not properly defined on Reflect');
                     }
                 } else {
                     throw new Error('Property \'' + keyItem + ' of \'' + entityObj.constructor + '\'. LazyRef not properly defined on Reflect');
@@ -1328,7 +1051,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     }
 
     public newEntityInstance<T extends object>(entityType: TypeLike<T>): T {
-        const thisLocal = this;
         if (!this.isRecording()){
             throw new Error('Invalid operation. It is not recording.');
         }
@@ -1630,7 +1352,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     public processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, wrappedSnapshotField: any[]): void {
         const thisLocal = this;
         let refMap: Map<Number, any> = new Map();
-        const asyncCombineObsArr: Observable<any>[] = [];
 
         let realItemObsArr: L[] = [];
         if (!Array.isArray(wrappedSnapshotField)) {
@@ -1648,7 +1369,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     }
 
     public processWrappedSnapshotFieldInternal<L>(entityType: TypeLike<L>, snapshotField: any): L {
-        const thisLocal = this;
         let refMap: Map<Number, any> = new Map();
         let result = this.processResultEntityPriv(entityType, snapshotField, refMap);
         return result;
@@ -1659,13 +1379,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         if (!wrappedSnapshotField) {
             throw new Error('snapshotField can not be null');
         }
-        // const resultEntityAlreadyProcessed = {
-        //     alreadyProcessed: false,
-        //     entityValue: undefined as L,
-        //     allMD: undefined as ResolveMetadataReturn
-        // };
-        //resolveMetadatas is synchronous, so everything here need to be into a
-        // piped block! Can you see that?! Sometime i can't!
         this.validatePlayerSideLiteralObject(wrappedSnapshotField);
 
         let allMD = this.resolveMetadatas({literalObject: wrappedSnapshotField, refMap: refMap});
@@ -1693,11 +1406,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (LodashLike.isNil(entityValue)) {
                     throw new Error('entity not foun for idRef: ' + bMd.$idRef$);
                 }
-                // if (!LodashLike.isNil(entityValue)) {
-                //     //
-                //     resultEntityAlreadyProcessed.alreadyProcessed = true;
-                //     resultEntityAlreadyProcessed.entityValue = entityValue;
-                // }
             }
         }
         if (LodashLike.isNil(entityValue)) {
@@ -1739,7 +1447,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     entityValue as any,
                     wrappedSnapshotField, 
                     {
-                        customizer: this.mergeWithCustomizerPropertyReplection(entityValue, refMap),
+                        customizer: this.mergeWithCustomizerPropertyReplection(refMap),
                         noObjects: new Set([Date]),
                         considerObjectProperties: true,
                         ignorePropeties: [ 
@@ -1750,9 +1458,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 );   
             });
         }
-        // } else {
-        //     // nothing
-        // }
         return entityValue;
     }
 
@@ -1763,10 +1468,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             refererObj: any,
             refererKey: string): LazyRef<L, I> {
         const thisLocal = this;
-        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         let lr: LazyRefImplementor<L, I> = this.createApropriatedLazyRef<L, I>(fieldEtc.prpGenType, literalLazyObj, refererObj, refererKey, refMap);
 
-        let resultVoid$: Observable<void>;
 
         let allMD = thisLocal.resolveMetadatas({ literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap });
         
@@ -1789,13 +1492,12 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             //nothing
         };
 
-        const resultVoidInnerResultRef = {value: of(undefined)};
         if (LodashLike.isNil(literalLazyObj)) {
             //LodashLike.isNil(srcValue) means LazyRef object instance is null.
             if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
                 lr.setLazyObjOnLazyLoadingNoNext(null);
             } else {
-                lr.setRealResponseDoneDirectRawWrite(true);
+                (lr as LazyRefPrpImplementor<L>).setRealResponseDoneDirectRawWrite(true);
                 lr.respObs = of({ body: null });
             }
         } else {
@@ -1812,7 +1514,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
                 //let lazyLoadedObjType: TypeLike<any> = null;
                 
-                if (fieldEtc.otmCollectionType) {
+                if (fieldEtc.lazyRefMarkerType === LazyRefOTMMarker) {
+                    if (!fieldEtc.otmCollectionType) {
+                        throw new Error('Property \'' + refererKey + ' of \'' + refererObj.constructor.name + '\'. . LazyRefOTM not properly defined on Reflect. Collection Type no denined!');
+                    }
                     const lazyCollection = this.createCollection(fieldEtc.otmCollectionType, refererObj, refererKey);
                     
                     thisLocal.lazyLoadTemplateCallback(lazyCollection, () => {
@@ -1838,15 +1543,15 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
                                 lr.setLazyObjOnLazyLoadingNoNext(fromLiteralValue);
                             } else {
-                                lr.attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
-                                lr.setRealResponseDoneDirectRawWrite(true);
+                                (lr as LazyRefPrpImplementor<L>).attachRefId = thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
+                                (lr as LazyRefPrpImplementor<L>).setRealResponseDoneDirectRawWrite(true);
                                 lr.respObs = fieldEtc.fieldProcessorCaller.callToDirectRaw(fromLiteralValue, fieldEtc.fieldInfo).pipe(
                                     flatMap((respDirRaw) => {
-                                        return thisLocal.manager.config.cacheHandler.putOnCache(lr.attachRefId, respDirRaw.body);
+                                        return thisLocal.manager.config.cacheHandler.putOnCache((lr as LazyRefPrpImplementor<L>).attachRefId, respDirRaw.body);
                                     }),
                                     share(),
                                     flatMap(() => {
-                                        return thisLocal.manager.config.cacheHandler.getFromCache(lr.attachRefId);
+                                        return thisLocal.manager.config.cacheHandler.getFromCache((lr as LazyRefPrpImplementor<L>).attachRefId);
                                     }),
                                     map((stream) => {
                                         return { body: stream } as ResponseLike<NodeJS.ReadableStream>;
@@ -1934,9 +1639,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (!lr.signatureStr) {
                     throw new Error('Signature not found\n' + lr.toString());
                 }
-                // if(propertyOptions.lazyDirectRawWrite) {
-                //     lr.attachRefId =  thisLocal.manager.config.cacheStoragePrefix + thisLocal.nextMultiPurposeInstanceId();
-                // }
                 lr.respObs = this.manager.config.lazyObservableProvider.generateObservableForDirectRaw(lr.signatureStr, lazyInfo);
             }
         }
@@ -1948,8 +1650,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             lr: LazyRefImplementor<L, I>,
             literalLazyObj: any,
             refMap: Map<Number, any>): void {
-        const thisLocal = this;
-        const errorForStack = new Error('combineFirstSerial. Possible cycle!');
         let allMD = this.resolveMetadatas({ literalObject: literalLazyObj, refMap: refMap });
         //let allMD = this.resolveMetadatas({literalObject: literalLazyObj});
         let bMd = allMD.objectMd;
@@ -1966,18 +1666,25 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     }
 
     createApropriatedLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string, refMap?: Map<Number, any>): LazyRefImplementor<L, I> {
-        // if (!literalLazyObj){
-        //     throw new Error('literalLazyObj nao pode ser nula');
-        // }
         let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap});
         let bMd = allMD.objectMd;
 
         let playerObjectIdLiteral: any = bMd.$playerObjectId$;
-        let lazyRef: LazyRefDefault<L, any> = null;
-        if (playerObjectIdLiteral) {
-            lazyRef = new LazyRefDefault<L, I>(this);
+        let lazyRef: LazyRefImplementor<L, I> = null;
+        let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<any, any>(this._fielEtcCacheMap, refererObj, refererKey, this.manager.config);
+
+        if (fieldEtc.lazyRefMarkerType === LazyRefMTOMarker) {
+            lazyRef = new LazyRefMTODefault<L, I>(this);
+            lazyRef.pbMdRefererPlayerObjectId
+        } else if (fieldEtc.lazyRefMarkerType === LazyRefOTMMarker) {
+            if (!fieldEtc.otmCollectionType) {
+                throw new Error('Property \'' + refererKey + ' of \'' + refererObj.constructor.name + '\'. . LazyRefOTM not properly defined on Reflect. Collection Type no defined!');
+            }
+            lazyRef = new LazyRefOTMDefault<L>(this);
+        } else if (fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
+            lazyRef = new LazyRefPrpDefault<L>(this);
         } else {
-            lazyRef = new LazyRefDefault<L, undefined>(this);
+            throw new Error('Property \'' + refererKey + '\' of \'' + refererObj.constructor.name + '\'. LazyRef not properly defined on Reflect');
         }
         lazyRef.instanceId = this.nextMultiPurposeInstanceId();
         lazyRef.refererObj = refererObj;
@@ -2046,7 +1753,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.consoleLike.debug('There is a playerObjectIdType on LazyRef. Is it many-to-one LazyRef?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
                 }
                 this.validatingMetaFieldsExistence(playerObjectIdType);
-                lr.playerObjectId = this.processResultEntityPriv(playerObjectIdType, playerObjectIdLiteralRef.value, refMap);
+                (lr as LazyRefMTOImplementor<L, I>).playerObjectId = this.processResultEntityPriv(playerObjectIdType, playerObjectIdLiteralRef.value, refMap);
             } else {
                 if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLike.debug('Thre is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
@@ -2056,86 +1763,13 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + playerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
             }
-            lr.playerObjectId = playerObjectIdLiteralRef.value;
+            (lr as LazyRefMTOImplementor<L, I>).playerObjectId = playerObjectIdLiteralRef.value;
         } else {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('The player object Id is null! Is it a collection?!: ' + playerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
             }
         }
     }
-
-    /**
-     * Returns an Observable with subscribe called.
-     * @param observer 
-     */
-    // doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
-    // doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
-    // doSubriscribeWithProvidedObservableRxOpr<T>(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
-    //     return this.doSubriscribeObservableRxOpr('provided', observerOrNext, error, complete);
-    // }
-
-    // doSubriscribeWithInternalObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
-    // doSubriscribeWithInternalObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
-    // doSubriscribeWithInternalObservableRxOpr<T>(observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
-    //     return this.doSubriscribeObservableRxOpr('internal', observerOrNext, error, complete);
-    // }
-
-    // private doSubriscribeObservableRxOpr<T>(observableFrom: 'internal' | 'provided', observerOrNext?: PartialObserver<T> | ((value: T) => void), error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T> {
-    //     let thisLocal = this;
-    //     const resultOpr: OperatorFunction<T, T> = (source: Observable<any>) => {
-    //         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-    //             thisLocal.consoleLike.debug('doSubriscribeWithProvidedObservableRxOpr(). source Observable traceId: ' + (source as any).traceId);
-    //         }
-
-    //         let observerOriginal: PartialObserver<T>;
-    //         if ((observerOrNext as PartialObserver<T>).next
-    //             || (observerOrNext as PartialObserver<T>).complete
-    //             || (observerOrNext as PartialObserver<T>).error
-    //             || (observerOrNext as PartialObserver<T>).next) {
-    //             if (error || complete) {
-    //                 throw new Error('observerOrNext is a PartialObserver and error or complete are passed as parameter');
-    //             }
-    //             observerOriginal = observerOrNext as PartialObserver<T>;
-    //         } else {
-    //             observerOriginal = {
-    //                 next: observerOrNext as (value: T) => void,
-    //                 error: error,
-    //                 complete: complete
-    //             }
-    //         }
-
-    //         let result$;
-    //         if (observableFrom === 'provided') {
-    //             result$ = source.pipe(this.addSubscribedObsRxOpr());
-    //         } else {
-    //             result$ = source;
-    //         }
-
-    //         const isSynchronouslyDone = { value: false, result: null as T};
-    //         let observerNew: PartialObserver<T> = {...observerOriginal};
-    //         observerNew.next = (value) => {
-    //             isSynchronouslyDone.value = true;
-    //             isSynchronouslyDone.result = value;
-
-    //             if (!observerNew.closed) {
-    //                 observerNew.closed;
-    //                 if (observerOriginal.next) {
-    //                     observerOriginal.next(value);
-    //                 }
-    //             }
-    //         }
-    
-    //         result$.subscribe(observerNew);
-
-    //         if (!isSynchronouslyDone.value) {
-    //             return result$;
-    //         } else {
-    //             return of(isSynchronouslyDone.result);
-    //         }
-    //     };
-
-    //     return resultOpr;
-    // }
 
     public createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any {
         if (collType === Set) {
@@ -2173,15 +1807,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
      * @param refMap 
      */
     private mergeWithCustomizerPropertyReplection<T>(
-            objectValue: any,
             refMap: Map<Number, any>,
             ): LodashLike.AsyncMergeWithCustomizer {
         const thisLocal = this;
-
-        // const syncIsOn = LodashLike.get(objectValue, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
-        // const syncIsOn2 = this._isOnRestoreEntireStateFromLiteral;
-        // const asyncIsOnRef = { value: undefined as boolean };
-        // const asyncIsOn2Ref = { value: undefined as boolean };
 
         return (
                 value: any,
@@ -2211,7 +1839,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 (fieldEtc 
                     && fieldEtc.prpGenType
                     && (
-                        fieldEtc.lazyRefMarkerType === LazyRef
+                        fieldEtc.lazyRefMarkerType === LazyRefMTOMarker
+                        || fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
                         || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)
                 );
 
@@ -2226,10 +1855,17 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                 }
             }
-            if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType && fieldEtc.lazyRefMarkerType !== LazyRef) {
+            if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType 
+                && fieldEtc.lazyRefMarkerType !== LazyRefMTOMarker
+                && fieldEtc.lazyRefMarkerType !== LazyRefOTMMarker
+                && fieldEtc.lazyRefMarkerType !== LazyRefPrpMarker) {
                 throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side associative relation and is not LazyRef or not define GenericTokenizer');
             }
-            if (mdSrcValue.$isComponent$ && fieldEtc.prpGenType && fieldEtc.lazyRefMarkerType === LazyRef) {
+            if (mdSrcValue.$isComponent$
+                && fieldEtc.prpGenType
+                && (fieldEtc.lazyRefMarkerType === LazyRefMTODefault
+                    || fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
+                    || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)) {
                 throw new Error('Key '+ object.constructor.name + '.' + key + ' is player side component and is a LazyRef.');
             }
             const customizerResult = { needSet: true, value: null as any};
@@ -2303,7 +1939,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             } else if (fieldEtc.prpType) {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
-                    if (fieldEtc.otmCollectionType && !(fieldEtc.lazyRefMarkerType === LazyRef || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)) {
+                    if (fieldEtc.otmCollectionType &&
+                        !(fieldEtc.lazyRefMarkerType === LazyRefMTOMarker
+                            || fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
+                            || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)) {
                         if (1 === 1) {
                             throw new Error('Not pesrsistent collection is not supported yet!');
                         }
@@ -2326,7 +1965,9 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             customizerResult.value = correctSrcValueColl;
                         });
                         //nothing for now
-                    } else if (fieldEtc.lazyRefMarkerType === LazyRef || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
+                    } else if (fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
+                        || fieldEtc.lazyRefMarkerType === LazyRefMTOMarker
+                        || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
                         if (!mdSource.$id$) {
                             throw new Error('There is no mdSource.$id$ on ' + this.jsonStringfyWithMax(srcValue));
                         }
@@ -2484,18 +2125,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             return customizerResult;
         }
     }
-
-    // combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any> {
-    //     let obsArrNew = obsArr.slice();
-    //     for (let index = 0; index < obsArrNew.length; index++) {
-    //         obsArrNew[index] = obsArrNew[index].pipe(
-    //             this.mapJustOnceKeepAllFlagsRxOpr(lazyLoadedObj, (value: any) => {
-    //                 return value;
-    //             })
-    //         );            
-    //     }
-    //     return combineFirstSerial(obsArrNew);
-    // }
 
     public registerEntityAndLazyref(entity: object, lazyRef: LazyRefImplementor<any, any>): void {
         if (!lazyRef.isLazyLoaded()) {
@@ -2728,10 +2357,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     }),
                     tap(
                         {
-                            next: (value) => {
+                            next: () => {
                                 thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
                             },
-                            error: (err) => {
+                            error: () => {
                                 thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
                             }
                         }

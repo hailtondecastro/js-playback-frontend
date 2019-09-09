@@ -1,5 +1,6 @@
 import { RecorderDecorators } from "json-playback-recorder-ts";
 
+
 @RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompId' })
 export class MasterBMinCompId {
     private _idA: number;

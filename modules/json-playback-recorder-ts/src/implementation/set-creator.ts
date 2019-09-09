@@ -1,10 +1,10 @@
 import { TapeAction, TapeActionType } from '../api/tape';
 import { RecorderConstants } from './recorder-constants';
 import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
-import { RecorderSessionImplementor } from './recorder-session-default';
 import { RecorderLogger, ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionDefault } from './tape-default';
 import { LodashLike } from './lodash-like';
+import { RecorderSessionImplementor } from '../../src/api/recorder-session';
 
 export class SetCreator<T> {
 

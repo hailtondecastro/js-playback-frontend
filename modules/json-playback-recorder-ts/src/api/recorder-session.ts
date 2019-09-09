@@ -1,7 +1,10 @@
 import { RecorderManager } from "./recorder-manager";
-import { TypeLike } from "../typeslike";
-import { Observable } from "rxjs";
-import { Tape } from "./tape";
+import { TypeLike, ResponseLike } from "../typeslike";
+import { Observable, OperatorFunction, ObservableInput } from "rxjs";
+import { Tape, TapeAction } from "./tape";
+import { LazyRefImplementor } from "./lazy-ref";
+import { FieldEtc } from "./field-etc";
+import { PlayerMetadatas } from "./player-metadatas";
 
 export interface PlayerSnapshot {
     wrappedSnapshot: any[] | {};
@@ -186,4 +189,131 @@ export interface RecorderSession {
      * IMPORTANT.:
      */
     createSerialPendingTasksWaiting(): Observable<void>;
+}
+
+/**
+ * Contract
+ */
+export interface RecorderSessionImplementor extends RecorderSession {
+    /** Framework internal use. */
+    isOnRestoreEntireStateFromLiteral(): boolean;
+    /** Framework internal use. */
+    mapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    mapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    flatMapJustOnceKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
+    ///** Framework internal use. */
+    //combineFirstSerialPreserveAllFlags(obsArr: Observable<any>[], lazyLoadedObj?: any): Observable<any>;
+    /** Framework internal use. */
+    flatMapKeepAllFlagsRxOpr<T, R>(lazyLoadedObj: any, project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R>;
+    /** Framework internal use. */
+    getCachedBySignature<T extends object>(signatureStr: string): T;
+    /** Framework internal use. */
+    addTapeAction(action: TapeAction): void;
+    /** Framework internal use. */
+    isRecording(): boolean;
+    /** Framework internal use. */
+    storeOriginalLiteralEntry(originalValueEntry: OriginalLiteralValueEntry): void;
+    /** Framework internal use. */
+    tryCacheInstanceBySignature(
+        tryOptions:
+            {
+                realInstance: any,
+                playerSnapshot: PlayerSnapshot,
+                lazySignature?: string
+            }): void;
+    validatePlayerSideLiteralObject(literalObject: {}): void;
+    validatePlayerSideResponseLike(responseLike: ResponseLike<{} | NodeJS.ReadableStream>): void;
+    /**
+     * Framework internal use.
+     */
+    processWrappedSnapshotFieldInternal<L>(entityType: TypeLike<L>, wrappedSnapshotField: any): L;
+    /**
+     * Framework internal use. Used exclusively in lazy load.
+     */
+    processWrappedSnapshotFieldArrayInternal<L>(entityType: TypeLike<L>, lazyLoadedColl: any, wrappedSnapshotField: any[]): void;
+    /** Framework internal use.  Collection utility. */
+    createCollection(collType: TypeLike<any>, refererObj: any, refererKey: string): any;
+    /** Framework internal use.  Collection utility. */
+    isCollection(typeTested: TypeLike<any>): any;
+    /** Framework internal use.  Collection utility. */
+    addOnCollection(collection: any, element: any): void;
+    /** Framework internal use.  Collection utility. */
+    removeFromCollection(collection: any, element: any): void;
+    /** Framework internal use. */
+    registerEntityAndLazyref(entity: object, LazyRefImplementor: LazyRefImplementor<any, any>): void;
+    /** Framework internal use. */
+    unregisterEntityAndLazyref(entity: object, lazyRef: LazyRefImplementor<any, any>): void;
+    /** Framework internal use. */
+    nextMultiPurposeInstanceId(): number;
+    /** Framework internal use. */
+    notifyAllLazyrefsAboutEntityModification(entity: object, lazyRef: LazyRefImplementor<any, any>): void;
+    /** Framework internal use. */
+    recordAtache(attach: Observable<NodeJS.ReadableStream>): string;
+    /** Framework internal use. */
+    fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>>;
+    /** Framework internal use. */
+    logRxOpr<T>(id: string): OperatorFunction<T, T>;
+    /** Framework internal use. All framework internal pipe over provided observables.  
+     * Note that it is piped just for Observables that are provided for framework  
+     * extension points, like IFieldProcessor.fromLiteralValue, are internaly subscribed.  
+     * Observables from:  
+     * - IFieldProcessor.fromLiteralValue
+     * - IFieldProcessor.fromRecordedLiteralValue
+     * - IFieldProcessor.fromDirectRaw
+     * - IFieldProcessor.toLiteralValue
+     * - IFieldProcessor.toDirectRaw
+     * - CacheHandler.getFromCache
+     * - CacheHandler.removeFromCache
+     * - CacheHandler.putOnCache
+     * - CacheHandler.clearCache
+     * - LazyObservableProvider.generateObservable
+     * - LazyObservableProvider.generateObservableForDirectRaw
+     */
+    // addSubscribedObsRxOpr<T>(): OperatorFunction<T, T>;
+    registerProvidedObservablesRxOpr<T>(): OperatorFunction<T, T>;
+    /** Framework internal use. This Operator replace internal subscribe call.*/
+    // doSubriscribeWithProvidedObservableRxOpr<T>(observer?: PartialObserver<T>): OperatorFunction<T, T>;
+    // doSubriscribeWithProvidedObservableRxOpr<T>(next?: (value: T) => void, error?: (error: any) => void, complete?: () => void): OperatorFunction<T, T>;
+    /**
+     * Framework internal use.  
+     * This put the PlayerMetadatas's on options.refMap by PlayerMetadatas#$id$  
+     * and resolves PlayerMetadatas's by PlayerMetadatas#$idRef$ if it exists.
+     */
+    resolveMetadatas(
+        options: 
+            {
+                object?: any,
+                literalObject?: any,
+                key?: string,
+                refererObject?: Object,
+                refererLiteralObject?: any,
+                refMap?: Map<Number, any>
+            }) :
+            {
+                refererObjMd: PlayerMetadatas,
+                objectMd: PlayerMetadatas,
+                playerObjectIdMd: PlayerMetadatas,
+                refererObjMdFound: boolean,
+                objectMdFound: boolean,
+                playerObjectIdMdFound: boolean
+            };
+    processTapeActionAttachRefId<T>(
+        options:
+            {
+                action: TapeAction,
+                fieldEtc: FieldEtc<T, any>,
+                value: T,
+                propertyKey: string
+            }) : 
+            Observable<
+                {
+                    asyncAddTapeAction: boolean,
+                    newValue: T
+                }
+            >;
+    jsonStringfyWithMax(literalObj: any): string;
+    /** Framework internal use. */
+    registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L>;
 }

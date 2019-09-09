@@ -1,11 +1,10 @@
 import { RecorderConfig, RecorderLogLevel, FieldInfo, ConsoleLike, RecorderLogger } from '../api/recorder-config';
 import { RecorderSessionDefault } from './recorder-session-default';
 import { RecorderConstants } from './recorder-constants';
-import { LazyRef, LazyRefPrpMarker } from '../api/lazy-ref';
-import { FieldEtc } from './field-etc';
+import { LazyRef, LazyRefPrpMarker, LazyRefOTMMarker, LazyRefMTOMarker } from '../api/lazy-ref';
+import { FieldEtc } from '../api/field-etc';
 import { TypeLike } from '../typeslike';
-import { RecorderSession } from '../api/session';
-import { LazyObservableProvider } from '../api/lazy-observable-provider';
+import { RecorderSession } from '../api/recorder-session';
 import { GenericNode } from '../api/generic-tokenizer';
 import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
@@ -108,7 +107,9 @@ export class RecorderManagerDefault implements RecorderManager {
 					otmCollectionType = lazyLoadedObjType;
 					lazyLoadedObjType = (prpGenType.gParams[0] as GenericNode).gParams[0] as TypeLike<any>;
 				}
-				if (prpGenType.gType === LazyRef || prpGenType.gType === LazyRefPrpMarker) {
+				if (prpGenType.gType === LazyRefOTMMarker
+					|| prpGenType.gType === LazyRefMTOMarker
+					|| prpGenType.gType === LazyRefPrpMarker) {
 					if (prpGenType.gParams.length <=0) {
 						throw new Error('LazyRef is not correctly defined: \'' + fieldName + '\' on ' + owner.constructor.name);
 					}

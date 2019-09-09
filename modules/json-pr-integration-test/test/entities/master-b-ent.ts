@@ -1,5 +1,6 @@
 import { DetailAEnt } from './detail-a-ent';
-import { RecorderDecorators, GenericNodeNotNow, LazyRefOTM, GenericTokenizer, LazyRef } from 'json-playback-recorder-ts';
+import { RecorderDecorators, GenericNodeNotNow, LazyRefOTM, GenericTokenizer, LazyRefOTMMarker } from 'json-playback-recorder-ts';
+
 
 @RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
 export class MasterBCompComp {
@@ -9,7 +10,7 @@ export class MasterBCompComp {
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
@@ -34,7 +35,7 @@ export class MasterBComp {
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
@@ -195,7 +196,7 @@ export class MasterBEnt {
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}

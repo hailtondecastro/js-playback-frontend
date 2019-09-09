@@ -1,6 +1,6 @@
 import { MasterBEnt, MasterBCompId } from './master-b-ent';
 import { MasterAEnt } from './master-a-ent';
-import { LazyRefMTO, LazyRef, BinaryStream, BinaryStreamMarker } from '../../src/api/lazy-ref';
+import { LazyRefMTO, LazyRef, BinaryStream, BinaryStreamMarker, LazyRefMTOMarker } from '../../src/api/lazy-ref';
 import { Stream } from 'stream';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
@@ -10,7 +10,7 @@ export class DetailACompComp {
     private _masterB: LazyRefMTO<MasterBEnt, MasterBCompId>;
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefMTOMarker).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
 	public get masterB(): LazyRefMTO<MasterBEnt, MasterBCompId> {
 		return this._masterB;
 	}
@@ -31,7 +31,7 @@ export class DetailAComp {
     private _blobB: BinaryStream;
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefMTOMarker).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
 	public get masterB(): LazyRefMTO<MasterBEnt, MasterBCompId> {
 		return this._masterB;
 	}
@@ -95,7 +95,7 @@ export class DetailACompId {
     private _subId: number;
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(MasterAEnt).comma().tp(Number).gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefMTOMarker).lt().tp(MasterAEnt).comma().tp(Number).gt().tree))
 	public get masterA(): LazyRefMTO<MasterAEnt, number> {
 		return this._masterA;
 	}

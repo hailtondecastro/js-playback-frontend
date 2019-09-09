@@ -1,4 +1,4 @@
-import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker, RecorderDecorators, GenericNodeNotNow, GenericTokenizer } from 'json-playback-recorder-ts';
+import { LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker, RecorderDecorators, GenericNodeNotNow, GenericTokenizer, LazyRefOTMMarker } from 'json-playback-recorder-ts';
 import { DetailMinEnt } from './detail-min-ent';
 
 @RecorderDecorators.playerType({playerType: 'org.jsonplayback.player.hibernate.entities.MasterAEnt'})
@@ -58,7 +58,7 @@ export class MasterMinEnt {
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailMinEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailMinEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailMinEnt>> {
 		return this._detailAEntCol;
 	}

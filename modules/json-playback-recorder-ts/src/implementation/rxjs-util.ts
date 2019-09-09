@@ -1,15 +1,11 @@
-import { OperatorFunction, ObservableInput, Observable, of, concat, Subscriber, TeardownLogic, merge, throwError, PartialObserver } from "rxjs";
-import { map, flatMap, tap, share, take, mergeMap, timeout, catchError, delay } from "rxjs/operators";
-import { a } from "@angular/core/src/render3";
-import { LodashLike } from "./lodash-like";
+import { OperatorFunction, ObservableInput, Observable, of, throwError, PartialObserver } from "rxjs";
+import { map, flatMap, timeout, catchError, delay } from "rxjs/operators";
 
 class DummyMarker {
 
 }
 
-const dummyMarker = new DummyMarker();
 
-const repeatedValueSet = new Set();
 
 // export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
 //     const resutlArr: T[] = new Array<T>(array.length);
@@ -153,7 +149,7 @@ export function combineFirstSerial<T>(array: Observable<T>[]): Observable<T[]> {
     return o$ as Observable<T[]>;
 }
 
-export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R, thisArg?: any): OperatorFunction<T, R> {
+export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R): OperatorFunction<T, R> {
     const isPipedCallbackDone = { value: false, result: null as R};
     let rxOpr: OperatorFunction<T, R> = (source) => {
         let projectExtentend = (valueA: T, index: number) => {
@@ -177,7 +173,7 @@ export function timeoutDecorateRxOpr<T>(): OperatorFunction<T, T> {
         return source
             .pipe(
                 timeout(3000),
-                catchError((err, caugth) => {
+                catchError((err) => {
                     console.error(err + '\n' + errTimeOut);
                     return throwError(errTimeOut);
                 })
@@ -186,7 +182,7 @@ export function timeoutDecorateRxOpr<T>(): OperatorFunction<T, T> {
     return rxOpr;
 }
 
-export function flatMapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => ObservableInput<R>, concurrent?: number): OperatorFunction<T, R> {
+export function flatMapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => ObservableInput<R>): OperatorFunction<T, R> {
     const isPipedCallbackDone = { value: false, result: null as ObservableInput<R>};
     let rxOpr: OperatorFunction<T, R> = (source) => {
         let projectExtentend = (valueB: T, index: number) => {
@@ -199,7 +195,7 @@ export function flatMapJustOnceRxOpr<T, R>(project: (value: T, index?: number) =
         return source
             .pipe(
                 flatMap(projectExtentend)
-            );
+            ) as Observable<R>;
     }
     return rxOpr;
 }

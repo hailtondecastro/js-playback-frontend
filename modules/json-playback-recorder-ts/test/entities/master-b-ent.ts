@@ -2,7 +2,7 @@ import { DetailAEnt } from './detail-a-ent';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow } from '../../src/api/generic-tokenizer';
 import { GenericTokenizer } from '../../src/api/generic-tokenizer';
-import { LazyRef, LazyRefOTM } from '../../src/api/lazy-ref';
+import { LazyRefOTM, LazyRefOTMMarker } from '../../src/api/lazy-ref';
 
 @RecorderDecorators.playerType({ playerType: 'org.jsonplayback.player.hibernate.entities.MasterBCompComp' })
 export class MasterBCompComp {
@@ -12,7 +12,7 @@ export class MasterBCompComp {
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
@@ -37,7 +37,7 @@ export class MasterBComp {
      * @return {LazyRefOTM<Set<DetailAEnt>>}
      */
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}
@@ -198,7 +198,7 @@ export class MasterBEnt {
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailAEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailAEnt>> {
 		return this._detailAEntCol;
 	}

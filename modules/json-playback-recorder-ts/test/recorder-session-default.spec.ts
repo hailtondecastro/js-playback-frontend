@@ -22,23 +22,22 @@ import { ForNodeTest } from './native-for-node-test';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, timeout, tap, share, take } from 'rxjs/operators';
 import { ResponseLike, TypeLike } from '../src/typeslike';
-import { mapJustOnceRxOpr, flatMapJustOnceRxOpr, timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
-import { RecorderSession } from '../src/api/session.js';
-import { RecorderConfigDefault } from '../src/implementation/recorder-config-default.js';
-import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config.js';
+import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util';
+import { RecorderSession } from '../src/api/recorder-session';
+import { RecorderConfigDefault } from '../src/implementation/recorder-config-default';
+import { RecorderConfig, RecorderLogLevel, RecorderLogger } from '../src/api/recorder-config';
 import { RecorderDecorators } from '../src/api/recorder-decorators';
-import { RecorderConstants } from '../src/implementation/recorder-constants.js';
-import { StringStream, BinaryStream, NonWritableStreamExtraMethods } from '../src/api/lazy-ref.js';
+import { RecorderConstants } from '../src/implementation/recorder-constants';
+import { StringStream, BinaryStream, NonWritableStreamExtraMethods } from '../src/api/lazy-ref';
 import { RecorderManager } from '../src/api/recorder-manager.js';
-import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default.js';
-import { TapeActionType } from '../src/api/tape.js';
-import { AsyncCountdown } from './async-countdown.js';
-import { AsyncCount } from './async-count.js';
-import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';
-import { DetailAEnt } from './entities/detail-a-ent.js';
-import { RecorderSessionImplementor } from '../src/implementation/recorder-session-default.js';
-import { MasterMinEnt } from './entities/master-min-ent.js';
-import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
+import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default';
+import { TapeActionType } from '../src/api/tape';
+import { AsyncCountdown } from './async-countdown';
+import { AsyncCount } from './async-count';
+import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end';
+import { DetailAEnt } from './entities/detail-a-ent';
+import { MasterMinEnt } from './entities/master-min-ent';
+import { MasterAWrapper } from './non-entities/master-a-wrapper';
 // import { LazyDirectRawWriteOnReadingError } from '../src/api/lazy-direct-Raw-write-on-reading-error';
 import { pipe } from '@angular/core/src/render3/pipe';
 
@@ -1826,7 +1825,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2000 });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2500 });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);

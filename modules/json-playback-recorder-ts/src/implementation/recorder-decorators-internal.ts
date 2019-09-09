@@ -1,21 +1,19 @@
 import { RecorderConstants } from './recorder-constants';
 import { of, from } from 'rxjs';
 import { RecorderManagerDefault } from './recorder-manager-default';
-//import getStream = require("get-stream");
-import * as memStreams from 'memory-streams';
 //import * as readline from 'readline';
 import { IFieldProcessor, IFieldProcessorEvents } from '../api/field-processor';
 import { TypeLike } from '../typeslike-dev';
-import { LazyRef, StringStream, StringStreamMarker, BinaryStream, NonWritableStreamExtraMethods } from '../api/lazy-ref';
+import { LazyRef, StringStream, BinaryStream, NonWritableStreamExtraMethods } from '../api/lazy-ref';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderLogger, RecorderLogLevel } from '../api/recorder-config';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
-import { RecorderSessionImplementor } from './recorder-session-default';
-import { flatMap, map, tap, share } from 'rxjs/operators';
+import { flatMap, map, share } from 'rxjs/operators';
 import streamToObservable from 'stream-to-observable';
 import { MemStreamReadableStreamAutoEnd } from './mem-stream-readable-stream-auto-end';
 import { LodashLike } from './lodash-like';
+import { RecorderSessionImplementor } from '../api/recorder-session';
 
 export namespace RecorderDecoratorsInternal {
     /**
@@ -247,8 +245,8 @@ export namespace RecorderDecoratorsInternal {
         return returnFunc;
     }
 
-    export function playerObjectId<T>(): MethodDecorator {
-        return function<T> (target: Object, propertyKey: string | symbol, descriptor: TypedPropertyDescriptor<T>) {
+    export function playerObjectId(): MethodDecorator {
+        return function<T> (target: Object, propertyKey: string | symbol) {
             let playerObjectIdType: any = Reflect.getMetadata('design:type', target, propertyKey);
             Reflect.defineMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, playerObjectIdType, target);
         };
@@ -265,7 +263,7 @@ export namespace RecorderDecoratorsInternal {
      * ...
      * ```
      */
-    export function playerType<T>(options: RecorderDecorators.playerTypeOptions): ClassDecorator {
+    export function playerType(options: RecorderDecorators.playerTypeOptions): ClassDecorator {
         return function<T> (target: T): T | void {
             Reflect.defineMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_TYPE, options, target);
             Reflect.defineMetadata(
@@ -361,7 +359,7 @@ export namespace RecorderDecoratorsInternal {
     // };
 
     export const DateProcessor: IFieldProcessor<Date> = {
-        fromLiteralValue: (value, info) => {
+        fromLiteralValue: (value) => {
             if (value instanceof Number || typeof(value) === 'number') {
                 return new Date(value as number);
             } else if (value instanceof String || typeof(value) === 'string') {
@@ -370,7 +368,7 @@ export namespace RecorderDecoratorsInternal {
                 return null;
             }
         },
-        toLiteralValue: (value, info) => {
+        toLiteralValue: (value) => {
             if (value) {
                 return value.getTime();
             } else {
@@ -380,14 +378,14 @@ export namespace RecorderDecoratorsInternal {
     };
 
     export const BufferProcessor: IFieldProcessor<Buffer> = {
-        fromLiteralValue: (value, info) => {
+        fromLiteralValue: (value) => {
             if (value) {
                 return Buffer.from(value, 'base64');
             } else {
                 return null;
             }
         },
-        fromDirectRaw: (respStream$, info) => {
+        fromDirectRaw: (respStream$) => {
             return respStream$.pipe(
                 flatMap((respStream) => {
                     if (respStream) {
@@ -408,7 +406,7 @@ export namespace RecorderDecoratorsInternal {
                 })
             );
         },
-        toLiteralValue: (value, info) => {
+        toLiteralValue: (value) => {
             if (value) {
                 let base64Str = value.toString('base64');
                 return of(base64Str);
@@ -416,7 +414,7 @@ export namespace RecorderDecoratorsInternal {
                 return of(null);
             }
         },
-        toDirectRaw: (value, info) => {
+        toDirectRaw: (value) => {
             if (value) {
                 // let ws = new memStreams.WritableStream();
                 // ws.write(value);
@@ -437,10 +435,10 @@ export namespace RecorderDecoratorsInternal {
         }
     };
     export const StringProcessor: IFieldProcessor<String> = {
-        fromLiteralValue: (value, info) => {
+        fromLiteralValue: (value) => {
             return value;
         },
-        fromDirectRaw: (respStream$, info) => {
+        fromDirectRaw: (respStream$) => {
             return respStream$.pipe(
                 flatMap((respStream) => {
                     if (respStream.body) {
@@ -469,10 +467,10 @@ export namespace RecorderDecoratorsInternal {
                 })
             );
         },
-        toLiteralValue: (value, info) => {
+        toLiteralValue: (value) => {
             return value;
         },
-        toDirectRaw: (value, info) => {
+        toDirectRaw: (value) => {
             if (value) {
                 let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value.toString()); 
                 myReadableStreamBuffer.setEncoding('utf-8');
@@ -483,7 +481,7 @@ export namespace RecorderDecoratorsInternal {
         }
     };
     export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = {
-        fromLiteralValue: (value, info) => {
+        fromLiteralValue: (value) => {
             if (value) {
                 let base64AB = Buffer.from(value, 'base64');
                 let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(base64AB.toString()); 
@@ -493,7 +491,7 @@ export namespace RecorderDecoratorsInternal {
                 return null;
             }
         },
-        fromDirectRaw: (respStream$, info) => {
+        fromDirectRaw: (respStream$) => {
             return respStream$.pipe(
                 flatMap((respStream) => {
                     if (respStream.body) {
@@ -508,21 +506,20 @@ export namespace RecorderDecoratorsInternal {
                 })
             );
         },
-        toDirectRaw: (value, info) => {
+        toDirectRaw: (value) => {
             if (value) {
                 return of({ body: value });
             } else {
                 return of({ body: null });
             }
         },
-        toLiteralValue: (value, info) => {
+        toLiteralValue: () => {
             throw new Error('Not supported!');
         }
     };
     export const StringStreamProcessor: IFieldProcessor<StringStream> = {
-            fromLiteralValue: (value, info) => {
+            fromLiteralValue: (value) => {
                 if (value) {
-                    let valueBuffer = Buffer.from(value, 'utf8');
                     // let ws = new memStreams.WritableStream();
                     // ws.write(valueBuffer);
                     let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value); 
@@ -532,7 +529,7 @@ export namespace RecorderDecoratorsInternal {
                     return null;
                 }
             },
-            fromDirectRaw: (respStream$, info) => {
+            fromDirectRaw: (respStream$) => {
                 return respStream$.pipe(
                     flatMap((respStream) => {
                         if (respStream.body) {
@@ -548,7 +545,7 @@ export namespace RecorderDecoratorsInternal {
                     })
                 )
             },
-            toDirectRaw: (value, info) => {
+            toDirectRaw: (value) => {
                 if (value) {
                     value.setEncoding('utf8');
                     return of({ body: value });
@@ -556,7 +553,7 @@ export namespace RecorderDecoratorsInternal {
                     return of({ body: null });
                 }
             },
-            toLiteralValue: (value, info) => {
+            toLiteralValue: () => {
                 throw new Error('Not supported!');
             }
     };

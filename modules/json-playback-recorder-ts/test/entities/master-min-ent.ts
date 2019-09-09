@@ -1,4 +1,4 @@
-import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker } from '../../src/api/lazy-ref';
+import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker, LazyRefOTMMarker } from '../../src/api/lazy-ref';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { DetailMinEnt } from './detail-min-ent';
@@ -60,7 +60,7 @@ export class MasterMinEnt {
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRef).lt().tp(Set).lt().tp(DetailMinEnt).gt().gt().tree))
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefOTMMarker).lt().tp(Set).lt().tp(DetailMinEnt).gt().gt().tree))
 	public get detailAEntCol(): LazyRefOTM<Set<DetailMinEnt>> {
 		return this._detailAEntCol;
 	}
