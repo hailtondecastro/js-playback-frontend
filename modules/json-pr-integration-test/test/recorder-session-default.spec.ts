@@ -1810,7 +1810,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2000 });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 3000 });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2026,7 +2026,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(cacheGetAsyncCount.count).to.eq(testParamByIntervalIndex.length, 'cacheGetAsyncCount');
                 done();
             });
-        }).timeout(3000);
+        }).timeout(3500);
 
         //it('RecorderManagerDefault.master-a-detail-a-record', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefault.master-a-detail-a-record', (done) => {
