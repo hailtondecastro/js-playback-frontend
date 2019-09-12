@@ -1963,7 +1963,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
         it('RecorderManagerDefault.master-lazy-prp-over-sized-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
-
+            const debugTimeFactor = 1;
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
@@ -1972,7 +1972,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 3000 });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2071,7 +2071,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
-                    delayForStreamRead: 20,
+                    delayForStreamRead: 2 * debugTimeFactor,
                     delayForLazyRef: 0,
                     expectedError: null
                 },
@@ -2082,23 +2082,23 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 },
                 {
                     delayForStreamRead: 0,
-                    delayForLazyRef: 15,
+                    delayForLazyRef: 1.5 * debugTimeFactor,
                     expectedError: null
                 },
                 {
                     delayForStreamRead: 0,
-                    delayForLazyRef: 20,
+                    delayForLazyRef: 2 * debugTimeFactor,
                     expectedError: null
                 },
                 {
                     delayForStreamRead: 0,
-                    delayForLazyRef: 10,
+                    delayForLazyRef: 1 * debugTimeFactor,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
                     delayForStreamRead: 0,
-                    delayForLazyRef: 10,
+                    delayForLazyRef: 1 * debugTimeFactor,
                     expectedError: null,
                     doNotUserAsObs: true
                 }
