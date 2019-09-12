@@ -307,40 +307,6 @@ export interface LazyRef<L extends object, I> {
     isLazyLoaded(): boolean;
 }
 
-export interface LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
-    iAmLazyRefImplementor: true;
-    /**
-     * Framework internal use. Internal mutipurpose instance id.
-     */
-	instanceId: number;
-    /** Framework internal use. */
-    setLazyObjOnLazyLoading(lazyLoadedObj: L): void;
-    /** Framework internal use. */
-    setLazyObjNoNext(lazyLoadedObj: L) : void;
-    /** Framework internal use. */
-    setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : void;
-    /** Framework internal use. */
-    notifyModification(lazyLoadedObj: L) : void;
-    /** 
-     * TODO:  
-     * Framework internal use.
-     */
-    processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>):  L | Observable<L>;
-    /** Framework internal use. */
-    genericNode: GenericNode;
-    /** Framework internal use. */
-	refererObj: any;
-    /** Framework internal use. */
-	refererKey: string;
-    /** Framework internal use. */
-	session: RecorderSessionImplementor;
-    /** Framework internal use. */
-	lazyLoadedObj: L;
-    /** Framework internal use. */
-    respObs: Observable<ResponseLike<Object>>;
-    /** Framework internal use. */
-    fieldProcessorEvents: IFieldProcessorEvents<L>;
-}
 /**
  * One-to-one.  
  * See {@link LazyRef}
@@ -371,6 +337,43 @@ export interface LazyRefPrp<L extends object> extends LazyRef<L, undefined> {
     iAmLazyRefPrp: true;
 }
 
+export interface LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
+    iAmLazyRefImplementor: true;
+    /**
+     * Framework internal use. Internal mutipurpose instance id.
+     */
+    instanceId: number;
+    setLazyObj(lazyLoadedObj: L, observerOriginal?: PartialObserver<L>): void;
+    /** Framework internal use. */
+    setLazyObjOnLazyLoading(lazyLoadedObj: L, observerOriginal: PartialObserver<L>): void;
+    /** Framework internal use. */
+    setLazyObjNoNext(lazyLoadedObj: L) : void;
+    /** Framework internal use. */
+    setLazyObjOnLazyLoadingNoNext(lazyLoadedObj: L) : void;
+    /** Framework internal use. */
+    notifyModification(lazyLoadedObj: L) : void;
+    /** 
+     * TODO:  
+     * Framework internal use.
+     */
+    processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>):  L | Observable<L>;
+    /** Framework internal use. */
+    genericNode: GenericNode;
+    /** Framework internal use. */
+	refererObj: any;
+    /** Framework internal use. */
+	refererKey: string;
+    /** Framework internal use. */
+	session: RecorderSessionImplementor;
+    /** Framework internal use. */
+	lazyLoadedObj: L;
+    /** Framework internal use. */
+    respObs: Observable<ResponseLike<Object>>;
+    /** Framework internal use. */
+    fieldProcessorEvents: IFieldProcessorEvents<L>;
+}
+
+
 export interface LazyRefPrpImplementor<L extends object> extends LazyRefImplementor<L, undefined>, LazyRefPrp<L> {
     /**
      * Alternative to instance of.
@@ -384,20 +387,23 @@ export interface LazyRefPrpImplementor<L extends object> extends LazyRefImplemen
      * Attache id that will be used on lazyDirectRawRead and 
      */
     attachRefId: string;
+    setLazyObj(lazyLoadedObj: L, observerOriginal?: PartialObserver<L>): void;
 }
 
-export interface LazyRefMTOImplementor<L extends object, I> extends LazyRefMTO<L, I> {
+export interface LazyRefMTOImplementor<L extends object, I> extends LazyRefImplementor<L, I>, LazyRefMTO<L, I> {
     /**
      * Alternative to instance of.
      */
     iAmLazyRefMTOImplementor: true;
 
     playerObjectId: I;
+    setLazyObj(lazyLoadedObj: L, observerOriginal?: PartialObserver<L>): void;
 }
 
-export interface LazyRefOTMImplementor<L extends object> extends LazyRefOTM<L> {
+export interface LazyRefOTMImplementor<L extends object> extends LazyRefImplementor<L, undefined>, LazyRefOTM<L> {
     /**
      * Alternative to instance of.
      */
     iAmLazyRefOTMImplementor: true;
+    setLazyObj(lazyLoadedObj: L, observerOriginal?: PartialObserver<L>): void;
 }

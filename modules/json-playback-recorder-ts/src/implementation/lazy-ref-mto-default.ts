@@ -23,7 +23,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
         super(session);
     }
 
-    public setLazyObj(lazyLoadedObj: L): void {
+    public setLazyObj(lazyLoadedObj: L, observerOriginal?: PartialObserver<L>): void {
         const thisLocal = this;
         //const asyncCombineObsArr: Observable<any>[] = [];
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
@@ -105,7 +105,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
             }
         } else {
         }
-        this.mayDoNextHelper(isValueByFieldProcessor, fieldEtc, lazyLoadedObj);
+        this.setLazyObjMayDoNextHelper(isValueByFieldProcessor, fieldEtc, lazyLoadedObj, observerOriginal);
     }
 
     asObservable(): Observable<L> {
@@ -169,22 +169,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
         } else {
             resultSubs = super.subscribe(<(value: L) => void>observerOrNext, error, complete);
         }
-        let observerOriginal: PartialObserver<L>;
-        if ((observerOrNext as PartialObserver<L>).next
-            || (observerOrNext as PartialObserver<L>).complete
-            || (observerOrNext as PartialObserver<L>).error
-            || (observerOrNext as PartialObserver<L>).next) {
-            if (error || complete) {
-                throw new Error('observerOrNext is a PartialObserver and error or complete are passed as parameter');
-            }
-            observerOriginal = observerOrNext as PartialObserver<L>;
-        } else {
-            observerOriginal = {
-                next: observerOrNext as (value: L) => void,
-                error: error,
-                complete: complete
-            }
-        }
+        let observerOriginal: PartialObserver<L> = this.createAndRegisterObserverOriginal(observerOrNext, error, complete);
         let observerNew: PartialObserver<L> = {...observerOriginal};
 
         const thisLocalNextOnAsync = {value: false};
@@ -210,7 +195,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                         +'We will get from session signature cache call next()');
                 }
                 thisLocalNextOnAsync.value = true;
-                thisLocal.setLazyObjOnLazyLoading(<L> this.session.getCachedBySignature(this.signatureStr));
+                thisLocal.setLazyObjOnLazyLoading(<L> this.session.getCachedBySignature(this.signatureStr), observerOriginal);
                 if (!observerNew.closed) {
                     observerNew.closed = true;
                     if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -220,7 +205,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                     }
                     //here the original method will be called
                     thisLocal.respObs = null;
-                    thisLocal.nextProt(false, thisLocal.lazyLoadedObj);
+                    thisLocal.nextProt(false, thisLocal.lazyLoadedObj, observerOriginal);
                 } else {
                     if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
@@ -268,7 +253,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                         }
                         observerNew.closed = true;
                         //here the original method will be called
-                        thisLocal.nextProt(false, thisLocal.lazyLoadedObj);
+                        thisLocal.nextProt(false, thisLocal.lazyLoadedObj, observerOriginal);
                     } else {
                         if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
@@ -332,7 +317,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                                         thisLocal.consoleLikeSubs.groupEnd();
                                     }
                                     observerNew.closed = true;
-                                    thisLocal.nextProt(true, thisLocal.lazyLoadedObj);
+                                    thisLocal.nextProt(true, thisLocal.lazyLoadedObj, observerOriginal);
                                 } else {
                                     if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                                         thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()). observerNew.closed');
@@ -365,7 +350,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                 +'or this was created with lazyLoadedObj already loaded.');
         }
         if (!observerNew.closed && !thisLocalNextOnAsync.value) {
-            thisLocal.nextProt(false, thisLocal.lazyLoadedObj);
+            thisLocal.nextProt(false, thisLocal.lazyLoadedObj, observerOriginal);
         }
 
         return resultSubs;

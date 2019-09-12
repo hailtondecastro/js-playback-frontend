@@ -49,6 +49,7 @@ export interface RecorderConfig {
     cacheHandler: CacheHandler;
     lazyObservableProvider: LazyObservableProvider;
     maxJsonStringifyForDiagnostic: number;
+    readonly tryReduceLazyRefSubescribersRerun: boolean;
     configCreationIdName(creationIdName: string): RecorderConfig;  
     configMetadatasName(playerMetadatasName: string): RecorderConfig;
     configMaxLazyRefNotificationPerSecond(maxLazyRefNotificationPerSecond: number): RecorderConfig;
@@ -75,6 +76,13 @@ export interface RecorderConfig {
      */
     configCacheStoragePrefix(cacheStoragePrefix: string): RecorderConfig;
     configAttachPrefix(attachPrefix: string): RecorderConfig;
+    /**
+     * Experimental. If you have problems with not executed subscribe may you need  
+     * set is to false.  
+     * Default: true.  
+     * @param tryReduce 
+     */
+    configTryReduceLazyRefSubescribersRerun(tryReduce: boolean): RecorderConfig;
     getTypeProcessor<L,LM>(type: TypeLike<LM>): IFieldProcessor<L>;
 }
 

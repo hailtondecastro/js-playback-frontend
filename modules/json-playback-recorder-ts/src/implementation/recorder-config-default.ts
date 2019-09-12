@@ -191,4 +191,18 @@ export class RecorderConfigDefault implements RecorderConfig {
             return null;
         }
     }
+
+    private _tryReduceLazyRefSubescribersRerun: boolean = true;
+    /**
+     * Getter tryReduceLazyRefSubescribersRerun
+     * @return {boolean}
+     */
+	public get tryReduceLazyRefSubescribersRerun(): boolean {
+		return this._tryReduceLazyRefSubescribersRerun;
+	}
+    configTryReduceLazyRefSubescribersRerun(tryReduce: boolean): RecorderConfig {
+        this._tryReduceLazyRefSubescribersRerun = tryReduce;
+        return this;
+    }
+
 }
