@@ -1987,7 +1987,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1000 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1500 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
