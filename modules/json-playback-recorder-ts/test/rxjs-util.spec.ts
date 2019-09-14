@@ -7,9 +7,10 @@ import { AsyncCount } from './async-count.js';
 
 {
     describe('rxjs-util-test', () => {
+        const debugTimeFactor = 0.5;
+
         it('rxjs-util-test.combineAll', (done) => {
             //let asyncCount = 0;
-            const debugTimeFactor = 1;
             let asyncCount = new AsyncCount();
             const executionArr: Number[] = [];
             let asyncCountdown = new AsyncCountdown({ count: 10, timeOut: 1000 * debugTimeFactor});
@@ -48,11 +49,10 @@ import { AsyncCount } from './async-count.js';
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('rxjs-util-test.combineFirstSerial_4-items', (done) => {
             //let asyncCount = 0;
-            const debugTimeFactor = 1;
             let asyncCount = new AsyncCount();
             const executionArr: Number[] = [];
             let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor});
@@ -108,11 +108,10 @@ import { AsyncCount } from './async-count.js';
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('rxjs-util-test.combineFirstSerial_so-many-items', 1 == 1 ? (done) => {done();} : (done) => {
             //let asyncCount = 0;
-            const debugTimeFactor = 1;
             let asyncCount = new AsyncCount();
             const executionArr: Number[] = [];
             const amount = 1000;
@@ -142,11 +141,10 @@ import { AsyncCount } from './async-count.js';
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
             });
-        }).timeout(20000);
+        }).timeout(20000 * debugTimeFactor);
 
         it('rxjs-util-test.combineFirstSerial_0-items', (done) => {
             //let asyncCount = 0;
-            const debugTimeFactor = 1;
             let asyncCount = new AsyncCount();
             const executionArr: Number[] = [];
             let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor});
@@ -166,6 +164,6 @@ import { AsyncCount } from './async-count.js';
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
     });
 }

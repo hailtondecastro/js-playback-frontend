@@ -33,7 +33,7 @@ export class AsyncCountdown {
 		this._count = value;
     }
     
-    private doCountDown() {
+    private doCountdown() {
         const thisLocal = this;
         if (thisLocal._timeOut) {
             --thisLocal._countRemain;
@@ -46,8 +46,8 @@ export class AsyncCountdown {
         }
     }
     
-    public doNonObservableCountDown() {
-        this.doCountDown();
+    public doNonPipedCountdown() {
+        this.doCountdown();
     }
 
     public registerRxOpr<T>(): OperatorFunction<T, T> {
@@ -57,7 +57,7 @@ export class AsyncCountdown {
             return source
                 .pipe(
                     tap( () => {
-                        thisLocal.doCountDown();
+                        thisLocal.doCountdown();
                     })
                 );
         }

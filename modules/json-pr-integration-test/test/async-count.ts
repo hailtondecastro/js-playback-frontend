@@ -15,7 +15,7 @@ export class AsyncCount {
         thisLocal._countup++;
     }
     
-    public doNonObservableIncrement() {
+    public doNonPipedIncrement() {
         this.doIncrement();
     }
 

@@ -28,10 +28,12 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
 {
     describe('RecorderManagerDefault', () => {
+        const debugTimeFactor = 0.5;
+
         it('RecorderManagerDefault.poc-observable-just-once-pipe-test', (done) => {
             //let asyncCount = 0;
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
 
             let obs1$: Observable<void> = of(undefined).pipe(delay(1)).pipe(
                 asyncCount.registerRxOpr(),
@@ -86,11 +88,11 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.poc-observable-each-pipe-test', (done) => {
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 8, timeOut: 1000});            
+            let asyncCountdown = new AsyncCountdown({ count: 8, timeOut: 1000 * debugTimeFactor });            
 
             let obs1$: Observable<void> = of(undefined).pipe(delay(1));
             let obs2$: Observable<void> = of(undefined).pipe(delay(1));
@@ -154,7 +156,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 done();
             });
 
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         //it('RecorderManagerDefault.master-a-list-1000-test', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefault.master-a-list-1000-test', (done) => {
@@ -167,7 +169,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -198,14 +200,14 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             masterAArr[0].blobLazyA.subscribe( 
                 {
                     next: (valueStream) => {
-                        asyncCount.doNonObservableIncrement();
+                        asyncCount.doNonPipedIncrement();
                         let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null)
                         .pipe(
                             asyncCount.registerRxOpr(),
                             asyncCountdown.registerRxOpr()
                         );
                         fromDirectRaw$.subscribe((streamStr) => {
-                            asyncCount.doNonObservableIncrement();
+                            asyncCount.doNonPipedIncrement();
                             chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr.body);
                         });
                     },
@@ -222,7 +224,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
-        }).timeout(3000);
+        }).timeout(3000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-list-first-twice-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -234,7 +236,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 2000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -267,7 +269,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             masterAArr = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterAListFirstTwiceLiteral);
             chai.expect(masterAArr[0]).to.eq(masterAArr[1]);
             done();
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-wrapper-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -279,7 +281,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -310,14 +312,14 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             masterAArr[0].masterA.blobLazyA.subscribe( 
                 {
                     next: (valueStream) => {
-                        asyncCount.doNonObservableIncrement();
+                        asyncCount.doNonPipedIncrement();
                         let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null)
                         .pipe(
                             asyncCount.registerRxOpr(),
                             asyncCountdown.registerRxOpr()
                         );
                         fromDirectRaw$.subscribe((streamStr) => {
-                            asyncCount.doNonObservableIncrement();
+                            asyncCount.doNonPipedIncrement();
                             chai.expect('MasterAEnt_REG00_BlobLazyA').to.eq(streamStr.body);
                         });
                     },
@@ -334,7 +336,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -346,7 +348,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -447,7 +449,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                             asyncCountdown.registerRxOpr()
                         );
                         fromDirectRaw$.subscribe((reqStreamStr) => {
-                            asyncCount.doNonObservableIncrement();
+                            asyncCount.doNonPipedIncrement();
                             chai.expect('MasterAEnt_REG01_BlobLazyA').to.eq(reqStreamStr.body);
                         });
                     },
@@ -465,7 +467,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 done();
             });
 
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-test-subs-to-mod', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -477,7 +479,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -574,7 +576,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             masterA.blobLazyA.subscribe( 
                 {
                     next: (valueStream) => {
-                        asyncCountdown.doNonObservableCountDown();
+                        asyncCountdown.doNonPipedCountdown();
                         let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null)
                         .pipe(
                             asyncCount.registerRxOpr(),
@@ -590,27 +592,27 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             );
             
             masterA.detailAEntCol.subscribeToModify((detailAEntCol) => {
-                asyncCountdown.doNonObservableCountDown();
+                asyncCountdown.doNonPipedCountdown();
                 const detailAEntArr = Array.from(detailAEntCol);
                 //detailAEntArr[0].vcharA = "detailAEntArr[0].vcharA_changed";
                 const detailACompMasterB = detailAEntArr[0].detailAComp.masterB.asObservable().pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr(),
                     tap((masterB) => {
-                        asyncCount.doNonObservableIncrement();
+                        asyncCount.doNonPipedIncrement();
                         const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
                         chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
                         detailAEntArr[0].detailAComp.masterB.signatureStr
                     })
                 );
                 detailACompMasterB.subscribe((masterB) => {
-                    asyncCount.doNonObservableIncrement();
+                    asyncCount.doNonPipedIncrement();
                     const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
                     chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
                     detailAEntArr[0].detailAComp.masterB.signatureStr
                 });
                 detailACompMasterB.subscribe((masterB) => {
-                    asyncCount.doNonObservableIncrement();
+                    asyncCount.doNonPipedIncrement();
                     const originalVarcharA = (pSnapshotWSnapMasterBBySign as any)[detailAEntArr[0].detailAComp.masterB.signatureStr].wrappedSnapshot.vcharA;
                     chai.expect(masterB.vcharA).to.eq(originalVarcharA, 'masterB.vcharA');
                     detailAEntArr[0].detailAComp.masterB.signatureStr
@@ -625,7 +627,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -637,7 +639,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -745,7 +747,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(1, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.detail-a-master-a-subscribe-twice', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -757,7 +759,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -875,7 +877,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             ).subscribe((masteeA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
             });
 
@@ -883,7 +885,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             ).subscribe((masteeA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
             });
 
@@ -895,7 +897,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.detail-a-master-a-same-observable-subscribe-twice', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -907,7 +909,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1027,12 +1029,12 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             );
 
             compIdMasterAAsObservable$.subscribe((masteeA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
             });
             timer(10).subscribe(() => {
                 compIdMasterAAsObservable$.subscribe((masteeA) => {
-                    asyncCount.doNonObservableIncrement();
+                    asyncCount.doNonPipedIncrement();
                     chai.expect(masteeA.vcharA).to.eq('MasterAEnt_REG01_REG01_VcharA');
                 });
             });
@@ -1045,7 +1047,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.detail-a-first-secont-second-third', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1057,7 +1059,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1183,11 +1185,11 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             detailAFirstSecondArr[0].compId.masterA.asObservable().pipe(
                 asyncCountdown.registerRxOpr()
             ).subscribe((masterA0) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 detailASecondThirdArr[1].compId.masterA.pipe(
                     asyncCountdown.registerRxOpr()
                 ).subscribe((masterA2) => {
-                    asyncCount.doNonObservableIncrement();
+                    asyncCount.doNonPipedIncrement();
                     chai.expect(masterA0).to.be.eq(masterA2);
                 })
             })
@@ -1200,7 +1202,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.detail-a-master-a-only-one-request-with-share', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1212,7 +1214,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1309,7 +1311,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                                 obsRespAsyncCount.registerRxOpr(),
                                 asyncCountdown.registerRxOpr(),
                                 tap((value)=> {
-                                    console.log('obsRespAsyncCount.count: ' + obsRespAsyncCount.count);
+                                    //console.log('obsRespAsyncCount.count: ' + obsRespAsyncCount.count);
                                 }),
                                 share()
                             );
@@ -1342,23 +1344,23 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             const masterRef1 = {value: undefined as MasterAEnt};
             const masterRef1AsObs = {value: undefined as MasterAEnt};
             detailACol[0].compId.masterA.subscribe((masterA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 masterRef0.value = masterA;
             });
             detailACol[0].compId.masterA.asObservable().pipe(
                 asyncCountdown.registerRxOpr()
             ).subscribe((masterA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 masterRef0AsObs.value = masterA;
             });
             detailACol[1].compId.masterA.subscribe((masterA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 masterRef1.value = masterA;
             });
             detailACol[1].compId.masterA.asObservable().pipe(
                 asyncCountdown.registerRxOpr()
             ).subscribe((masterA) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 masterRef1AsObs.value = masterA;
             });
 
@@ -1373,7 +1375,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-min-detail-min-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1385,7 +1387,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1477,7 +1479,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCountdown.registerRxOpr()
             );
             let sub = detailAEntCol$.subscribe((coll) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 let detailAEntArr = Array.from(coll);
                 for (let index = 0; index < detailAEntArr.length; index++) {
                     const detailAItem = detailAEntArr[index];
@@ -1487,7 +1489,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                             asyncCountdown.registerRxOpr()
                         );
                     let subB = compIdMasterA$.subscribe( (detMasterA) => {
-                        asyncCount.doNonObservableIncrement();
+                        asyncCount.doNonPipedIncrement();
                         chai.expect(masterMin)
                             .to.eq(detMasterA);
                         if (subB) {
@@ -1510,7 +1512,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-detail-a-min-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1522,7 +1524,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1614,7 +1616,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCountdown.registerRxOpr()
             );
             blobLazyA$.subscribe((valueStream) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null).pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -1629,7 +1631,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCountdown.registerRxOpr()
             );
             blobLazyB$.subscribe((valueStream) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 // console.log('valueStream: ' + valueStream);
                 chai.expect(valueStream).to.be.null;
             });
@@ -1640,7 +1642,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     asyncCountdown.registerRxOpr()
                 );
             detailAEntCol$.subscribe((coll) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 let detailAEntArr = Array.from(coll);
                 for (let index = 0; index < detailAEntArr.length; index++) {
                     const detailAItem = detailAEntArr[index];
@@ -1671,7 +1673,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(9, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.master-a-detail-a-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1683,7 +1685,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1824,7 +1826,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefault.detail-a-arr-master-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
@@ -1836,7 +1838,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1963,7 +1965,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
         it('RecorderManagerDefault.master-lazy-prp-over-sized-test', (done) => {
             let newCacheHandler = ForNodeTest.createCacheHandlerWithInterceptor(ForNodeTest.CacheHandlerAsync);
-            const debugTimeFactor = 1;
+            
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
@@ -1972,12 +1974,12 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1500 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
                 if(operation === 'getFromCache') {
-                    cacheGetAsyncCount.doNonObservableIncrement();
+                    cacheGetAsyncCount.doNonPipedIncrement();
                 }
             };
 
@@ -2071,34 +2073,34 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
-                    delayForStreamRead: 2 * debugTimeFactor,
                     delayForLazyRef: 0,
+                    delayForStreamRead: 10 * debugTimeFactor,
                     expectedError: null
                 },
                 {
+                    delayForLazyRef: 2,
                     delayForStreamRead: 0,
-                    delayForLazyRef: 0,
                     expectedError: null
                 },
                 {
+                    delayForLazyRef: 5 * debugTimeFactor,
                     delayForStreamRead: 0,
-                    delayForLazyRef: 1.5 * debugTimeFactor,
                     expectedError: null
                 },
                 {
+                    delayForLazyRef: 5 * debugTimeFactor,
                     delayForStreamRead: 0,
-                    delayForLazyRef: 2 * debugTimeFactor,
                     expectedError: null
                 },
                 {
+                    delayForLazyRef: 5 * debugTimeFactor,
                     delayForStreamRead: 0,
-                    delayForLazyRef: 1 * debugTimeFactor,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
+                    delayForLazyRef: 5 * debugTimeFactor,
                     delayForStreamRead: 0,
-                    delayForLazyRef: 1 * debugTimeFactor,
                     expectedError: null,
                     doNotUserAsObs: true
                 }
@@ -2106,28 +2108,31 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             let intervalIndex = -1;
             interval(1).pipe(
                 take(testParamByIntervalIndex.length),
-                asyncCountdown.registerRxOpr()
+                asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
             ).subscribe(() => {
                 intervalIndex++;
                 //console.log('interval.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
                 let blobLazyA$ = of(null).pipe(
                     flatMap(() => {
                         if (testParamByIntervalIndex[intervalIndex].doNotUserAsObs) {
+                            //console.log('intervalIndex: ' + intervalIndex + ' as sub');
                             return masterA.blobLazyA;
                         } else {
+                            //console.log('intervalIndex: ' + intervalIndex + ' as obs');
                             return masterA.blobLazyA.asObservable();
                         }
                     }),
                     asyncCount.registerRxOpr(),
-                    asyncCountdown.registerRxOpr(),
+                    asyncCountdown.registerRxOpr(() => 'asyncCountdown: blobLazyA$ = of(null).pipe(: ' + intervalIndex + ' as sub or obs'),
                     delay(testParamByIntervalIndex[intervalIndex].delayForLazyRef)
                 );
                 try {
                     const subs = blobLazyA$.subscribe( 
                         {
                             next: (valueStream) => {
+                                //console.log('intervalIndex: ' + intervalIndex);
                                 //console.log('blobLazyA$.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
-                                asyncCount.doNonObservableIncrement();
+                                asyncCount.doNonPipedIncrement();
                                 chai.expect(testParamByIntervalIndex[intervalIndex].expectedError).to.be.null;
                                 chai.expect(nonRepeatableValueSet).to.not.contains(blobLazyA$);
                                 chai.expect(nonRepeatableValueSet).to.not.contains(valueStream);
@@ -2140,7 +2145,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                                     flatMap(() => {
                                         return ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null).pipe(
                                             asyncCount.registerRxOpr(),
-                                            asyncCountdown.registerRxOpr(),
+                                            asyncCountdown.registerRxOpr(() => 'asyncCountdown: fromDirectRaw$: ' + intervalIndex),
                                             delay(testParamByIntervalIndex[intervalIndex].delayForStreamRead)
                                         );
                                     })
@@ -2188,7 +2193,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(cacheGetAsyncCount.count).to.eq(testParamByIntervalIndex.length, 'cacheGetAsyncCount');
                 done();
             });
-        }).timeout(3500);
+        }).timeout(2000 * debugTimeFactor);
 
         //it('RecorderManagerDefault.master-a-detail-a-record', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefault.master-a-detail-a-record', (done) => {
@@ -2290,8 +2295,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 );
             recorderSession = manager.createSession();
 
-            let dataAsyncCountdown = new AsyncCountdown({ count: 4, timeOut: 500});
-            let tapeAsyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
+            let dataAsyncCountdown = new AsyncCountdown({ count: 4, timeOut: 500 * debugTimeFactor });
+            let tapeAsyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000 * debugTimeFactor });
 
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             
@@ -2302,11 +2307,11 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             masterA.blobLazyA.setLazyObj(binaryWRStream);
             recorderSession.createSerialPendingTasksWaiting().subscribe(() => {
                 masterA.detailAEntCol.subscribeToModify((coll) => {
-                    dataAsyncCountdown.doNonObservableCountDown();
-                    asyncCount.doNonObservableIncrement();
+                    dataAsyncCountdown.doNonPipedCountdown();
+                    asyncCount.doNonPipedIncrement();
                     let detailAEntArr = Array.from(coll);
                     for (let index = 0; index < detailAEntArr.length; index++) {
-                        dataAsyncCountdown.doNonObservableCountDown();
+                        dataAsyncCountdown.doNonPipedCountdown();
                         const detailAItem = detailAEntArr[index];
                         detailAItem.vcharA = 
                             '[' + detailAItem.compId.masterA.playerObjectId + ',' +
@@ -2323,8 +2328,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCount.registerRxOpr(),
                 tapeAsyncCountdown.registerRxOpr(),
                 tap((tapeAndStreams) => {
-                    asyncCount.doNonObservableIncrement();
-                    tapeAsyncCountdown.doNonObservableCountDown();
+                    asyncCount.doNonPipedIncrement();
+                    tapeAsyncCountdown.doNonPipedCountdown();
                     chai.expect(tapeAndStreams.tape.actions.length).to.eq(5);
                     chai.expect(tapeAndStreams.tape.actions[0].actionType).to.eq(TapeActionType.SetField);
                     chai.expect(tapeAndStreams.tape.actions[0].fieldName).to.eq('dateA');
@@ -2340,8 +2345,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     chai.expect(tapeAndStreams.tape.actions[4].simpleSettedValue).to.eq('[1,2].vcharA_changed');
                 }),
                 flatMap((tapeAndStreams) => {
-                    asyncCount.doNonObservableIncrement();
-                    tapeAsyncCountdown.doNonObservableCountDown();
+                    asyncCount.doNonPipedIncrement();
+                    tapeAsyncCountdown.doNonPipedCountdown();
                     let stream$ = tapeAndStreams.streams.get(tapeAndStreams.tape.actions[1].attachRefId);
                     let fromDirectRaw$ = stream$.pipe(
                         flatMap((stream) => {
@@ -2353,16 +2358,16 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 asyncCount.registerRxOpr(),
                 tapeAsyncCountdown.registerRxOpr(),
                 map((respStream) => {
-                    asyncCount.doNonObservableIncrement();
-                    tapeAsyncCountdown.doNonObservableCountDown();
+                    asyncCount.doNonPipedIncrement();
+                    tapeAsyncCountdown.doNonPipedCountdown();
                     chai.expect(respStream.body).to.eq('masterA.blobLazyA: CHANGHED');
                     return recorderSession.getLastRecordedTapeAsLiteralAndStreams();
                 }),
                 asyncCount.registerRxOpr(),
                 tapeAsyncCountdown.registerRxOpr()
             ).subscribe((tapeAndStreamsLiteral) => {
-                asyncCount.doNonObservableIncrement();
-                tapeAsyncCountdown.doNonObservableCountDown();
+                asyncCount.doNonPipedIncrement();
+                tapeAsyncCountdown.doNonPipedCountdown();
             });
 
             tapeAsyncCountdown.createCountdownEnds().pipe(
@@ -2373,6 +2378,6 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
     });
 }

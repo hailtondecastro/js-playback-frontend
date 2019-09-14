@@ -171,12 +171,12 @@ export class LazyRefPrpDefault<L extends object> extends LazyRefBase<L, undefine
         if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
             return super.asObservable();
         } else {
-            //providing new readable (flipped) NodeJS.ReadableStream from cache
-            //this.respObs is never null
-            if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                throw new Error('LazyRefBase.subscribe: thisLocal.attachRefId is not null but this is not lazyDirectRawWrite. Me:\n' +
-                    this);
-            }
+            // //providing new readable (flipped) NodeJS.ReadableStream from cache
+            // //this.respObs is never null
+            // if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+            //     throw new Error('LazyRefBase.subscribe: thisLocal.attachRefId is not null but this is not lazyDirectRawWrite. Me:\n' +
+            //         this);
+            // }
             let localObs$ = thisLocal.respObs;
             const localObsL$: Observable<L> = (localObs$ as Observable<ResponseLike<NodeJS.ReadableStream>>).pipe(
                 thisLocal.flatMapKeepAllFlagsRxOpr((respLikeStream) => {

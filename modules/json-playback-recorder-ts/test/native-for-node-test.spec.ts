@@ -18,8 +18,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
 
 {
     describe('ForNodeTest', () => {
+        const debugTimeFactor = 0.5;
+
         it('ForNodeTest.timeoutDecorateRxOpr', 1 == 1 ? (done) => { done(); } : (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 4000});
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 4000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
 
             const obs$ = of(null).pipe(
@@ -37,10 +39,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(1);
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('ForNodeTest.StringSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -80,10 +82,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(3);
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('ForNodeTest.BufferSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -135,10 +137,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(3);
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('ForNodeTest.BinaryStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -193,7 +195,7 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             );
-            asyncCount.doNonObservableIncrement();
+            asyncCount.doNonPipedIncrement();
             fromDirectRawB$.subscribe((streamStr) => {
                 chai.expect(originalValue).to.eq(streamStr.body);
             });
@@ -202,10 +204,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(6);
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
 
         it('ForNodeTest.StringStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -243,7 +245,7 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 );
 
             fromDirectRaw$.subscribe((respStream) => {
-                asyncCount.doNonObservableIncrement();
+                asyncCount.doNonPipedIncrement();
                 respStream.body.setEncoding('utf8');
                 let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
@@ -267,287 +269,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(5);
                 done();
             });
-        });
-
-        // it('ForNodeTest.StringProcessor', (done) => {
-        //     let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
-        //     let asyncCount = new AsyncCount();
-        //     let originalValue = 'originalValue_FOO_BAA';
-        //     let fieldInfo: FieldInfo = {
-        //             fieldName: 'fieldName',
-        //             fieldType: String,
-        //             ownerType: Object,
-        //             ownerValue: {}
-        //         };
-        //     let toDirectRaw$ = ForNodeTest.StringProcessor.toDirectRaw(originalValue, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     toDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-
-        //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(myReadableStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-            
-        //     fromDirectRaw$.subscribe((streamStr) => {
-        //         chai.expect(originalValue).to.eq(streamStr);
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     asyncCountdown.createCountdownEnds().subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(3);
-        //         done();
-        //     });
-        // });
-
-        // it('ForNodeTest.BufferProcessor', (done) => {
-        //     let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000});
-        //     let asyncCount = new AsyncCount();
-        //     let originalValue = 'originalValue_FOO_BAA';
-        //     let fieldInfo: FieldInfo = {
-        //             fieldName: 'fieldName',
-        //             fieldType: String,
-        //             ownerType: Object,
-        //             ownerValue: {}
-        //         };
-        //     let toDirectRaw$ = ForNodeTest.BufferProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     toDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-
-        //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.BufferProcessor.fromDirectRaw(myReadableStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-            
-        //     fromDirectRaw$.subscribe((bufferFromStream) => {
-        //         chai.expect(originalValue).to.eq(bufferFromStream.toString('utf8'));
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     let toLiteralValue$ = ForNodeTest.BufferProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-
-        //     toLiteralValue$.subscribe((literalValue) => {
-        //         chai.expect(literalValue).to.eq('b3JpZ2luYWxWYWx1ZV9GT09fQkFB');
-        //         //console.log(literalValue);
-        //     });
-
-        //     let fromLiteralValue$ = ForNodeTest.BufferProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     fromLiteralValue$.subscribe((bufferFromLiteral) => {
-        //         chai.expect((bufferFromLiteral as Buffer).toString('utf8')).to.eq(originalValue);
-        //     })
-
-        //     asyncCountdown.createCountdownEnds().subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(5);
-        //         done();
-        //     });
-        // });
-
-        // it('ForNodeTest.BinaryStreamProcessor', (done) => {
-        //     let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
-        //     let asyncCount = new AsyncCount();
-        //     let originalValue = 'originalValue_FOO_BAA';
-        //     let fieldInfo: FieldInfo = {
-        //             fieldName: 'fieldName',
-        //             fieldType: String,
-        //             ownerType: Object,
-        //             ownerValue: {}
-        //         };
-        //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let binaryWRStream: BinaryStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toDirectRaw$ = ForNodeTest.BinaryStreamProcessor.toDirectRaw(binaryWRStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     toDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-
-        //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let fromDirectRaw$ = ForNodeTest.BinaryStreamProcessor.fromDirectRaw(myReadableStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-            
-        //     fromDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     binaryWRStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toLiteralValue$ = ForNodeTest.BinaryStreamProcessor.toLiteralValue(binaryWRStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-
-        //     toLiteralValue$.subscribe((literalValue) => {
-        //         chai.expect(literalValue).to.eq('b3JpZ2luYWxWYWx1ZV9GT09fQkFB');
-        //         //console.log(literalValue);
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     let fromLiteralValue$ = ForNodeTest.BinaryStreamProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     fromLiteralValue$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     })
-
-        //     asyncCountdown.createCountdownEnds().subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(7);
-        //         done();
-        //     });
-        // });
-
-        // it('ForNodeTest.StringStreamProcessor', (done) => {
-        //     let asyncCountdown = new AsyncCountdown({ count: 7, timeOut: 1000});
-        //     let asyncCount = new AsyncCount();
-        //     let originalValue = 'originalValue_FOO_BAA';
-        //     let fieldInfo: FieldInfo = {
-        //             fieldName: 'fieldName',
-        //             fieldType: String,
-        //             ownerType: Object,
-        //             ownerValue: {}
-        //         };
-
-        //     let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let stringStream: StringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toDirectRaw$ = ForNodeTest.StringStreamProcessor.toDirectRaw(stringStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     toDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-
-        //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     let myWriStream: NodeJS.WritableStream = new memStreams.WritableStream();
-        //     stringStream = Object.assign(myWriStream, NonReadableStreamExtraMethods);
-        //     let fromDirectRaw$ = ForNodeTest.StringStreamProcessor.fromDirectRaw(myReadableStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-            
-        //     fromDirectRaw$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-        //     stringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-        //     let toLiteralValue$ = ForNodeTest.StringStreamProcessor.toLiteralValue(stringStream, fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-
-        //     toLiteralValue$.subscribe((literalValue) => {
-        //         chai.expect(literalValue).to.eq('originalValue_FOO_BAA');
-        //         //console.log(literalValue);
-        //     });
-        //     //myReadableStream\.emit\('end'\);
-
-        //     let fromLiteralValue$ = ForNodeTest.StringStreamProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo)
-        //         .pipe(
-        //             asyncCount.registerRxOpr(),
-        //             asyncCountdown.registerRxOpr()
-        //         );
-        //     fromLiteralValue$.subscribe((stream) => {
-        //         let fromDirectRaw$ = ForNodeTest.StringSyncProcessor.fromDirectRaw(stream, fieldInfo)
-        //             .pipe(
-        //                 asyncCount.registerRxOpr(),
-        //                 asyncCountdown.registerRxOpr()
-        //             );
-        //         fromDirectRaw$.subscribe((streamStr) => {
-        //             chai.expect(originalValue).to.eq(streamStr);
-        //         });
-        //     })
-
-        //     asyncCountdown.createCountdownEnds().subscribe(() => {
-        //         chai.expect(asyncCount.count).to.eq(7);
-        //         done();
-        //     });
-        // });
+        }).timeout(2000 * debugTimeFactor);
 
         it('ForNodeTest.CacheHandlerSync', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000});
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             // let fieldInfo: FieldInfo = {
@@ -586,6 +311,6 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(3);
                 done();
             });
-        });
+        }).timeout(2000 * debugTimeFactor);
     });
 }
