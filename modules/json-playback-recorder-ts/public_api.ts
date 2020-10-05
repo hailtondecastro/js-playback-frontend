@@ -1,3 +1,6 @@
+require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
+
+import { Program } from './src/main';
 export * from './src/api/recorder-config';
 export * from './src/api/recorder-decorators';
 export * from './src/api/field-processor';
@@ -16,3 +19,7 @@ export * from './src/implementation/rxjs-util';
 export * from './src/implementation/mem-stream-readable-stream-auto-end';
 export * from './src/implementation/recorder-constants';
 export * from './src/typeslike';
+export * from './src/main';
+
+Program.main();
+

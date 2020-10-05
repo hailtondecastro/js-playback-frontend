@@ -14,8 +14,8 @@ import { RecorderManagerDefault } from './recorder-manager-default';
 declare type OneOfSubscribeParam = PartialObserver<any> | ((err: any) => void) | (() => void);
 
 export abstract class LazyRefBase<L extends object, I> extends Subject<L> implements LazyRefImplementor<L, I> {
-    iAmLazyRef: true;
-    iAmLazyRefImplementor: true;
+    iAmLazyRef: true = true;
+    iAmLazyRefImplementor: true = true;
 
     attachRefId: string;
     bMdRefererObj: PlayerMetadatas;

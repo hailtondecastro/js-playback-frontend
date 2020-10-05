@@ -1,7 +1,7 @@
 {
   "name": "json-playback-recorder-ts",
   "description": "Framework for integrate entity object graph operations (field, collections modifications, etc) between backend and frontend.",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "es2015": "./es2015/index.js",
   "esnext": "./esnext/index.js",
   "main": "./umd/index.js",
@@ -48,7 +48,9 @@
     "mocha-dist-test": "mocha dist-test/**/**.spec.js",
     "mocha-dist-dev": " mocha dist-dev/**/**.spec.js",
     "test2": "npm run build && mocha --grep /master-lazy-prp-over-sized-test/ dist/**/**.spec.js",
-    "browserify": "npm run build && browserify dist-dev/index.js --outfile browser.js"
+    "browserify": "npm run build && browserify dist-dev/index.js --debug --outfile browser.js",
+    "browserify-esnext_": "npm run build && browserify ../../dist/json-playback-recorder-ts/esnext/index.js --debug --outfile browser-esnext.js",
+    "browserify-test": "browserify dist-dev/index.js --debug --outfile browser-test.js"
   },
   "devDependencies": {
     "@angular/common": "^6.0.6",

@@ -43,7 +43,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
 {
     describe('RecorderManagerDefault', () => {
-        const debugTimeFactor = 0.5;
+        const debugTimeFactor = 0.7;
 
         it('RecorderManagerDefault.poc-observable-just-once-pipe-test', (done) => {
             //let asyncCount = 0;
@@ -1853,7 +1853,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1973,7 +1973,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
         });

@@ -1,8 +1,8 @@
-import { Observable } from "rxjs";
 import { ResponseLike } from "../typeslike";
 import { TypeLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
 import { RecorderDecorators } from "./recorder-decorators";
+import { Observable } from "rxjs";
 
 export interface LazyInfo<L> {
 	gNode: GenericNode

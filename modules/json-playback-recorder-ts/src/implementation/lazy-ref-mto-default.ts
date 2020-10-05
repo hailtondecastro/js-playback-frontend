@@ -17,8 +17,8 @@ import { LazyRefBase } from './lazy-ref-base';
  * See {@link LazyRef}
  */
 export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> implements LazyRefMTOImplementor<L, I> {
-    iAmLazyRefMTO: true;
-    iAmLazyRefMTOImplementor: true;
+    iAmLazyRefMTO: true = true;
+    iAmLazyRefMTOImplementor: true = true;
     constructor(session: RecorderSessionImplementor) {
         super(session);
     }

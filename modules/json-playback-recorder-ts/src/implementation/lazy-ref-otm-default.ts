@@ -18,7 +18,7 @@ import { LazyRefBase } from './lazy-ref-base';
  * See {@link LazyRef}
  */
 export class LazyRefOTMDefault<L extends object> extends LazyRefBase<L, undefined> implements LazyRefOTM<L> {
-    iAmLazyRefOTM: true;
+    iAmLazyRefOTM: true = true;
 
     constructor(session: RecorderSessionImplementor) {
         super(session);

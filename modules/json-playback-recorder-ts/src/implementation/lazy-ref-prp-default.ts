@@ -17,8 +17,8 @@ import { RecorderSessionImplementor, PlayerSnapshot } from '../api/recorder-sess
  * See {@link LazyRef}
  */
 export class LazyRefPrpDefault<L extends object> extends LazyRefBase<L, undefined> implements LazyRefPrpImplementor<L> {
-    iAmLazyRefPrp: true;
-    iAmLazyRefPrpImplementor: true;
+    iAmLazyRefPrp: true = true;
+    iAmLazyRefPrpImplementor: true = true;
 
     constructor(session: RecorderSessionImplementor) {
         super(session);
