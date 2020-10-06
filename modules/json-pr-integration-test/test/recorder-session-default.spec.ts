@@ -2064,6 +2064,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 }
             );
 
+            config.configLogLevel(RecorderLogger.All, RecorderLogLevel.Trace);
+
             let manager: RecorderManager = new RecorderManagerDefault(
                 config
                 );

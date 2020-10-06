@@ -138,7 +138,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                         next: () => {
                             if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                                 thisLocal.consoleLikeSubs.group('(Asynchronous of Asynchronous of...) LazyRef.subscribe() => getFromCache$.subscribe() => fromDirectRaw$.subscribe() => setLazyObjOnLazyLoading$.pipe(tap()).');
-                                thisLocal.consoleLikeSubs.debug('calling this.next(). attachRefId is not null. Am I using lazyDirectRawWrite? Me:\n' + thisLocal.session.jsonStringfyWithMax(thisLocal));
+                                thisLocal.consoleLikeSubs.debug('calling this.next(). attachRefId is not null. Am I using lazyDirectRawWrite? Me:\n' + thisLocal);
                                 thisLocal.consoleLikeSubs.groupEnd();
                             }
                         }

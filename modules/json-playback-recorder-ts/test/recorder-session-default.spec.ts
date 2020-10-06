@@ -2081,6 +2081,8 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 }
             );
 
+            config.configLogLevel(RecorderLogger.All, RecorderLogLevel.Trace);
+
             let manager: RecorderManager = new RecorderManagerDefault(
                 config
                 );

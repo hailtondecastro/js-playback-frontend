@@ -326,7 +326,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                                     'No owner entity for original literal value entry, and lazyRef.processResponse() returned Observable. '+
                                     'This must be an LazyRefPrp marked with lazyDirectRawRead, it meas tgis LazytRef is usink cache.\n'+
                                     'lazyRef:\n' +
-                                    this.jsonStringfyWithMax(lazyRef));
+                                    lazyRef);
                             });
                         }
                     } else {
@@ -739,8 +739,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const trackedInstance = options.refMap.get(refererObjMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
-                    throw new Error('There is something wrong with:\n' + 
-                    this.jsonStringfyWithMax(trackedInstance));
+                    throw new Error('There is something wrong with metadatas on refered object by $idRef$:\n' + refererObjMd.$idRef$);
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -756,8 +755,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const trackedInstance = options.refMap.get(objectMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
-                    throw new Error('There is something wrong with:\n' + 
-                        this.jsonStringfyWithMax(trackedInstance));
+                    throw new Error('There is something wrong with refered object by $idRef$:\n' + 
+                        objectMd.$idRef$);
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -773,8 +772,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const trackedInstance = options.refMap.get(playerObjectIdMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
-                    throw new Error('There is something wrong with:\n' + 
-                        this.jsonStringfyWithMax(trackedInstance));
+                    throw new Error('There is something wrong with refered object by $idRef$:\n' + 
+                        playerObjectIdMd.$idRef$);
                 }
                 //here sign ref to another isLazyUninitialized metadata, this shrink the json.
                 if (trackedInstanceMd.$isLazyUninitialized$) {
@@ -1733,8 +1732,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             let referedInstance = refMap.get(bMd.$idRef$);
             let referedInstanceMd = LodashLike.get(referedInstance, thisLocal.manager.config.playerMetadatasName) as PlayerMetadatas;
             if (!referedInstanceMd.$iAmPlayerMetadatas$) {
-                throw new Error('Where is the metadatas:\n' + 
-                this.jsonStringfyWithMax(referedInstance));
+                throw new Error('Where is the metadatas fot $idRef$:\n' + bMd.$idRef$);
             }
             playerObjectIdLiteralRef.value = referedInstanceMd.$playerObjectId$;
         } else {
@@ -1972,7 +1970,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             throw new Error('There is no mdSource.$id$ on ' + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
-                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + + this.jsonStringfyWithMax(srcValue));
+                            throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
                             customizerResult.value = DummyUndefinedForMergeAsync;
