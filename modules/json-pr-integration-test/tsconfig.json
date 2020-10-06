@@ -21,7 +21,8 @@
     "types": [
       "mocha",
       "jasmine",
-      "node"
+      "node",
+      "reflect-metadata"
     ],
     "skipDefaultLibCheck": true,
     "skipLibCheck": true,

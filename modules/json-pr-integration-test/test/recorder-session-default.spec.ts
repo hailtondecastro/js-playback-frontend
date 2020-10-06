@@ -28,7 +28,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
 
 {
     describe('RecorderManagerDefault', () => {
-        const debugTimeFactor = 0.5;
+        const debugTimeFactor = 0.7;
 
         it('RecorderManagerDefault.poc-observable-just-once-pipe-test', (done) => {
             //let asyncCount = 0;
@@ -1838,7 +1838,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                 .configAddFieldProcessors(ForNodeTest.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1958,7 +1958,7 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
+                chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
         });
@@ -2071,10 +2071,11 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral);
             const nonRepeatableValueSet = new Set();
 
+            let localDelayFactor = 0.2;
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,
-                    delayForStreamRead: 10 * debugTimeFactor,
+                    delayForStreamRead: 10* localDelayFactor * debugTimeFactor,
                     expectedError: null
                 },
                 {
@@ -2083,23 +2084,23 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
@@ -2108,7 +2109,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
             let intervalIndex = -1;
             interval(1).pipe(
                 take(testParamByIntervalIndex.length),
-                asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
+                //asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
+                asyncCountdown.registerRxOpr()
             ).subscribe(() => {
                 intervalIndex++;
                 //console.log('interval.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
@@ -2123,7 +2125,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                         }
                     }),
                     asyncCount.registerRxOpr(),
-                    asyncCountdown.registerRxOpr(() => 'asyncCountdown: blobLazyA$ = of(null).pipe(: ' + intervalIndex + ' as sub or obs'),
+                    //asyncCountdown.registerRxOpr(() => 'asyncCountdown: blobLazyA$ = of(null).pipe(: ' + intervalIndex + ' as sub or obs'),
+                    asyncCountdown.registerRxOpr(),
                     delay(testParamByIntervalIndex[intervalIndex].delayForLazyRef)
                 );
                 try {
@@ -2145,7 +2148,8 @@ import { MasterAWrapper } from './non-entities/master-a-wrapper.js';
                                     flatMap(() => {
                                         return ForNodeTest.StringProcessor.fromDirectRaw(of({ body: valueStream }), null).pipe(
                                             asyncCount.registerRxOpr(),
-                                            asyncCountdown.registerRxOpr(() => 'asyncCountdown: fromDirectRaw$: ' + intervalIndex),
+                                            //asyncCountdown.registerRxOpr(() => 'asyncCountdown: fromDirectRaw$: ' + intervalIndex),
+                                            asyncCountdown.registerRxOpr(),
                                             delay(testParamByIntervalIndex[intervalIndex].delayForStreamRead)
                                         );
                                     })

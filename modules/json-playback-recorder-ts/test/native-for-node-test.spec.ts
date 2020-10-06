@@ -1,3 +1,5 @@
+//require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
+
 import {HttpResponse, HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';

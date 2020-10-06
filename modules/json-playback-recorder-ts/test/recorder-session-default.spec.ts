@@ -1,3 +1,5 @@
+//require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
+
 import {HttpResponse, HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';
@@ -2086,10 +2088,11 @@ import { pipe } from '@angular/core/src/render3/pipe';
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral);
             const nonRepeatableValueSet = new Set();
 
+            let localDelayFactor = 0.2;
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,
-                    delayForStreamRead: 10 * debugTimeFactor,
+                    delayForStreamRead: 10* localDelayFactor * debugTimeFactor,
                     expectedError: null
                 },
                 {
@@ -2098,23 +2101,23 @@ import { pipe } from '@angular/core/src/render3/pipe';
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
-                    delayForLazyRef: 5 * debugTimeFactor,
+                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true

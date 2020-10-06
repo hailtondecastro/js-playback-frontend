@@ -43,10 +43,25 @@ async function main() {
         var relativeSourceFolder = buildHelperCommons.argsMap['relativeSourceFolder'];
         var relativeTargetFolder = buildHelperCommons.argsMap['relativeTargetFolder'];
         var extension = buildHelperCommons.argsMap['extension'];
+        var filePattern = buildHelperCommons.argsMap['filePattern'];
+        var useMove = buildHelperCommons.argsMap['useMove'];
         if (!path.isAbsolute(baseFolder)) {
             baseFolder = path.resolve(process.cwd(), baseFolder);
         }
-        var mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension);
+        var mapArr = [];
+        if (extension) {
+            mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension);
+        } else if (filePattern) {
+            mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
+            console.log('mapArr.length: ' + mapArr.length);
+            console.log('patttern: ' + baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
+        } else {
+            throw new Error("'extension' or 'filePattern' must be provided!");
+        }
+        if (mapArr.length == 0) {
+            throw new Error("Files not found!");
+        }
+
         const filesWriteCountDownRef = { value: mapArr.length };
         const exitIfFilesWriteCountDownEndedFunc = () => {
             if(filesWriteCountDownRef.value === 0) {
@@ -66,16 +81,27 @@ async function main() {
                     console.error('[' + nodeModuleName + ']:'+err);
                     process.exit(1);
                 }
-                fs.copyFile(sourceItem, targetItem, (err) => {
-                    if (err) {
-                        console.error('[' + nodeModuleName + ']:'+err);
-                        process.exit(1);
-                    }
+                var copyOrMoveCallback = fs.copyFile;
+                if (useMove) {
+                    copyOrMoveCallback = fs.move;
+                }
+                if (fs.lstatSync(sourceItem).isDirectory()) {
                     filesWriteCountDownStepFunc();
                     if (buildHelperCommons.argsMap['verbose'] === 'true') {
-                        console.log('[' + nodeModuleName + ']: copy '+sourceItem+' to '+targetItem);
+                        console.log('[' + nodeModuleName + ']: is directory '+sourceItem+' to '+targetItem);
                     }
-                });
+                } else {
+                    copyOrMoveCallback(sourceItem, targetItem, {overwrite: true}, (err) => {
+                        if (err) {
+                            console.error('[' + nodeModuleName + ']:'+err);
+                            process.exit(1);
+                        }
+                        filesWriteCountDownStepFunc();
+                        if (buildHelperCommons.argsMap['verbose'] === 'true') {
+                            console.log('[' + nodeModuleName + ']: copy '+sourceItem+' to '+targetItem);
+                        }
+                    });
+                }
             });
         }
 

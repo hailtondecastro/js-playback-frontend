@@ -1,3 +1,5 @@
+//require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
+
 import * as chai from 'chai';
 import { Observable, of, BehaviorSubject, interval, zip, combineLatest } from 'rxjs';
 import { delay, tap, combineAll, take } from 'rxjs/operators';

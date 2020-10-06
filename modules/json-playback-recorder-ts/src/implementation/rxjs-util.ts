@@ -164,6 +164,7 @@ export function mapJustOnceRxOpr<T, R>(project: (value: T, index?: number) => R)
                 map(projectExtentend)
             );
     }
+    //console.log('foobarfoobar');
     return rxOpr;
 }
 

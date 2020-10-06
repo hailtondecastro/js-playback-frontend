@@ -1,5 +1,3 @@
-require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
-
 import { Program } from './src/main';
 export * from './src/api/recorder-config';
 export * from './src/api/recorder-decorators';

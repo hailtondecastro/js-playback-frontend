@@ -46,17 +46,23 @@ export class AsyncCountdown {
         }
     }
     
-    public doNonPipedCountdown() {
+    public doNonPipedCountdown(consoleMsg?: string) {
+        if (consoleMsg) {
+            console.log(consoleMsg);
+        }
         this.doCountdown();
     }
 
-    public registerRxOpr<T>(): OperatorFunction<T, T> {
+    public registerRxOpr<T>(consoleMsgCB?: () => string): OperatorFunction<T, T> {
         const thisLocal = this;
         thisLocal._registerRxOprCallCount++;
         let rxOpr: OperatorFunction<T, T> = (source) => {
             return source
                 .pipe(
                     tap( () => {
+                        if (consoleMsgCB) {
+                            console.log(consoleMsgCB());
+                        }
                         thisLocal.doCountdown();
                     })
                 );
