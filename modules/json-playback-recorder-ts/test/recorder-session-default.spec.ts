@@ -2088,7 +2088,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral);
             const nonRepeatableValueSet = new Set();
 
-            let localDelayFactor = 0.2;
+            let localDelayFactor = 0.02;
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,

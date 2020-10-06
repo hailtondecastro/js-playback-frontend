@@ -53,13 +53,16 @@ async function main() {
             mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension);
         } else if (filePattern) {
             mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
-            console.log('mapArr.length: ' + mapArr.length);
-            console.log('patttern: ' + baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
         } else {
             throw new Error("'extension' or 'filePattern' must be provided!");
         }
         if (mapArr.length == 0) {
             throw new Error("Files not found!");
+        }
+
+        if (buildHelperCommons.argsMap['verbose'] === 'true') {
+            console.log('[' + nodeModuleName + ']: mapArr.length: ' + mapArr.length);
+            console.log('[' + nodeModuleName + ']: patttern: ' + baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
         }
 
         const filesWriteCountDownRef = { value: mapArr.length };

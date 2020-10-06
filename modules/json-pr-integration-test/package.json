@@ -25,7 +25,7 @@
     "mocha-dist-dev": " mocha dist-dev/**/**.spec.js",
     "test2": "npm run build && mocha --grep /master-lazy-prp-over-sized-test/ dist/**/**.spec.js",
     "browserify": "npm run build && browserify dist-dev/index.js --outfile browser.js",
-    "preinstall": "node ../../build-utils/clear-all -baseDistFolder ./local-modules-dist -verbose true && node ../../build-utils/copy-recursive -baseFolder ../../dist -relativeSourceFolder \"\" -relativeTargetFolder ../modules/json-pr-integration-test/local-modules-dist -filePattern * -timeout 10000 -verbose true"
+    "preinstall": "node ../../build-utils/clear-all -baseDistFolder ./local-modules-dist -verbose true && node ../../build-utils/copy-recursive -baseFolder ../../dist -relativeSourceFolder \"\" -relativeTargetFolder ../modules/json-pr-integration-test/local-modules-dist -filePattern \\* -timeout 10000 -verbose true"
   },
   "devDependencies": {
     "@angular/common": "^6.1.10",
