@@ -38,6 +38,9 @@ export namespace ForNodeTest {
                 return of(myReadableStreamBuffer);
             },
             putOnCache: (cacheKey, stream) => {
+                if(!stream) {
+                    throw new Error('Invalid stream: ' + stream);
+                }
                 let resultSub = new Subject<void>();
                 let result$ = resultSub.asObservable();
 
@@ -87,6 +90,9 @@ export namespace ForNodeTest {
                 return CacheHandlerSync.getFromCache(cacheKey).pipe(delay(1));
             },
             putOnCache: (cacheKey, stream) => {
+                if(!stream) {
+                    throw new Error('Invalid stream: ' + stream);
+                }
                 return CacheHandlerSync.putOnCache(cacheKey, stream).pipe(delay(1));
             },
             removeFromCache: (cacheKey) => {

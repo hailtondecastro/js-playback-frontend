@@ -1991,7 +1991,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1500 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2055,7 +2055,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                         let responseResult: ResponseLike<Object> = {
                             body: null
                         }
-                        return of(responseResult).pipe(delay(1));
+                        return of(responseResult).pipe(delay(0.1));
                     },
                     generateObservableForDirectRaw: (signature, info) => {
                         let responseResult: ResponseLike<NodeJS.ReadableStream> = {
@@ -2073,7 +2073,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                             responseResult.headers = new HttpHeaders().append('Content-Type', 'text/plain; charset=utf-8');
                         }
                         return of(responseResult)
-                            .pipe(delay(1))
+                            .pipe(delay(0.1))
                             .pipe(
                                 asyncCount.registerRxOpr()
                             );
@@ -2081,7 +2081,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 }
             );
 
-            config.configLogLevel(RecorderLogger.All, RecorderLogLevel.Trace);
+            //config.configLogLevel(RecorderLogger.All, RecorderLogLevel.Trace);
 
             let manager: RecorderManager = new RecorderManagerDefault(
                 config
@@ -2094,39 +2094,39 @@ import { pipe } from '@angular/core/src/render3/pipe';
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,
-                    delayForStreamRead: 59 * localDelayFactor * debugTimeFactor,
+                    delayForStreamRead: 16 * localDelayFactor * debugTimeFactor,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 11,
+                    delayForLazyRef: 5 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 29 * localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 7 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 37 * localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 10 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 43 * localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 14 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
-                    delayForLazyRef: 37 * localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 10 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 }
             ];
             let intervalIndex = -1;
-            interval(10 * localDelayFactor * debugTimeFactor).pipe(
+            interval(1 * localDelayFactor * debugTimeFactor).pipe(
                 take(testParamByIntervalIndex.length),
                 //asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
                 asyncCountdown.registerRxOpr()
@@ -2216,7 +2216,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
                 chai.expect(cacheGetAsyncCount.count).to.eq(testParamByIntervalIndex.length, 'cacheGetAsyncCount');
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2500 * debugTimeFactor);
 
         //it('RecorderManagerDefault.master-a-detail-a-record', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefault.master-a-detail-a-record', (done) => {
