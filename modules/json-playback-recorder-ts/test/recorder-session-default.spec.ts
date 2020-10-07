@@ -1991,7 +1991,7 @@ import { pipe } from '@angular/core/src/render3/pipe';
 
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1000 * debugTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 1500 * debugTimeFactor });
 
             newCacheHandler.callback = (operation, cacheKey, stream) => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2090,43 +2090,43 @@ import { pipe } from '@angular/core/src/render3/pipe';
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterLazyPrpOverSizedLiteral);
             const nonRepeatableValueSet = new Set();
 
-            let localDelayFactor = 0.02;
+            let localDelayFactor = 1;
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,
-                    delayForStreamRead: 10* localDelayFactor * debugTimeFactor,
+                    delayForStreamRead: 59 * localDelayFactor * debugTimeFactor,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 2,
+                    delayForLazyRef: 11,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 29 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 37 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 43 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
-                    delayForLazyRef: 5* localDelayFactor * debugTimeFactor,
+                    delayForLazyRef: 37 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 }
             ];
             let intervalIndex = -1;
-            interval(1).pipe(
+            interval(10 * localDelayFactor * debugTimeFactor).pipe(
                 take(testParamByIntervalIndex.length),
                 //asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
                 asyncCountdown.registerRxOpr()
