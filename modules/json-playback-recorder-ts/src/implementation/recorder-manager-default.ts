@@ -10,6 +10,7 @@ import { IFieldProcessor } from '../api/field-processor';
 import { GenericTokenizer } from '../api/generic-tokenizer';
 import { RecorderDecorators } from '../api/recorder-decorators';
 import { RecorderManager } from '../api/recorder-manager';
+import { RecorderDecoratorsInternal } from './recorder-decorators-internal';
 
 export class RecorderManagerDefault implements RecorderManager {
 	private consoleLike: ConsoleLike;
@@ -79,7 +80,8 @@ export class RecorderManagerDefault implements RecorderManager {
 			let otmCollectionType: TypeLike<any> = null;
 			let propertyOptions: RecorderDecorators.PropertyOptions<any> = 
 				Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_PROPERTY_OPTIONS, owner, fieldName);
-			let objectIdPrpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, owner);
+			//let objectIdPrpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, owner);
+			let objectIdPrpInfo:  RecorderDecoratorsInternal.PlayerObjectIdInfo = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_INFO, owner);
 			// let lazyRefGenericParam: TypeLike<any> = null;
 			let fieldProcessor: IFieldProcessor<P>;
 			if (propertyOptions && propertyOptions.fieldProcessorResolver) {
@@ -145,7 +147,7 @@ export class RecorderManagerDefault implements RecorderManager {
 				{
 					prpType: prpType,
 					prpGenType: prpGenType,
-					objectIdPrpType: objectIdPrpType,
+					objectIdPrpInfo: objectIdPrpInfo,
 					lazyLoadedObjType: lazyLoadedObjType,
 					otmCollectionType: otmCollectionType,
 					lazyRefMarkerType: lazyRefMarkerType,
@@ -164,17 +166,17 @@ export class RecorderManagerDefault implements RecorderManager {
 										}
 										return fromLiteralValue$;
 									},
-							callFromRecordedLiteralValue:
-									!fieldProcessor || !fieldProcessor.fromRecordedLiteralValue?
+							callFromRecordedStringifiableValue:
+									!fieldProcessor || !fieldProcessor.fromRecordedStringifiableValue?
 									null:
 									(value, info) => {
-										let fromRecordedLiteralValue$ = fieldProcessorConst.fromRecordedLiteralValue(value, info);
+										let fromRecordedStringifiableValue$ = fieldProcessorConst.fromRecordedStringifiableValue(value, info);
 										//console.log(propertyOptionsConst);
 										if (propertyOptionsConst.fieldProcessorEvents
 												&& propertyOptionsConst.fieldProcessorEvents.onFromLiteralValue) {
-											fromRecordedLiteralValue$ = propertyOptionsConst.fieldProcessorEvents.onFromRecordedLiteralValue(value, info, fromRecordedLiteralValue$);
+											fromRecordedStringifiableValue$ = propertyOptionsConst.fieldProcessorEvents.onFromRecordedStringifiableValue(value, info, fromRecordedStringifiableValue$);
 										}
-										return fromRecordedLiteralValue$;
+										return fromRecordedStringifiableValue$;
 									},
 							callFromDirectRaw:
 								!fieldProcessor || !fieldProcessor.fromDirectRaw?

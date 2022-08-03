@@ -89,7 +89,7 @@ export class SetCreator<T> {
         }
         if (propertyOptions.persistent) {
             let isOnlazyLoad: any = LodashLike.get(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
-            if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
+            if (!this.session.isOnRestoreEntireState() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }
@@ -130,7 +130,7 @@ export class SetCreator<T> {
         }
         if (propertyOptions.persistent) {
             let isOnlazyLoad: any = LodashLike.get(targetSet, RecorderConstants.ENTITY_IS_ON_LAZY_LOAD_NAME);
-            if (!this.session.isOnRestoreEntireStateFromLiteral() && !isOnlazyLoad) {
+            if (!this.session.isOnRestoreEntireState() && !isOnlazyLoad) {
                 if (!this.session.isRecording()){
                     throw new Error('Invalid operation. It is not recording. Is this Error correct?!');
                 }

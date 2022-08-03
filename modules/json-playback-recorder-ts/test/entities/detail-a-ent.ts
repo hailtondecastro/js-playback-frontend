@@ -1,7 +1,6 @@
 import { MasterBEnt, MasterBCompId } from './master-b-ent';
 import { MasterAEnt } from './master-a-ent';
-import { LazyRefMTO, LazyRef, BinaryStream, BinaryStreamMarker, LazyRefMTOMarker } from '../../src/api/lazy-ref';
-import { Stream } from 'stream';
+import { LazyRefMTO, LazyRefMTOMarker, BinaryBlobOrStream, BinaryBlobOrStreamMarker } from '../../src/api/lazy-ref';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 
@@ -27,8 +26,8 @@ export class DetailAComp {
     private _detailACompComp: DetailACompComp;
     private _vcharA: string;
     private _vcharB: string;
-    private _blobA: BinaryStream;
-    private _blobB: BinaryStream;
+    private _blobA: BinaryBlobOrStream;
+    private _blobB: BinaryBlobOrStream;
 
 	@RecorderDecorators.property()
 	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefMTOMarker).lt().tp(MasterBEnt).comma().tp(MasterBCompId).gt().tree))
@@ -68,22 +67,22 @@ export class DetailAComp {
     }
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryStreamMarker).tree))
-	public get blobA(): BinaryStream {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryBlobOrStreamMarker).tree))
+	public get blobA(): BinaryBlobOrStream {
 		return this._blobA;
      }
      
-	public set blobA(value: BinaryStream) {
+	public set blobA(value: BinaryBlobOrStream) {
 		this._blobA = value;
 	}
 
 	@RecorderDecorators.property()
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryStreamMarker).tree))
-	public get blobB(): BinaryStream {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(BinaryBlobOrStreamMarker).tree))
+	public get blobB(): BinaryBlobOrStream {
 		return this._blobB;
 	}
 
-	public set blobB(value: BinaryStream) {
+	public set blobB(value: BinaryBlobOrStream) {
 		this._blobB = value;
 	}
 

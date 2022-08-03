@@ -1,6 +1,4 @@
 import { Observable, of } from "rxjs";
-import { tap, map, flatMap } from "rxjs/operators";
-import { combineFirstSerial, timeoutDecorateRxOpr } from "./rxjs-util";
 import { TypeLike } from "../typeslike";
 import { isNull } from "util";
 

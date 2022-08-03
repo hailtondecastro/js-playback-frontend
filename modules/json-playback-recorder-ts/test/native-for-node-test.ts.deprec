@@ -1,14 +1,11 @@
-import { from, Observable, of, interval, Subject } from "rxjs";
-import { map, flatMap, timeout, delay, finalize, tap } from "rxjs/operators";
-const toStream = require('blob-to-stream');
-const toBlob = require('stream-to-blob');
-import * as memStreams from 'memory-streams';
-import { Readable, Stream } from "stream";
-import streamToObservable from 'stream-to-observable';
+import { of, Subject } from "rxjs";
+import { map, flatMap, delay } from "rxjs/operators";
+import { Readable } from "stream";
 import { IFieldProcessor } from '../src/api/field-processor';
-import { StringStream, StringStreamMarker, BinaryStreamMarker, BinaryStream, NonWritableStreamExtraMethods } from '../src/api/lazy-ref';
 import { CacheHandler } from '../src/api/recorder-config';
 import { MemStreamReadableStreamAutoEnd } from "../src/implementation/mem-stream-readable-stream-auto-end";
+import { RecorderForDom } from "../src/implementation/native-for-dom";
+import { StringBlobOrStream, BlobOrStream, BinaryBlobOrStream, BinaryBlobOrStreamMarker, StringBlobOrStreamMarker } from "../src/api/lazy-ref";
 
 export namespace ForNodeTest {
     export const CacheMap: Map<string, Buffer> = new Map();
@@ -42,7 +39,6 @@ export namespace ForNodeTest {
                     throw new Error('Invalid stream: ' + stream);
                 }
                 let resultSub = new Subject<void>();
-                let result$ = resultSub.asObservable();
 
                 // const isSynchronouslyDone = { value: false };
                 // (stream as Readable).on('data', (chunk) => {
@@ -52,18 +48,12 @@ export namespace ForNodeTest {
                 // });
 
                 if (stream) {
-                    const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
-                    return from(
-                        streamToObservable(stream)
-                            .forEach((chunk) => {
-                                chunkConcatArrRef.value.push(chunk as Buffer);
-                            })
-                    ).pipe(
-                        flatMap(() => {
-                            let bufferConc = Buffer.concat(chunkConcatArrRef.value);
-                            CacheMap.set(cacheKey, bufferConc);
-                            return of(null);
-                        })
+                    return RecorderForDom.blobOrStreamToBuffer(stream).pipe(
+                        map(
+                            () => {
+                                return null;
+                            }
+                        )
                     );
                 } else {
                     return of(null);
@@ -101,14 +91,14 @@ export namespace ForNodeTest {
         };
 
     export interface CacheHandlerWithInterceptor extends CacheHandler {
-        callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => void
+        callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: BlobOrStream) => void
     }
     export function createCacheHandlerWithInterceptor(cacheHandler: CacheHandler): CacheHandlerWithInterceptor {
         CacheMap.clear();
         let newCacheHandler: CacheHandlerWithInterceptor =
         {
             ...cacheHandler,
-            callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: Stream) => {}
+            callback: () => {}
         }
         newCacheHandler.putOnCache = (cacheKey, stream) => {
             newCacheHandler.callback('putOnCache', cacheKey, stream);
@@ -130,8 +120,8 @@ export namespace ForNodeTest {
         return newCacheHandler;
     }
 
-    export const DateSyncProcessor: IFieldProcessor<Date> = {
-        fromLiteralValue: (value, info) => {
+    export const DateProcessor: IFieldProcessor<Date> = {
+        fromLiteralValue: (value) => {
             if (value instanceof Number || typeof(value) === 'number') {
                 return new Date(value as number);
             } else if (value instanceof String || typeof(value) === 'string') {
@@ -140,7 +130,7 @@ export namespace ForNodeTest {
                 return null;
             }
         },
-        toLiteralValue: (value, info) => {
+        toLiteralValue: (value) => {
             if (value) {
                 return value.getTime();
             } else {
@@ -160,21 +150,10 @@ export namespace ForNodeTest {
         fromDirectRaw: (respStream$, info) => {
             return respStream$.pipe(
                 flatMap((respStream) => {
-                    if (respStream) {
-                        const chunkConcatArrRef: {value: Buffer[]} = {value:[]};
-                        return from(
-                            streamToObservable(respStream.body)
-                                .forEach((chunk) => {
-                                    chunkConcatArrRef.value.push(chunk as Buffer);
-                                })
-                        ).pipe(
-                            map(() => {
-                                return { body: Buffer.concat(chunkConcatArrRef.value) };
-                            })
-                        );
-                    } else {
-                        return of({ body: null });
-                    }
+                    return RecorderForDom.blobOrStreamToBuffer(respStream.body);
+                }),
+                map((buffer) => {
+                    return { body: buffer };
                 })
             );
         },
@@ -213,29 +192,11 @@ export namespace ForNodeTest {
         fromDirectRaw: (respStream$, info) => {
             return respStream$.pipe(
                 flatMap((respStream) => {
-                    if (respStream.body) {
-                        respStream.body.setEncoding('utf8');
-                        const chunkConcatArrRef: {value: string[]} = {value:[]};
-                        return from(
-                            streamToObservable(respStream.body)
-                                .forEach((chunk) => {
-                                    if (typeof(chunk) === 'string') {
-                                        chunkConcatArrRef.value.push(chunk);
-                                    } else if (chunk instanceof String) {
-                                        chunkConcatArrRef.value.push(chunk.toString());
-                                    } else {
-                                        throw new Error('Not supported!: chunk: ' + chunk);
-                                    }
-                                })
-                        ).pipe(
-                            map(() => {
-                                let bufferConc = ''.concat(...chunkConcatArrRef.value);
-                                return { body: bufferConc };
-                            })
-                        );
-                    } else {
-                        return of({ body: null });
-                    }
+                    return RecorderForDom.blobOrStreamToString(respStream.body).pipe(
+                        map((bodyStr) => {
+                            return { body: bodyStr };
+                        })
+                    );
                 })
             );
         },
@@ -252,13 +213,10 @@ export namespace ForNodeTest {
             }
         }
     };
-    export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = {
+    export const BinaryBlobOrStreamProcessor: IFieldProcessor<BinaryBlobOrStream> = {
         fromLiteralValue: (value, info) => {
             if (value) {
-                let base64AB = Buffer.from(value, 'base64');
-                let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(base64AB.toString()); 
-                let binaryWRStream: BinaryStream = Object.assign(myReadableStreamBuffer, NonWritableStreamExtraMethods);
-                return binaryWRStream;
+                return RecorderForDom.b64ToBlobOrStream(value);
             } else {
                 return null;
             }
@@ -267,7 +225,7 @@ export namespace ForNodeTest {
             return respStream$.pipe(
                 flatMap((respStream) => {
                     if (respStream.body) {
-                        if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
+                        if ((respStream.body as NodeJS.ReadableStream).addListener && (respStream.body as NodeJS.ReadableStream).pipe) {
                             return of(respStream);
                         } else {
                             //for debug purpose
@@ -291,7 +249,7 @@ export namespace ForNodeTest {
             throw new Error('Not supported!');
         }
     };
-    export const StringStreamProcessor: IFieldProcessor<StringStream> = {
+    export const StringBlobOrStreamProcessor: IFieldProcessor<StringBlobOrStream> = {
             fromLiteralValue: (value, info) => {
                 if (value) {
                     let valueBuffer = Buffer.from(value, 'utf8');
@@ -299,7 +257,7 @@ export namespace ForNodeTest {
                     // ws.write(valueBuffer);
                     let myReadableStreamBuffer = new MemStreamReadableStreamAutoEnd(value); 
                     myReadableStreamBuffer.setEncoding('utf-8');
-                    return myReadableStreamBuffer as any as StringStream;
+                    return myReadableStreamBuffer as any as StringBlobOrStream;
                 } else {
                     return null;
                 }
@@ -308,8 +266,8 @@ export namespace ForNodeTest {
                 return respStream$.pipe(
                     flatMap((respStream) => {
                         if (respStream.body) {
-                            if ((respStream.body as NodeJS.ReadStream).addListener && (respStream.body as NodeJS.ReadStream).pipe) {
-                                (respStream.body as any as Readable).setEncoding('utf-8');
+                            if ((respStream.body as NodeJS.ReadableStream).addListener && (respStream.body as NodeJS.ReadableStream).pipe) {
+                                (respStream.body as NodeJS.ReadableStream).setEncoding('utf-8');
                                 return of(respStream);
                             } else {
                                 throw new Error('Not supported');
@@ -322,7 +280,6 @@ export namespace ForNodeTest {
             },
             toDirectRaw: (value, info) => {
                 if (value) {
-                    value.setEncoding('utf8');
                     return of({ body: value });
                 } else {
                     return of({ body: null });
@@ -397,11 +354,11 @@ export namespace ForNodeTest {
             processor: StringProcessor
         },
         {                
-            type: BinaryStreamMarker,
-            processor: BinaryStreamProcessor
+            type: BinaryBlobOrStreamMarker,
+            processor: BinaryBlobOrStreamProcessor
         },
         {
-            type: StringStreamMarker,
+            type: StringBlobOrStreamMarker,
             processor: StringProcessor
         },
         {

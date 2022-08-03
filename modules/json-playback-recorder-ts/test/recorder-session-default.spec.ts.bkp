@@ -3,7 +3,7 @@
 import {HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';
-import { Observable, of, throwError, combineLatest, timer, interval, from, Subject, never } from 'rxjs';
+import { Observable, of, throwError, combineLatest, timer, interval, from } from 'rxjs';
 import pSnapshotMasterLiteral from './master-a-test.json';
 import pSnapshotMasterList1000Literal from './master-a-list-1000-test.json';
 import pSnapshotMasterAWrapperLiteral from './master-a-wrapper-tes.json';
@@ -17,26 +17,18 @@ import pSnapshotWSnapMasterBBySign from './wsnap-master-b-by-sign-map.json';
 import pSnapshotMasterAListFirstTwiceLiteral from './master-a-list-first-twice-test.json';
 import pSnapshotDetailAFirstSecondLiteral from './detail-a-first-second-test.json';
 import pSnapshotDetailASecondThirdLiteral from './detail-a-secon-third-test.json';
-import pSnapshotDetailAAll from './detail-a-all.json';
-import pSnapshotMasterAAllBySign from './master-a-all-by-sign.json';
-import pSnapshotDetailAColAllBySign from './detail-a-ent-col-all-by-sign.json';
-import pSnapshotMasterAAll from './master-a-all-test.json';
-import pSnapshotDetailAAllLazyLoad from './detail-a-all-lazy-loaded.json';
-import pSnapshotDetailARefererAll from './detail-a-referer-all.json';
-import pSnapshotDetailAAllBySign from './detail-a-all-by-sign.json';
-import pSnapshotDetailARefererAllBySign from './detail-a-referer-all-by-sign.json';
 import { MasterAEnt } from './entities/master-a-ent';
 import * as fs from 'fs';
 import { delay, flatMap, map, catchError, tap, share, take } from 'rxjs/operators';
 import { ResponseLike, TypeLike } from '../src/typeslike';
 import { mapJustOnceRxOpr, flatMapJustOnceRxOpr } from '../src/implementation/rxjs-util';
-import { RecorderSession, RecorderSessionImplementor, PlayerSnapshot } from '../src/api/recorder-session';
+import { RecorderSession } from '../src/api/recorder-session';
 import { RecorderConfigDefault, createCacheHandlerWithInterceptor } from '../src/implementation/recorder-config-default';
 import { RecorderConfig, RecorderLogLevel, RecorderLogger, CacheHandler } from '../src/api/recorder-config';
 import { RecorderDecorators } from '../src/api/recorder-decorators';
 import { RecorderConstants } from '../src/implementation/recorder-constants';
 import { StringBlobOrStream, BinaryBlobOrStream, BlobOrStream } from '../src/api/lazy-ref';
-import { RecorderManager } from '../src/api/recorder-manager';
+import { RecorderManager } from '../src/api/recorder-manager.js';
 import { RecorderManagerDefault } from '../src/implementation/recorder-manager-default';
 import { TapeActionType } from '../src/api/tape';
 import { AsyncCountdown } from './async-countdown';
@@ -44,19 +36,12 @@ import { AsyncCount } from './async-count';
 import { DetailAEnt } from './entities/detail-a-ent';
 import { MasterMinEnt } from './entities/master-min-ent';
 import { MasterAWrapper } from './non-entities/master-a-wrapper';
-import { RecorderForDom } from '../src/implementation/native-for-dom';
-import { RecorderForNode } from '../src/implementation/native-for-node';
-import { stringify } from 'querystring';
-import { DetailARefererEnt } from './entities/detail-a-referer-ent';
+import { RecorderForDom } from '../src/implementation/native-for-dom.js';
+import { RecorderForNode } from '../src/implementation/native-for-node.js';
 
 {
     describe('RecorderManagerDefaultTest', () => {
-        let speedTimeFactor = 0.5;
-        if (typeof Blob === 'undefined') {
-            speedTimeFactor = 0.5;
-        } else {
-            speedTimeFactor = 1.0;
-        }
+        const debugTimeFactor = 0.5;
 
         let cacheHandler: CacheHandler;
         if(typeof Blob === 'undefined') {
@@ -67,7 +52,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
         it('RecorderManagerDefaultTest.poc-observable-just-once-pipe-test', (done) => {
             //let asyncCount = 0;
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
 
             let obs1$: Observable<void> = of(undefined).pipe(delay(1)).pipe(
                 asyncCount.registerRxOpr(),
@@ -122,11 +107,11 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.poc-observable-each-pipe-test', (done) => {
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 8, timeOut: 1000 * speedTimeFactor });            
+            let asyncCountdown = new AsyncCountdown({ count: 8, timeOut: 1000 * debugTimeFactor });            
 
             let obs1$: Observable<void> = of(undefined).pipe(delay(1));
             let obs2$: Observable<void> = of(undefined).pipe(delay(1));
@@ -190,7 +175,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 done();
             });
 
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         //it('RecorderManagerDefaultTest.master-a-list-1000-test', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefaultTest.master-a-list-1000-test', (done) => {
@@ -203,7 +188,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 3000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 3000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -252,13 +237,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
-        }).timeout(3500 * speedTimeFactor);
+        }).timeout(3500 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-list-first-twice-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -301,14 +286,14 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             masterAArr = recorderSession.processPlayerSnapshotArray(MasterAEnt, pSnapshotMasterAListFirstTwiceLiteral);
             chai.expect(masterAArr[0]).to.eq(masterAArr[1]);
             
-            recorderSession.createPendingTasksWaiting().pipe(
+            recorderSession.createSerialPendingTasksWaiting().pipe(
                 flatMap(() => {
                     return recorderSession.clear();
                 })
             ).subscribe(() => {
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-wrapper-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -320,7 +305,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -369,13 +354,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -387,7 +372,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -499,633 +484,14 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
                 done();
             });
 
-        }).timeout(2000 * speedTimeFactor);
-
-        /**
-         * Explanations about this test:
-         * - registerProvidedObservablesRxOpr:  
-         *   - The problem: infinite wait in registerProvidedObservablesRxOpr and createSerialPendingTasksWaiting occurs when you have two LazyRef's fired simultaneously with the first taking longer than the second. For example:  
-         *     - lazyRefA$.subscribe() (400ms)
-         *     - lazyRefB$.subscribe() (200ms)
-         *     - createSerialPendingTasksWaiting$ -> lazyRefAResp$ -> lazyRefBResp$
-         *       - after 400ms lazyRefAResp$ issues through the pipe waiting for lazyRefBResp$ that has already been emptied in the first 200ms (completed).
-         *   - Nonexistent problem, but I will register here because the explanation is interesting
-         *     - registerProvidedObservablesRxOpr seems to be wrong. It holds an observable "result$" that is returned in the operator and returned to the pipe that same "result$" that is used in "createSerialPendingTasksWaiting".
-         */
-        const explanation: string = 'explanation';
-        it('RecorderManagerDefaultTest.detail-a-master-a-createPendingTasksWaiting-test', (done) => {
-            let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
-
-            let recorderSession: RecorderSession;
-            let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                //.configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
-                //.configLogLevel(RecorderLogger.RecorderSessionDefault, RecorderLogLevel.Trace)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
-            let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
-
-            newCacheHandler.callback = () => {
-                // console.log(operation + ', ' + cacheKey + ', ' + stream);
-            }
-            let delayIncrement = 300;
-            let delayIncrementCount = 2;
-            config.configLazyObservableProvider(
-                {
-                    generateObservable: (signature, info) => {
-                        if (info.fieldName === 'masterA') {
-                            let delayValue: number;
-                            let responseResult: ResponseLike<Object> = {
-                                body: (pSnapshotMasterAAllBySign as any)[signature]
-                            }
-                            let emitted: boolean;
-                            return of(null).pipe(
-                                flatMap(() => {
-                                    if(!delayValue) {
-                                        delayValue = delayIncrement * (delayIncrementCount--) * speedTimeFactor;
-                                    }
-                                    return of(null).pipe(
-                                        map(() => {
-                                            return delayValue;
-                                        }),
-                                        tap((delay) => {
-                                            consoleLike.log('Queue ('+ delay +') resp for MasterA: ' + (pSnapshotMasterAAllBySign as any)[signature].wrappedSnapshot.id);
-                                        }),
-                                        flatMap((delay) => {
-                                            if(!emitted) {
-                                                emitted = true;
-                                                return timer(delay).pipe(
-                                                    map(() => {
-                                                        return responseResult;
-                                                    })
-                                                );
-                                            } else {
-                                                return never();
-                                            }
-                                        }),
-                                        tap(() => {
-                                            consoleLike.log('Launch resp for MasterA: ' + (pSnapshotMasterAAllBySign as any)[signature].wrappedSnapshot.id);
-                                        }),
-                                    )
-                                })
-                            );
-                        } else {
-                            return throwError(new Error('Not supported!'));
-                        }
-                    },
-                    generateObservableForDirectRaw: () => {
-                        return throwError(new Error('Not supported!'));
-                    }
-                }
-            );
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config
-                );
-
-            recorderSession = manager.createSession();
-            let detailA0: DetailAEnt = recorderSession.processPlayerSnapshot(DetailAEnt, { wrappedSnapshot: pSnapshotDetailAAll.wrappedSnapshot[0] });
-            let detailA4: DetailAEnt = recorderSession.processPlayerSnapshot(DetailAEnt, { wrappedSnapshot: pSnapshotDetailAAll.wrappedSnapshot[4] });
-            let detailA0MasterA$ = detailA0.compId.masterA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            let detailA4MasterA$ = detailA4.compId.masterA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            const executionOrderArr: Observable<any>[] = [];
-            detailA0MasterA$.subscribe((masterA) => {
-                consoleLike.log('detailA0MasterA$.subscribe() MasterA: ' + masterA.id);
-                executionOrderArr.push(detailA0MasterA$);
-                let masterALiteral = (pSnapshotMasterAAllBySign as any)[detailA0.compId.masterA.signatureStr].wrappedSnapshot;
-                chai.expect(masterA.vcharA).to.eq(masterALiteral.vcharA, masterA.vcharA);
-            });
-            detailA4MasterA$.subscribe((masterA) => {
-                consoleLike.log('detailA4MasterA$.subscribe() MasterA: ' + masterA.id);
-                executionOrderArr.push(detailA4MasterA$);
-                let masterALiteral = (pSnapshotMasterAAllBySign as any)[detailA4.compId.masterA.signatureStr].wrappedSnapshot;
-                chai.expect(masterA.vcharA).to.eq(masterALiteral.vcharA, masterA.vcharA);
-            });
-            
-            const createPendingTasksWaiting$ = recorderSession.createPendingTasksWaiting().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            createPendingTasksWaiting$.subscribe(() => {
-                consoleLike.log('createPendingTasksWaiting$.subscribe(). Time: ' + new Date().getTime());
-            });            
-
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
-                chai.expect(executionOrderArr.length).to.eq(2, 'executionOrderArr.length');
-                chai.expect(executionOrderArr[0]).to.eq(detailA4MasterA$, 'detailA4MasterA$');
-                chai.expect(executionOrderArr[1]).to.eq(detailA0MasterA$, 'detailA0MasterA$');
-                done();
-            });
-
-        }).timeout(2000 * speedTimeFactor);
-
-        it('RecorderManagerDefaultTest.detail-a-all-lazy-loaded-test', (done) => {
-            let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
-
-            let recorderSession: RecorderSession;
-            let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                //.configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
-                //.configLogLevel(RecorderLogger.RecorderSessionDefault, RecorderLogLevel.Trace)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
-            let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
-
-            newCacheHandler.callback = () => {
-                // console.log(operation + ', ' + cacheKey + ', ' + stream);
-            }
-            let delayIncrement = 300;
-            let delayIncrementCount = 2;
-            config.configLazyObservableProvider(
-                {
-                    generateObservable: (signature, info) => {
-                        return throwError(new Error('Not supported!'));
-                    },
-                    generateObservableForDirectRaw: () => {
-                        return throwError(new Error('Not supported!'));
-                    }
-                }
-            );
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config
-                );
-
-            recorderSession = manager.createSession();
-            let detailA: DetailAEnt = recorderSession.processPlayerSnapshot(DetailAEnt, pSnapshotDetailAAllLazyLoad);
-            let detailAMasterA$ = detailA.compId.masterA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            const executionOrderArr: Observable<any>[] = [];
-            detailAMasterA$.subscribe((masterA) => {
-                executionOrderArr.push(detailAMasterA$);
-                let masterALiteral = pSnapshotDetailAAllLazyLoad.wrappedSnapshot.$metadatas$.$playerObjectId$.masterA;
-                consoleLike.log('detailAMasterA$.subscribe() MasterA: ' + masterALiteral.id);
-                chai.expect(masterA.vcharA).to.eq(masterALiteral.vcharA, masterA.vcharA);
-            });
-            let detailAMasterB$ = detailA.detailAComp.masterB.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            )
-            detailAMasterB$.subscribe((masterB) => {
-                executionOrderArr.push(detailAMasterB$);
-                let masterBLiteral = pSnapshotDetailAAllLazyLoad.wrappedSnapshot.$metadatas$.$playerObjectId$.masterA.detailAEntCol[1].detailAComp.masterB;
-                consoleLike.log('detailAMasterB$.subscribe() MasterB: ' +
-                    masterBLiteral.$metadatas$.$playerObjectId$.idA + ',' +
-                    masterBLiteral.$metadatas$.$playerObjectId$.idB);
-                chai.expect(masterB.vcharA).to.eq(masterBLiteral.vcharA, masterB.vcharA);
-            });
-            
-            const createPendingTasksWaiting$ = recorderSession.createPendingTasksWaiting().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            createPendingTasksWaiting$.subscribe(() => {
-                consoleLike.log('createPendingTasksWaiting$.subscribe(). Time: ' + new Date().getTime());
-            });            
-
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
-                chai.expect(executionOrderArr.length).to.eq(2, 'executionOrderArr.length');
-                chai.expect(executionOrderArr[0]).to.eq(detailAMasterA$, 'detailAMasterA$');
-                chai.expect(executionOrderArr[1]).to.eq(detailAMasterB$, 'detailAMasterB$');
-                done();
-            });
-
-        }).timeout(2000 * speedTimeFactor);
-
-        it('RecorderManagerDefaultTest.LazyRef-playerObjectId-preexistent-same-instance-detail-a-referer-test', (done) => {
-            let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
-
-            let recorderSession: RecorderSession;
-            let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                .configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
-                //.configLogLevel(RecorderLogger.RecorderSessionDefault, RecorderLogLevel.Trace)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
-            let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
-
-            newCacheHandler.callback = () => {
-                // console.log(operation + ', ' + cacheKey + ', ' + stream);
-            }
-            let delayIncrement = 300;
-            let delayIncrementCount = 2;
-            config.configLazyObservableProvider(
-                {
-                    generateObservable: (signature, info) => {
-                        if (info.fieldName === 'detailA') {
-                            let delayValue: number;
-                            let responseResult: ResponseLike<Object> = {
-                                body: (pSnapshotDetailAAllBySign as any)[signature]
-                            }
-                            let emitted: boolean;
-                            return of(null).pipe(
-                                flatMap(() => {
-                                    if(!delayValue) {
-                                        delayValue = delayIncrement * (delayIncrementCount--) * speedTimeFactor;
-                                    }
-                                    return of(null).pipe(
-                                        map(() => {
-                                            return delayValue;
-                                        }),
-                                        tap((delay) => {
-                                            consoleLike.log(
-                                                'Queue ('+ delay +') resp for DetailA: ' +
-                                                    JSON.stringify(
-                                                        (pSnapshotDetailAAllBySign as any)[signature].wrappedSnapshot.$metadatas$.$playerObjectId$,
-                                                        null,
-                                                        2).substring(0, 1000)
-                                            );
-                                        }),
-                                        flatMap((delay) => {
-                                            if(!emitted) {
-                                                emitted = true;
-                                                return timer(delay).pipe(
-                                                    map(() => {
-                                                        return responseResult;
-                                                    })
-                                                );
-                                            } else {
-                                                return never();
-                                            }
-                                        }),
-                                        tap(() => {
-                                            consoleLike.log(
-                                                'Launch resp for DetailA: ' +
-                                                    JSON.stringify(
-                                                        (pSnapshotDetailAAllBySign as any)[signature].wrappedSnapshot.$metadatas$.$playerObjectId$,
-                                                        null,
-                                                        2).substring(0, 1000)
-                                            );
-                                        }),
-                                    )
-                                })
-                            );
-                        } else {
-                            return throwError(new Error('Not supported!'));
-                        }
-                    },
-                    generateObservableForDirectRaw: () => {
-                        return throwError(new Error('Not supported!'));
-                    }
-                }
-            );
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config
-                );
-
-            recorderSession = manager.createSession();
-            const detailARefererSignArr = Object.keys(pSnapshotDetailARefererAllBySign);
-            const detailAArr = Object.keys(pSnapshotDetailAAllBySign);
-            let detailA0PS = (pSnapshotDetailAAllBySign as any)[detailAArr[0]] as PlayerSnapshot;
-            let detailAReferer0PS = (pSnapshotDetailARefererAllBySign as any)[detailARefererSignArr[0]] as PlayerSnapshot;
-            let detailAReferer6PS = (pSnapshotDetailARefererAllBySign as any)[detailARefererSignArr[6]] as PlayerSnapshot;
-            let detailA0: DetailAEnt = recorderSession.processPlayerSnapshot(DetailAEnt, detailA0PS);
-            let detailAReferer0: DetailARefererEnt = recorderSession.processPlayerSnapshot(DetailARefererEnt, detailAReferer0PS);
-            let detailAReferer6: DetailARefererEnt = recorderSession.processPlayerSnapshot(DetailARefererEnt, detailAReferer6PS);
-            let detailAReferer0DetailA$ = detailAReferer0.detailA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            let detailAReferer6DetailA$ = detailAReferer6.detailA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            const executionOrderArr: Observable<any>[] = [];
-
-            chai.expect(detailAReferer6.detailA.playerObjectId).to.eq(detailAReferer0.detailA.playerObjectId, 'detailAReferer6.detailA.playerObjectId != detailAReferer0.detailA.playerObjectId');
-            chai.expect(detailAReferer6.detailA.playerObjectId).to.eq(detailA0.compId, 'detailAReferer6.detailA.playerObjectId != detailA0.compId');
-
-            detailAReferer0DetailA$.subscribe((detailA) => {
-                executionOrderArr.push(detailAReferer0DetailA$);
-                let detailALiteral = (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$];
-                consoleLike.log(
-                    'detailAMasterA$.subscribe() detailA.vcharA: ' + 
-                        JSON.stringify(
-                            (pSnapshotDetailAAllBySign as any)[(detailAReferer0PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$],
-                            null,
-                            2).substring(0, 1000));
-                chai.expect(detailA.vcharA).to.eq(detailALiteral.vcharA, detailA.vcharA);
-            });
-            detailAReferer6DetailA$.subscribe((detailA) => {
-                executionOrderArr.push(detailAReferer6DetailA$);
-                let detailALiteral = (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$];
-                consoleLike.log(
-                    'detailAMasterA$.subscribe() detailA.vcharA: ' + 
-                        JSON.stringify(
-                            (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$],
-                            null,
-                            2).substring(0, 1000));
-                chai.expect(detailA.vcharA).to.eq(detailALiteral.vcharA, detailA.vcharA);
-            });
-            const createPendingTasksWaiting$ = recorderSession.createPendingTasksWaiting().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            createPendingTasksWaiting$.subscribe(() => {
-                consoleLike.log('createPendingTasksWaiting$.subscribe(). Time: ' + new Date().getTime());
-            });            
-
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
-                chai.expect(executionOrderArr.length).to.eq(2, 'executionOrderArr.length');
-                //chai.expect(executionOrderArr[0]).to.eq(detailAReferer6DetailA$, 'detailAReferer6DetailA$');
-                //chai.expect(executionOrderArr[1]).to.eq(detailAReferer0DetailA$, 'detailAReferer0DetailA$');
-                done();
-            });
-
-        }).timeout(2000 * speedTimeFactor);
-
-        it('RecorderManagerDefaultTest.LazyRef-playerObjectId-same-instance-detail-a-referer-test', (done) => {
-            let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
-
-            let recorderSession: RecorderSession;
-            let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                .configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
-                //.configLogLevel(RecorderLogger.RecorderSessionDefault, RecorderLogLevel.Trace)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
-            let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
-
-            newCacheHandler.callback = () => {
-                // console.log(operation + ', ' + cacheKey + ', ' + stream);
-            }
-            let delayIncrement = 300;
-            let delayIncrementCount = 2;
-            config.configLazyObservableProvider(
-                {
-                    generateObservable: (signature, info) => {
-                        if (info.fieldName === 'detailA') {
-                            let delayValue: number;
-                            let responseResult: ResponseLike<Object> = {
-                                body: (pSnapshotDetailAAllBySign as any)[signature]
-                            }
-                            let emitted: boolean;
-                            return of(null).pipe(
-                                flatMap(() => {
-                                    if(!delayValue) {
-                                        delayValue = delayIncrement * (delayIncrementCount--) * speedTimeFactor;
-                                    }
-                                    return of(null).pipe(
-                                        map(() => {
-                                            return delayValue;
-                                        }),
-                                        tap((delay) => {
-                                            consoleLike.log(
-                                                'Queue ('+ delay +') resp for DetailA: ' +
-                                                    JSON.stringify(
-                                                        (pSnapshotDetailAAllBySign as any)[signature].wrappedSnapshot.$metadatas$.$playerObjectId$,
-                                                        null,
-                                                        2).substring(0, 1000)
-                                            );
-                                        }),
-                                        flatMap((delay) => {
-                                            if(!emitted) {
-                                                emitted = true;
-                                                return timer(delay).pipe(
-                                                    map(() => {
-                                                        return responseResult;
-                                                    })
-                                                );
-                                            } else {
-                                                return never();
-                                            }
-                                        }),
-                                        tap(() => {
-                                            consoleLike.log(
-                                                'Launch resp for DetailA: ' +
-                                                    JSON.stringify(
-                                                        (pSnapshotDetailAAllBySign as any)[signature].wrappedSnapshot.$metadatas$.$playerObjectId$,
-                                                        null,
-                                                        2).substring(0, 1000)
-                                            );
-                                        }),
-                                    )
-                                })
-                            );
-                        } else {
-                            return throwError(new Error('Not supported!'));
-                        }
-                    },
-                    generateObservableForDirectRaw: () => {
-                        return throwError(new Error('Not supported!'));
-                    }
-                }
-            );
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config
-                );
-
-            recorderSession = manager.createSession();
-            const detailARefererSignArr = Object.keys(pSnapshotDetailARefererAllBySign);
-            let detailAReferer0PS = (pSnapshotDetailARefererAllBySign as any)[detailARefererSignArr[0]] as PlayerSnapshot;
-            let detailAReferer6PS = (pSnapshotDetailARefererAllBySign as any)[detailARefererSignArr[6]] as PlayerSnapshot;
-            let detailAReferer0: DetailARefererEnt = recorderSession.processPlayerSnapshot(DetailARefererEnt, detailAReferer0PS);
-            let detailAReferer6: DetailARefererEnt = recorderSession.processPlayerSnapshot(DetailARefererEnt, detailAReferer6PS);
-            let detailAReferer0DetailA$ = detailAReferer0.detailA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            let detailAReferer6DetailA$ = detailAReferer6.detailA.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            const executionOrderArr: Observable<any>[] = [];
-
-            chai.expect(detailAReferer6.detailA.playerObjectId).to.eq(detailAReferer0.detailA.playerObjectId, 'detailAReferer6.detailA.playerObjectId != detailAReferer0.detailA.playerObjectId');
-
-            detailAReferer0DetailA$.subscribe((detailA) => {
-                executionOrderArr.push(detailAReferer0DetailA$);
-                let detailALiteral = (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$];
-                consoleLike.log(
-                    'detailAMasterA$.subscribe() detailA.vcharA: ' + 
-                        JSON.stringify(
-                            (pSnapshotDetailAAllBySign as any)[(detailAReferer0PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$],
-                            null,
-                            2).substring(0, 1000));
-                chai.expect(detailA.vcharA).to.eq(detailALiteral.vcharA, detailA.vcharA);
-            });
-            detailAReferer6DetailA$.subscribe((detailA) => {
-                executionOrderArr.push(detailAReferer6DetailA$);
-                let detailALiteral = (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$];
-                consoleLike.log(
-                    'detailAMasterA$.subscribe() detailA.vcharA: ' + 
-                        JSON.stringify(
-                            (pSnapshotDetailAAllBySign as any)[(detailAReferer6PS.wrappedSnapshot as any).detailA.$metadatas$.$signature$],
-                            null,
-                            2).substring(0, 1000));
-                chai.expect(detailA.vcharA).to.eq(detailALiteral.vcharA, detailA.vcharA);
-            });
-            const createPendingTasksWaiting$ = recorderSession.createPendingTasksWaiting().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            createPendingTasksWaiting$.subscribe(() => {
-                consoleLike.log('createPendingTasksWaiting$.subscribe(). Time: ' + new Date().getTime());
-            });            
-
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
-                chai.expect(executionOrderArr.length).to.eq(2, 'executionOrderArr.length');
-                //chai.expect(executionOrderArr[0]).to.eq(detailAReferer6DetailA$, 'detailAReferer6DetailA$');
-                //chai.expect(executionOrderArr[1]).to.eq(detailAReferer0DetailA$, 'detailAReferer0DetailA$');
-                done();
-            });
-
-        }).timeout(2000 * speedTimeFactor);
-
-
-        it('RecorderManagerDefaultTest.master-a-detail-a-col-createPendingTasksWaiting-test', (done) => {
-            let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
-
-            let recorderSession: RecorderSession;
-            let config: RecorderConfig = new RecorderConfigDefault()
-                .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                //.configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
-                //.configLogLevel(RecorderLogger.RecorderSessionDefault, RecorderLogLevel.Trace)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
-            let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
-
-            newCacheHandler.callback = () => {
-                // console.log(operation + ', ' + cacheKey + ', ' + stream);
-            }
-            let delayIncrement = 300;
-            let delayIncrementCount = 2;
-            config.configLazyObservableProvider(
-                {
-                    generateObservable: (signature, info) => {
-                        if (info.fieldName === 'detailAEntCol') {
-                            let delayValue: number;
-                            let responseResult: ResponseLike<Object> = {
-                                body: (pSnapshotDetailAColAllBySign as any)[signature]
-                            }
-                            const masterId = (pSnapshotDetailAColAllBySign as any)[signature].wrappedSnapshot[0].$metadatas$.$playerObjectId$.masterA.$metadatas$.$playerObjectId$
-                            //pSnapshotDetailAColAllBySign["manager01.eyJjbGF6ek5hbWUiOiJvcmcuanNvbnBsYXliYWNrLnBsYXllci5oaWJlcm5hdGUuZW50aXRpZXMuTWFzdGVyQUVudCIsImlzQ29sbCI6dHJ1ZSwicHJvcGVydHlOYW1lIjoiZGV0YWlsQUVudENvbCIsInN0cmluZ2lmaWVkT2JqZWN0SWQiOiJ7XCJyYXdLZXlWYWx1ZXNcIjpbXCIwXCJdLFwicmF3S2V5VHlwZU5hbWVzXCI6W1wiamF2YS5sYW5nLkludGVnZXJcIl19In0"].wrappedSnapshot[0].$metadatas$.$playerObjectId$.masterA.$metadatas$.$playerObjectId$
-                            let emitted: boolean;
-                            return of(null).pipe(
-                                flatMap(() => {
-                                    if(!delayValue) {
-                                        delayValue = delayIncrement * (delayIncrementCount--) * speedTimeFactor;
-                                    }
-                                    return of(null).pipe(
-                                        map(() => {
-                                            return delayValue;
-                                        }),
-                                        tap((delay) => {
-                                            consoleLike.log('Queue ('+ delay +') resp for MasterA: ' + masterId);
-                                        }),
-                                        flatMap((delay) => {
-                                            if(!emitted) {
-                                                emitted = true;
-                                                return timer(delay).pipe(
-                                                    map(() => {
-                                                        return responseResult;
-                                                    })
-                                                );
-                                            } else {
-                                                return never();
-                                            }
-                                        }),
-                                        tap(() => {
-                                            consoleLike.log('Launch resp for MasterA: ' + masterId);
-                                        }),
-                                    )
-                                })
-                            );
-                        } else {
-                            return throwError(new Error('Not supported!'));
-                        }
-                    },
-                    generateObservableForDirectRaw: () => {
-                        return throwError(new Error('Not supported!'));
-                    }
-                }
-            );
-
-            let manager: RecorderManager = new RecorderManagerDefault(
-                config
-                );
-
-            recorderSession = manager.createSession();
-            let masterA0: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterAAll[0] );
-            let masterA1: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterAAll[1] );
-            let detailAEntCol0$ = masterA0.detailAEntCol.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            let detailAEntCol1$ = masterA1.detailAEntCol.asObservable().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            const executionOrderArr: Observable<any>[] = [];
-            detailAEntCol0$.subscribe((detailAEntCol0) => {
-                consoleLike.log('detailAEntCol0$.subscribe() MasterA: ' + masterA0.id);
-                let detailAEntArr0 = Array.from(detailAEntCol0);
-                executionOrderArr.push(detailAEntCol1$);
-                let detailAEntLiteralArr = (pSnapshotDetailAColAllBySign as any)[masterA0.detailAEntCol.signatureStr].wrappedSnapshot;
-                chai.expect(detailAEntArr0[0].vcharA).to.eq(detailAEntLiteralArr[0].vcharA, detailAEntArr0[0].vcharA);
-            });
-            detailAEntCol1$.subscribe((detailAEntCol1) => {
-                consoleLike.log('detailAEntCol1$.subscribe() MasterA: ' + masterA1.id);
-                let detailAEntArr1 = Array.from(detailAEntCol1);
-                executionOrderArr.push(detailAEntCol1$);
-                let detailAEntLiteralArr = (pSnapshotDetailAColAllBySign as any)[masterA1.detailAEntCol.signatureStr].wrappedSnapshot;
-                chai.expect(detailAEntArr1[0].vcharA).to.eq(detailAEntLiteralArr[0].vcharA, detailAEntArr1[0].vcharA);
-            });
-            
-            const createPendingTasksWaiting$ = recorderSession.createPendingTasksWaiting().pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-            );
-            createPendingTasksWaiting$.subscribe(() => {
-                consoleLike.log('createPendingTasksWaiting$.subscribe(). Time: ' + new Date().getTime());
-            });            
-
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3, 'asyncCount');
-                chai.expect(executionOrderArr.length).to.eq(2, 'executionOrderArr.length');
-                chai.expect(executionOrderArr[0]).to.eq(detailAEntCol1$, 'detailA4MasterA$');
-                chai.expect(executionOrderArr[1]).to.eq(detailAEntCol1$, 'detailA0MasterA$');
-                done();
-            });
-
-        }).timeout(2000 * speedTimeFactor);
-
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-test-subs-to-mod', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1137,7 +503,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1279,13 +645,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(7, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1297,7 +663,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1399,13 +765,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(1, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.detail-a-master-a-subscribe-twice', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1417,7 +783,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1547,13 +913,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.detail-a-master-a-same-observable-subscribe-twice', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1565,7 +931,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1695,13 +1061,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.detail-a-first-secont-second-third', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1713,7 +1079,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 2, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -1848,13 +1214,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(2, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.detail-a-master-a-only-one-request-with-share', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -1866,7 +1232,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2016,7 +1382,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(masterRef0.value).to.be.eq(masterRef0AsObs.value, 'detailA.compId.masterA');
@@ -2025,7 +1391,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-min-detail-min-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -2037,7 +1403,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2153,7 +1519,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             });
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 }),
                 catchError((err) => {
                     return throwError(err);
@@ -2162,7 +1528,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-detail-a-min-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -2174,7 +1540,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2314,7 +1680,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 }),
                 catchError((err) => {
                     return throwError(err);
@@ -2323,7 +1689,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 chai.expect(asyncCount.count).to.eq(9, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.master-a-detail-a-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -2335,7 +1701,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 6, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2465,7 +1831,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 }),
                 catchError((err) => {
                     return throwError(err);
@@ -2474,7 +1840,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 chai.expect(asyncCount.count).to.eq(6, 'asyncCount');
                 done();
             });
-        }).timeout(2000 * speedTimeFactor);
+        }).timeout(2000 * debugTimeFactor);
 
         it('RecorderManagerDefaultTest.detail-a-arr-master-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -2482,14 +1848,11 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                //.configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
-                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);
-
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
+                .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
             let asyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
 
             newCacheHandler.callback = () => {
                 // console.log(operation + ', ' + cacheKey + ', ' + stream);
@@ -2547,47 +1910,24 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             config.configLazyObservableProvider(
                 {
                     generateObservable: (signature, info) => {
-                        let emitted: boolean;
-                        let result$: Observable<ResponseLike<Object>>;
                         if (info.fieldName === 'detailAEntCol') {
                             let responseResult: ResponseLike<Object> = {
                                 body: pSnapshotMasterDetailAColLiteral
                             }
-                            result$ = of(responseResult);
+                            return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterB') {
                             let responseResult: ResponseLike<Object> = {
                                 body: (pSnapshotWSnapMasterBBySign as any)[signature]
                             }
-                            result$ = of(responseResult);
+                            return of(responseResult).pipe(delay(1));
                         } else if (info.fieldName === 'masterA' ) {
                             let responseResult: ResponseLike<Object> = {
                                 body: pSnapshotMasterLiteral
                             }
-                            result$ = of(responseResult);
+                            return of(responseResult).pipe(delay(1));
                         } else {
-                            result$ = of(null);
+                            return of(null).pipe(delay(1));
                         }
-
-                        result$ = result$.pipe(
-                            tap((respObj) => {
-                                consoleLike.log('result$.uuid: '+(result$ as any).uuid +'. Queue for signature: ' + signature);
-                            }),
-                            flatMap((respObj) => {
-                                if(!emitted) {
-                                    emitted = true;
-                                    return of(respObj).pipe(
-                                        delay(10 * speedTimeFactor),
-                                        tap(() => {
-                                            consoleLike.log('result$.uuid: '+(result$ as any).uuid +'. Emit for signature: ' + signature);
-                                        }),
-                                    );
-                                } else {
-                                    return never();
-                                }
-                            }),
-                        );
-                        (result$ as any).uuid = (recorderSession as RecorderSessionImplementor).nextMultiPurposeInstanceId();
-                        return result$;
                     },
                     generateObservableForDirectRaw: () => {
                         let responseResult: ResponseLike<BinaryBlobOrStream> = {
@@ -2629,13 +1969,13 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             asyncCountdown.createCountdownEnds().pipe(
                 delay(1),
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(4, 'asyncCount');
                 done();
             });
-        }).timeout(1500 * speedTimeFactor);
+        });
 
         it('RecorderManagerDefaultTest.master-lazy-prp-over-sized-test', (done) => {
             let newCacheHandler = createCacheHandlerWithInterceptor(cacheHandler);
@@ -2643,18 +1983,15 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             let recorderSession: RecorderSession;
             let config: RecorderConfig = new RecorderConfigDefault()
                 .configLogLevel(RecorderLogger.All, RecorderLogLevel.Error)
-                //.configLogLevel(RecorderLogger.LazyRef, RecorderLogLevel.Trace)
                 .configCacheHandler(newCacheHandler)
                 .configAddFieldProcessors(RecorderDecorators.TypeProcessorEntries);            
 
-            const consoleLike = config.getConsole(RecorderLogger.LazyRef);
-
             let asyncCount = new AsyncCount();
             let cacheGetAsyncCount = new AsyncCount();
-            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 2000 * speedTimeFactor });
+            let asyncCountdown = new AsyncCountdown({ count: 18, timeOut: 3000 * debugTimeFactor });
 
             newCacheHandler.callback = (operation) => {
-                // consoleLike.log(operation + ', ' + cacheKey + ', ' + stream);
+                // console.log(operation + ', ' + cacheKey + ', ' + stream);
                 if(operation === 'getFromCache') {
                     cacheGetAsyncCount.doNonPipedIncrement();
                 }
@@ -2790,7 +2127,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                             }
                         }
                         return responseResult$
-                            .pipe(delay(500 * speedTimeFactor))
+                            .pipe(delay(0.1))
                             .pipe(
                                 asyncCount.registerRxOpr()
                             );
@@ -2811,70 +2148,66 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             const testParamByIntervalIndex: {delayForStreamRead: number, delayForLazyRef: number, expectedError: TypeLike<Error>, doNotUserAsObs?: boolean}[] = [
                 {
                     delayForLazyRef: 0,
-                    delayForStreamRead: 16 * localDelayFactor * speedTimeFactor,
+                    delayForStreamRead: 16 * localDelayFactor * debugTimeFactor,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 5 * localDelayFactor * speedTimeFactor,
+                    delayForLazyRef: 5 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 7 * localDelayFactor * speedTimeFactor,
+                    delayForLazyRef: 7 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 10 * localDelayFactor * speedTimeFactor,
+                    delayForLazyRef: 10 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null
                 },
                 {
-                    delayForLazyRef: 14 * localDelayFactor * speedTimeFactor,
+                    delayForLazyRef: 14 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 },
                 {
-                    delayForLazyRef: 10 * localDelayFactor * speedTimeFactor,
+                    delayForLazyRef: 10 * localDelayFactor * debugTimeFactor,
                     delayForStreamRead: 0,
                     expectedError: null,
                     doNotUserAsObs: true
                 }
             ];
             let intervalIndex = -1;
-            interval(1 * localDelayFactor * speedTimeFactor).pipe(
+            interval(1 * localDelayFactor * debugTimeFactor).pipe(
                 take(testParamByIntervalIndex.length),
                 //asyncCountdown.registerRxOpr(() => 'asyncCountdown: interval(1): ' + intervalIndex)
                 asyncCountdown.registerRxOpr()
             ).subscribe(() => {
                 intervalIndex++;
-                const intervalIndexConst = intervalIndex;
-                //consoleLike.log('interval.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
+                //console.log('interval.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
                 let blobLazyA$ = of(null).pipe(
                     flatMap(() => {
                         if (testParamByIntervalIndex[intervalIndex].doNotUserAsObs) {
-                            consoleLike.log('flatMap as Subject. intervalIndexConst: ' + intervalIndexConst);
+                            //console.log('intervalIndex: ' + intervalIndex + ' as sub');
                             return masterA.blobLazyA;
                         } else {
-                            consoleLike.log('flatMap as asObservable. intervalIndexConst: ' + intervalIndexConst);
+                            //console.log('intervalIndex: ' + intervalIndex + ' as obs');
                             return masterA.blobLazyA.asObservable();
                         }
                     }),
                     asyncCount.registerRxOpr(),
                     //asyncCountdown.registerRxOpr(() => 'asyncCountdown: blobLazyA$ = of(null).pipe(: ' + intervalIndex + ' as sub or obs'),
                     asyncCountdown.registerRxOpr(),
-                    delay(testParamByIntervalIndex[intervalIndex].delayForLazyRef),
-                    tap(() => {
-                        consoleLike.log('tap: intervalIndexConst: ' + intervalIndexConst);
-                    })
+                    delay(testParamByIntervalIndex[intervalIndex].delayForLazyRef)
                 );
                 try {
                     const subs = blobLazyA$.subscribe( 
                         {
                             next: (valueStream) => {
-                                //consoleLike.log('blobLazyA$.subscribe: intervalIndexConst: ' + intervalIndexConst);
-                                consoleLike.log('blobLazyA$.subscribe(); ' + intervalIndexConst + '; ');
+                                //console.log('intervalIndex: ' + intervalIndex);
+                                //console.log('blobLazyA$.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
                                 asyncCount.doNonPipedIncrement();
                                 chai.expect(testParamByIntervalIndex[intervalIndex].expectedError).to.be.null;
                                 chai.expect(nonRepeatableValueSet).to.not.contains(blobLazyA$);
@@ -2895,7 +2228,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                                     })
                                 )
                                 const subs2 = fromDirectRaw$.subscribe((reqStreamStr) => {
-                                    consoleLike.log('fromDirectRaw$.subscribe(); ' + intervalIndexConst + '; ');
+                                    //console.log('fromDirectRaw$.subscribe(); ' + intervalIndex + '; ' + new Date().getTime());
                                     chai.expect(nonRepeatableValueSet).to.not.contains(fromDirectRaw$);
                                     nonRepeatableValueSet.add(fromDirectRaw$);
                                     chai.expect(reqStreamStr.body)
@@ -2930,14 +2263,14 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             asyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting();
+                    return recorderSession.createSerialPendingTasksWaiting();
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(19, 'asyncCount');
                 chai.expect(cacheGetAsyncCount.count).to.eq(testParamByIntervalIndex.length, 'cacheGetAsyncCount');
                 done();
             });
-        }).timeout(2500 * speedTimeFactor);
+        }).timeout(3500 * debugTimeFactor);
 
         //it('RecorderManagerDefaultTest.master-a-detail-a-record', 1 == 1 ? (done) => {done();} : (done) => {
         it('RecorderManagerDefaultTest.master-a-detail-a-record', (done) => {
@@ -3039,8 +2372,8 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
                 );
             recorderSession = manager.createSession();
 
-            let dataAsyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * speedTimeFactor });
-            let tapeAsyncCountdown = new AsyncCountdown({ count: 7, timeOut: 2000 * speedTimeFactor });
+            let dataAsyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
+            let tapeAsyncCountdown = new AsyncCountdown({ count: 7, timeOut: 2000 * debugTimeFactor });
 
             let masterA: MasterAEnt = recorderSession.processPlayerSnapshot(MasterAEnt, pSnapshotMasterADetailATestLiteral);
             
@@ -3050,7 +2383,7 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
             let readableStream = RecorderForDom.stringToBlobOrStream('masterA.blobLazyA: CHANGHED');
             let binaryStream: BinaryBlobOrStream = readableStream;
             masterA.blobLazyA.setLazyObj(binaryStream);
-            recorderSession.createPendingTasksWaiting().subscribe(() => {
+            recorderSession.createSerialPendingTasksWaiting().subscribe(() => {
                 masterA.detailAEntCol.subscribeToModify((coll) => {
                     dataAsyncCountdown.doNonPipedCountdown();
                     asyncCount.doNonPipedIncrement();
@@ -3117,12 +2450,12 @@ import { DetailARefererEnt } from './entities/detail-a-referer-ent';
 
             tapeAsyncCountdown.createCountdownEnds().pipe(
                 flatMap(() => {
-                    return recorderSession.createPendingTasksWaiting()
+                    return recorderSession.createSerialPendingTasksWaiting()
                 })
             ).subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(8, 'asyncCount');
                 done();
             });
-        }).timeout(3500 * speedTimeFactor);
+        }).timeout(3500 * debugTimeFactor);
     });
 }

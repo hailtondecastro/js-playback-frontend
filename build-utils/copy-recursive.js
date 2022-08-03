@@ -44,25 +44,30 @@ async function main() {
         var relativeTargetFolder = buildHelperCommons.argsMap['relativeTargetFolder'];
         var extension = buildHelperCommons.argsMap['extension'];
         var filePattern = buildHelperCommons.argsMap['filePattern'];
-        var useMove = buildHelperCommons.argsMap['useMove'];
+        var useMove = buildHelperCommons.argsMap['useMove'] === 'true';
         if (!path.isAbsolute(baseFolder)) {
             baseFolder = path.resolve(process.cwd(), baseFolder);
         }
         var mapArr = [];
+        var globPatt = '';
         if (extension) {
-            mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension);
+            globPatt = baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep +'*.' + extension;
         } else if (filePattern) {
-            mapArr = glob.sync(baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
+            globPatt = baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern;
         } else {
             throw new Error("'extension' or 'filePattern' must be provided!");
         }
-        if (mapArr.length == 0) {
-            throw new Error("Files not found!");
+        if (buildHelperCommons.argsMap['verbose'] === 'true') {
+            console.log('[' + nodeModuleName + ']: using glob pattern: ' + globPatt);
+        }
+        mapArr = glob.sync(globPatt);
+        if (buildHelperCommons.argsMap['verbose'] === 'true') {
+            console.log('[' + nodeModuleName + ']: useMove: ' + useMove);
+            console.log('[' + nodeModuleName + ']: mapArr.length: ' + mapArr.length);
         }
 
-        if (buildHelperCommons.argsMap['verbose'] === 'true') {
-            console.log('[' + nodeModuleName + ']: mapArr.length: ' + mapArr.length);
-            console.log('[' + nodeModuleName + ']: patttern: ' + baseFolder + path.sep + relativeSourceFolder + path.sep + '**' + path.sep + filePattern);
+        if (mapArr.length == 0) {
+            throw new Error("Files not found!");
         }
 
         const filesWriteCountDownRef = { value: mapArr.length };
@@ -85,8 +90,13 @@ async function main() {
                     process.exit(1);
                 }
                 var copyOrMoveCallback = fs.copyFile;
+                var copyModeOrMoveOptions = undefined;
                 if (useMove) {
+                    if (buildHelperCommons.argsMap['verbose'] === 'true') {
+                        console.log('[' + nodeModuleName + ']: using fs.move');
+                    }
                     copyOrMoveCallback = fs.move;
+                    copyModeOrMoveOptions = {overwrite: true};
                 }
                 if (fs.lstatSync(sourceItem).isDirectory()) {
                     filesWriteCountDownStepFunc();
@@ -94,7 +104,7 @@ async function main() {
                         console.log('[' + nodeModuleName + ']: is directory '+sourceItem+' to '+targetItem);
                     }
                 } else {
-                    copyOrMoveCallback(sourceItem, targetItem, {overwrite: true}, (err) => {
+                    copyOrMoveCallback(sourceItem, targetItem, copyModeOrMoveOptions, (err) => {
                         if (err) {
                             console.error('[' + nodeModuleName + ']:'+err);
                             process.exit(1);

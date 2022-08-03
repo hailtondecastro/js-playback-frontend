@@ -4,53 +4,57 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Test dist-dev",
+            "name": "mocha dist-dev",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
                 //"2000",
                 "600000",
                 "--grep",
-                "/.*/",
-                //"RecorderManagerDefault.master-a-list-1000-test",
-                //"RecorderManagerDefault.master-a-wrapper-test",
-                //"RecorderManagerDefault.master-a-list-first-twice-test",
-                //"RecorderManagerDefault.master-lazy-prp-over-sized-test",
-                //"RecorderManagerDefault.master-a-test",
-                //"RecorderManagerDefault.master-a-test",
-                //"RecorderManagerDefault.master-min-detail-min-test",
-                //"RecorderManagerDefault.master-a-detail-a-min-test",
-                //"RecorderManagerDefault.master-a-detail-a-test",
-                //"RecorderManagerDefault.master-a-detail-a-record",
-                //"RecorderManagerDefault.poc-observable-just-once-pipe-test",
-                //"RecorderManagerDefault.poc-observable-each-pipe-test",
-                //"RecorderManagerDefault.detail-a-master-a-subscribe-twice",
-                //"RecorderManagerDefault.detail-a-master-a-same-observable-subscribe-twice",
-                //"RecorderManagerDefault.detail-a-arr-master-test",
-                //"RecorderManagerDefault.master-a-test-subs-to-mod",
-                //"RecorderManagerDefault.detail-a-first-secont-second-third",
-                //"RecorderManagerDefault.detail-a-master-a-only-one-request-with-share",
+                //"/.*/",
+                "RecorderManagerDefaultTest.LazyRef-playerObjectId-preexistent-same-instance-detail-a-referer-test",
+                //"RecorderManagerDefaultTest.LazyRef-playerObjectId-same-instance-detail-a-referer-test",
+                //"RecorderManagerDefaultTest.detail-a-all-lazy-loaded-test",
+                //"RecorderManagerDefaultTest.master-a-detail-a-col-createPendingTasksWaiting-test",
+                //"RecorderManagerDefaultTest.detail-a-master-a-createPendingTasksWaiting-test",
+                //"RecorderManagerDefaultTest.master-a-list-1000-test",
+                //"RecorderManagerDefaultTest.master-a-wrapper-test",
+                //"RecorderManagerDefaultTest.master-a-list-first-twice-test",
+                //"RecorderManagerDefaultTest.master-lazy-prp-over-sized-test",
+                //"RecorderManagerDefaultTest.master-a-test",
+                //"RecorderManagerDefaultTest.master-a-test",
+                //"RecorderManagerDefaultTest.master-min-detail-min-test",
+                //"RecorderManagerDefaultTest.master-a-detail-a-min-test",
+                //"RecorderManagerDefaultTest.master-a-detail-a-test",
+                //"RecorderManagerDefaultTest.master-a-detail-a-record",
+                //"RecorderManagerDefaultTest.poc-observable-just-once-pipe-test",
+                //"RecorderManagerDefaultTest.poc-observable-each-pipe-test",
+                //"RecorderManagerDefaultTest.detail-a-master-a-subscribe-twice",
+                //"RecorderManagerDefaultTest.detail-a-master-a-same-observable-subscribe-twice",
+                //"RecorderManagerDefaultTest.detail-a-arr-master-test",
+                //"RecorderManagerDefaultTest.master-a-test-subs-to-mod",
+                //"RecorderManagerDefaultTest.detail-a-first-secont-second-third",
+                //"RecorderManagerDefaultTest.detail-a-master-a-only-one-request-with-share",
                 //"RecorderManagerDefault",
-                //"ForNodeTest.StringSyncProcessor",
-                //"ForNodeTest.timeoutDecorateRxOpr",
-                //"ForNodeTest.BufferSyncProcessor",
-                //"ForNodeTest.BinaryStreamSyncProcessor",
-                //"ForNodeTest.StringStreamSyncProcessor",
-                //"ForNodeTest.CacheHandlerSync",
-                //"ForNodeTest.StringAsyncProcessor",
-                //"ForNodeTest.StringStreamAsyncProcessor",
-                //"ForNodeTest",
+                //"FieldProcessorsTest.StringSyncProcessor",
+                //"FieldProcessorsTest.timeoutDecorateRxOpr",
+                //"FieldProcessorsTest.BufferSyncProcessor",
+                //"FieldProcessorsTest.BinaryStreamSyncProcessor",
+                //"FieldProcessorsTest.StringStreamSyncProcessor",
+                //"CacheHandlerTest.CacheHandlerSync",
+                //"FieldProcessorsTest.StringAsyncProcessor",
+                //"FieldProcessorsTest.StringStreamAsyncProcessor",
+                //"FieldProcessorsTest",
                 //"ERR_",
-                //"RecorderManagerDefault.master-[al][-a][zd]",
-                //"rxjs-util-test",
-                //"rxjs-util-test.combineFirstSerial_4-items",
-                //"rxjs-util-test.combineFirstSerial_so-many-items",
-                //"rxjs-util-test.combineFirstSerial_0-items",
-                //"rxjs-util-test.combineAll",
+                //"RecorderManagerDefaultTest.master-[al][-a][zd]",
+                //"RxjsUtilTest",
+                //"RxjsUtilTest.combineFirstSerial_4-items",
+                //"RxjsUtilTest.combineFirstSerial_so-many-items",
+                //"RxjsUtilTest.combineFirstSerial_0-items",
+                //"RxjsUtilTest.combineAll",
                 "dist-dev/**/**.spec.js"
             ],
             "sourceMaps": true,
@@ -61,19 +65,19 @@
         },{
             "type": "node",
             "request": "launch",
-            "name": "Launch Test dist-test",
+            "name": "mocha dist-test",
             "program": "${workspaceFolder}/node_modules/mocha/bin/_mocha",
             "args": [
                 "--timeout",
                 //"2000",
                 "600000",
                 "--grep",
-                //"/.*/",
+                "/.*/",
                 //"/master-lazy-prp-over-sized-test-async/",
                 //"/master-a-test-async/",
                 //"/master-a-test-sync/",
                 //"/master-a-detail-a-test-sync/",
-                "/detail-a-arr-master-test/",
+                //"/detail-a-arr-master-test/",
                 //"/poc-observable-just-once-pipe-test/",
                 //"/poc-observable-each-pipe-test/",
                 "dist-test/**/**.spec.js"
@@ -82,64 +86,80 @@
             "outFiles": [
                 "${workspaceFolder}/dist-test/**/*.js"
             ]
-        },
-        {
+        },{
             "type": "node",
             "request": "launch",
-            "name": "Launch mv-folder-content",
-            "program": "${workspaceFolder}/build-utils/mv-folder-content",
+            "name": "debug karma.dev",
+            "program": "${workspaceFolder}/node_modules/karma/bin/karma",
             "args": [
-                "-baseFolder",
-                "./dist-dev/typeslike/dev",
-                "-relativeSourceFolder",
-                ".",
-                "-relativeTargetFolder",
-                "..",
-                "-verbose",
-                "true"
+                "start",
+                "karma.dev.config.js",
+                "--browsers",
+                "Chrome",
+                "--single-run=false",
+                "--auto-watch",
+                "--debug"
             ],
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceFolder}/dist-dev/**/*.js"
-            ]
-        },
-        {
+            ],
+            "outputCapture": "std"
+        },{
             "type": "node",
             "request": "launch",
-            "name": "Launch mv-file",
-            "program": "${workspaceFolder}/build-utils/mv-file",
+            "name": "run karma.dev",
+            "program": "${workspaceFolder}/node_modules/karma/bin/karma",
             "args": [
-                "-baseFolder",
-                "./dist-dev/src",
-                "-relativeSourceFile",
-                "typeslike-dist.d.ts",
-                "-relativeTargetFile",
-                "./foo/bar/typeslike.d.ts",
-                "-verbose",
-                "true"
+                "start",
+                "karma.dev.config.js",
+                "--browsers",
+                "ChromeHeadless",
+                "--single-run=true",
+                "--auto-watch",
             ],
             "sourceMaps": true,
             "outFiles": [
                 "${workspaceFolder}/dist-dev/**/*.js"
-            ]
-        },
-        {
+            ],
+            "outputCapture": "std"
+        },{
             "type": "node",
             "request": "launch",
-            "name": "Launch embed-source-contents",
-            "program": "${workspaceFolder}/build-utils/embed-source-contents",
+            "name": "debug karma.test",
+            "program": "${workspaceFolder}/node_modules/karma/bin/karma",
             "args": [
-                "-baseDistFolder",
-                "./dist-dev",
-                "-timeout",
-                "10000",
-                "-verbose",
-                "true"
+                "start",
+                "karma.test.config.js",
+                "--browsers",
+                "Chrome",
+                "--single-run=false",
+                "--auto-watch",
+                "--debug"
             ],
             "sourceMaps": true,
             "outFiles": [
-                "${workspaceFolder}/dist-dev/**/*.js"
-            ]
+                "${workspaceFolder}/dist-test/**/*.js"
+            ],
+            "outputCapture": "std"
+        },{
+            "type": "node",
+            "request": "launch",
+            "name": "run karma.test",
+            "program": "${workspaceFolder}/node_modules/karma/bin/karma",
+            "args": [
+                "start",
+                "karma.test.config.js",
+                "--browsers",
+                "ChromeHeadless",
+                "--single-run=true",
+                "--auto-watch",
+            ],
+            "sourceMaps": true,
+            "outFiles": [
+                "${workspaceFolder}/dist-test/**/*.js"
+            ],
+            "outputCapture": "std"
         }
     ]
 }

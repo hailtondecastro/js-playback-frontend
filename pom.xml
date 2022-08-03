@@ -10,8 +10,7 @@
 	<packaging>pom</packaging>
 
 	<name>js-playback-frontend</name>
-	<description>
-	</description>
+	<description>This pom is only to make easy to import maven project on eclipse</description>
 	
 	<properties>
 		<encoding.default>UTF-8</encoding.default>

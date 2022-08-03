@@ -1,6 +1,6 @@
 import { RecorderDecoratorsInternal } from "../implementation/recorder-decorators-internal";
 import { IFieldProcessor, IFieldProcessorEvents } from "./field-processor";
-import { StringStreamMarker, BinaryStreamMarker, BinaryStream, StringStream } from "./lazy-ref";
+import { BinaryBlobOrStream, StringBlobOrStream, BinaryBlobOrStreamMarker, StringBlobOrStreamMarker } from "./lazy-ref";
 
 export namespace RecorderDecorators {
     /**
@@ -66,7 +66,7 @@ export namespace RecorderDecorators {
      * Sample:
      * ```ts
      * ...
-     * @JsonPlayback.playerType({playerType: 'org.mypackage.MyPersistentEntity'})
+     * @RecorderDecorators.playerType({playerType: 'org.mypackage.MyPersistentEntity'})
      * export class MyPersistentEntityJs {
      * ...
      * ```
@@ -78,8 +78,8 @@ export namespace RecorderDecorators {
     export const DateProcessor: IFieldProcessor<Date> = RecorderDecoratorsInternal.DateProcessor;
     export const BufferProcessor: IFieldProcessor<Buffer> = RecorderDecoratorsInternal.BufferProcessor;
     export const StringProcessor: IFieldProcessor<String> = RecorderDecoratorsInternal.StringProcessor;
-    export const BinaryStreamProcessor: IFieldProcessor<BinaryStream> = RecorderDecoratorsInternal.BinaryStreamProcessor;
-    export const StringStreamProcessor: IFieldProcessor<StringStream> = RecorderDecoratorsInternal.StringStreamProcessor;
+    export const BinaryBlobOrStreamProcessor: IFieldProcessor<BinaryBlobOrStream> = RecorderDecoratorsInternal.BinaryBlobOrStreamProcessor;
+    export const StringBlobStreamProcessor: IFieldProcessor<StringBlobOrStream> = RecorderDecoratorsInternal.StringBlobOrStreamProcessor;
 
     export const TypeProcessorEntries = 
     [ 
@@ -92,16 +92,16 @@ export namespace RecorderDecorators {
             processor: StringProcessor
         },
         {                
-            type: BinaryStreamMarker,
-            processor: BinaryStreamProcessor
+            type: BinaryBlobOrStreamMarker,
+            processor: BinaryBlobOrStreamProcessor
         },
         {
-            type: StringStreamMarker,
-            processor: StringStreamProcessor
+            type: StringBlobOrStreamMarker,
+            processor: StringBlobStreamProcessor
         },
         {
             type: Date,
             processor: DateProcessor
         }
-    ];
+    ] as {type: TypeLike, processor: IFieldProcessor<any>}[];
 }

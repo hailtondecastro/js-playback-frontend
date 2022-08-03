@@ -1,4 +1,4 @@
-import { Observable, OperatorFunction, ObservableInput, Subject, PartialObserver, Subscription } from 'rxjs';
+import { Observable, OperatorFunction, ObservableInput, Subject, PartialObserver, Subscription, BehaviorSubject, of } from 'rxjs';
 import { ResponseLike } from '../typeslike';
 import { LazyRefImplementor, LazyRefOTMMarker, LazyRefMTOMarker, LazyRefPrpMarker } from '../api/lazy-ref';
 import { GenericNode } from '../api/generic-tokenizer';
@@ -10,6 +10,8 @@ import { ConsoleLike, RecorderLogLevel } from '../api/recorder-config';
 import { RecorderLogger } from '../api/recorder-config';
 import { flatMap, map, tap } from 'rxjs/operators';
 import { RecorderManagerDefault } from './recorder-manager-default';
+import { WaitHolder } from './rxjs-util';
+import { RecorderDecorators } from '../api/recorder-decorators';
 
 declare type OneOfSubscribeParam = PartialObserver<any> | ((err: any) => void) | (() => void);
 
@@ -18,9 +20,10 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
     iAmLazyRefImplementor: true = true;
 
     attachRefId: string;
-    bMdRefererObj: PlayerMetadatas;
-    bMdLazyLoadedObj: PlayerMetadatas;
-    pbMdRefererPlayerObjectId: PlayerMetadatas;
+    mdRefererObj: PlayerMetadatas;
+    mdLazyLoadedObj: PlayerMetadatas;
+    mdRefererPlayerObjectId: PlayerMetadatas;
+    private _waitFromResponseToProcess: WaitHolder;
 
     private notificationStartTime: number = Date.now();
     private notificationCount: number = 0;
@@ -31,8 +34,16 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
 	}
 	public set instanceId(value: number) {
 		this._instanceId = value;
+    }
+    public get waitFromResponseToProcess(): WaitHolder {
+		return this._waitFromResponseToProcess;
+	}
+	public set waitFromResponseToProcess(value: WaitHolder) {
+		this._waitFromResponseToProcess = value;
 	}
 
+    private _propertyOptions: RecorderDecorators.PropertyOptions<L>;
+    private _lazyLoadedObjResoved: boolean = false;
     private _lazyLoadedObj: L;
     private _genericNode: GenericNode;
     private _signatureStr: string;
@@ -52,11 +63,19 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
         thisLocal.consoleLikeProcResp = this.session.manager.config.getConsole(RecorderLogger.LazyRefBaseProcessResponse);
         thisLocal.consoleLikeSubs = this.session.manager.config.getConsole(RecorderLogger.LazyRefSubscribe);
         this._lazyLoadedObj = null;
+        this._waitFromResponseToProcess = new WaitHolder(this.consoleLike);
     }
 
     private _isOnLazyLoading: boolean = false;
     protected get isOnLazyLoading(): boolean {
         return this._isOnLazyLoading;
+    }
+
+    public get propertyOptions(): RecorderDecorators.PropertyOptions<L> {
+		return this._propertyOptions;
+	}
+	public set propertyOptions(value: RecorderDecorators.PropertyOptions<L>) {
+		this._propertyOptions = value;
     }
 
     protected flatMapKeepAllFlagsRxOprPriv<T, R>(
@@ -151,7 +170,7 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
     }
 
     public isLazyLoaded(): boolean { 
-        return this.respObs == null && this.lazyLoadedObj != null;
+        return this.respObs == null && this.lazyLoadedObjResoved;
     };
 
     private _needCallNextOnSetLazyObj: boolean = true;
@@ -250,6 +269,7 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
 
     protected setLazyObjMayDoNextHelper(isValueByFieldProcessor: {value: boolean}, fieldEtc: FieldEtc<L, any>, newLazyLoadedObj: L, observerOriginal: PartialObserver<L>) {
         const thisLocal = this;
+        thisLocal._lazyLoadedObjResoved = true;
         if (newLazyLoadedObj !== thisLocal._lazyLoadedObj) {
             thisLocal._lazyLoadedObj = newLazyLoadedObj;
             if (!isValueByFieldProcessor.value && fieldEtc.prpGenType.gType !== LazyRefPrpMarker) {
@@ -445,16 +465,16 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
     }
 
 
-    public abstract processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>): L | Observable<L>;
+    public abstract processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadableStream>): L | Observable<L>;
 
     protected lazyRefPrpStoreOriginalliteralEntryIfNeeded(mdRefererObj: PlayerMetadatas, fieldEtc: FieldEtc<L, any>, playerSnapshot: PlayerSnapshot): void {
         const thisLocal = this;
-        if (!this.session.isOnRestoreEntireStateFromLiteral()) {
+        if (!this.session.isOnRestoreEntireState()) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('LazyRefBase.processResponse: Storing LazyRefPrp. Me:\n' + this);
             }
             if (this.attachRefId) {
-                this.session.storeOriginalLiteralEntry(
+                this.session.storeOriginalStringifiableEntry(
                     {
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
@@ -464,10 +484,11 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
                             iAmAnEntityRef: true,
                             signatureStr: thisLocal.signatureStr
                         }
-                    }
+                    },
+                    thisLocal.signatureStr
                 );
             } else {
-                this.session.storeOriginalLiteralEntry(
+                this.session.storeOriginalStringifiableEntry(
                     {
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
@@ -496,7 +517,13 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
             );
         }
     }
-
+    
+	public get lazyLoadedObjResoved(): boolean  {
+		return this._lazyLoadedObjResoved;
+	}
+	public set lazyLoadedObjResoved(value: boolean ) {
+		this._lazyLoadedObjResoved = value;
+	}
     public get lazyLoadedObj(): L {
         return this._lazyLoadedObj;
     }
@@ -568,4 +595,53 @@ export abstract class LazyRefBase<L extends object, I> extends Subject<L> implem
             null,
             2);
     }
+
+    backToUnitialized(): void {
+        const thisLocal = this;
+        this.session.setLazyRefRespObs(this);
+        this._lazyLoadedObj = null;
+        this._lazyLoadedObjResoved = false;
+        this._waitFromResponseToProcess.emitEndWait(this, new Error('backToUnitialized() called. Me:\n' + this));
+        this._waitFromResponseToProcess = new WaitHolder(this.consoleLike);
+    }
+
+    // private _temporaryWaitArr: Subject<void>[];
+    // createTemporaryWait(): void {
+    //     if(this.isLazyLoaded()) {
+    //         throw new Error('This should not happen');
+    //     }
+    //     if(!this._temporaryWaitArr) {
+    //         this._temporaryWaitArr = [];
+    //     }
+    //     console.log('createTemporaryWait()');
+    // }
+    // temporaryWait(): Observable<void> {
+    //     if(this.isLazyLoaded()) {
+    //         throw new Error('This should not happen');
+    //     }
+    //     if(this._temporaryWaitArr) {
+    //         this._temporaryWaitArr.push(new Subject());
+    //         console.log('temporaryWait(): this._temporaryWait.length: ' + this._temporaryWaitArr.length);
+    //         return this._temporaryWaitArr[this._temporaryWaitArr.length - 1].asObservable();
+    //     } else {
+    //         console.log('temporaryWait(): nothing to wait, returning of(null)');
+    //         return of(null);
+    //     }
+    // }
+    // emitEndForTemporaryWait(): void {
+    //     if(this.isLazyLoaded()) {
+    //         throw new Error('This should not happen');
+    //     }
+    //     if(this._temporaryWaitArr) {
+    //         console.log('emitEndForTemporaryWait(): this._temporaryWait.length: ' + this._temporaryWaitArr.length);
+    //         const temporaryWaitArrLocal = this._temporaryWaitArr;    
+    //         this._temporaryWaitArr = null;
+    //         for (let index = 0; index < temporaryWaitArrLocal.length; index++) {
+    //             const tempWaitItem = temporaryWaitArrLocal[index];
+    //             tempWaitItem.next();            
+    //         }
+    //     } else {
+    //         console.log('emitEndForTemporaryWait(): nothing to emit');
+    //     }
+    // }
 }

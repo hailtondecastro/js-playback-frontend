@@ -1,5 +1,5 @@
 import { MasterAEnt } from './master-a-ent';
-import { LazyRefMTO, LazyRef, BinaryStream, BinaryStreamMarker, LazyRefMTOMarker } from '../../src/api/lazy-ref';
+import { LazyRefMTO, LazyRefMTOMarker } from '../../src/api/lazy-ref';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { MasterMinEnt } from './master-min-ent';

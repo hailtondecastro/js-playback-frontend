@@ -2,6 +2,7 @@ import { IFieldProcessor } from "./field-processor";
 import { Observable } from 'rxjs';
 import { TypeLike } from "../typeslike";
 import { LazyObservableProvider } from "./lazy-observable-provider";
+import { BlobOrStream } from "./lazy-ref";
 
 export interface TypeProcessorEntry<T, TM> {type: TypeLike<TM>, processor: IFieldProcessor<T>}
 export interface FieldInfo {
@@ -11,10 +12,13 @@ export interface FieldInfo {
     fieldName: string
 }
 
+export interface CacheHandlerWithInterceptor extends CacheHandler {
+    callback: (operation: 'getFromCache' | 'removeFromCache' | 'putOnCache' | 'clearCache', cacheKey?: string, stream?: BlobOrStream) => void
+}
 export interface CacheHandler {
-    getFromCache(cacheKey: string): Observable<NodeJS.ReadableStream>;
+    getFromCache(cacheKey: string): Observable<BlobOrStream>;
     removeFromCache(cacheKey: string): Observable<void>;
-    putOnCache(cacheKey: string, stream: NodeJS.ReadableStream): Observable<void>;
+    putOnCache(cacheKey: string, stream: BlobOrStream): Observable<void>;
     clearCache(): Observable<void>;
 }
 export enum RecorderLogLevel {
@@ -33,6 +37,7 @@ export interface ConsoleLike {
     warn(message?: any, ...optionalParams: any[]): void;
     log(message?: any, ...optionalParams: any[]): void;
     debug(message?: any, ...optionalParams: any[]): void;
+    trace(message?: any, ...optionalParams: any[]): void;
     info(message?: any, ...optionalParams: any[]): void;
     enabledFor(level: RecorderLogLevel): boolean;
     getLevel(): RecorderLogLevel;
@@ -92,7 +97,7 @@ export enum RecorderLogger {
     RecorderSessionDefault = 'RecorderSessionDefault',
     RecorderSessionDefaultLogRxOpr = 'RecorderSessionDefault.logRxOpr',
     RecorderSessionDefaultMergeWithCustomizerPropertyReplection = 'RecorderSessionDefault.mergeWithCustomizerPropertyReplection',
-    RecorderSessionDefaultRestoreState = 'RecorderSessionDefault.restoreEntireStateFromLiteral',
+    RecorderSessionDefaultRestoreState = 'RecorderSessionDefault.restoreEntireState',
     RecorderDecorators = 'RecorderDecorators',
     LazyRef = 'LazyRef',
     LazyRefSubscribe = 'LazyRef.subscribe',

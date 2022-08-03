@@ -1,29 +1,24 @@
 //require('any-observable/register')('rxjs', {Observable: require('rxjs/Observable').Observable})
 
-import {HttpResponse, HttpHeaders} from '@angular/common/http';
 
 import * as chai from 'chai';
-import { Observable, of, OperatorFunction, from, Subject, BehaviorSubject, concat, throwError } from 'rxjs';
-import resultMasterLiteral from './master-a-test.json';
-import resultMasterLazyPrpOverSizedLiteral from './master-lazy-prp-over-sized-test.json';
-import resultMasterADetailATestLiteral from './master-a-detail-a-test.json';
-import * as memStreams from 'memory-streams';
-import * as fs from 'fs';
-import { AsyncCountdown } from './async-countdown.js';
-import { AsyncCount } from './async-count.js';
-import { ForNodeTest } from './native-for-node-test.js';
-import { FieldInfo } from '../src/api/recorder-config.js';
-import { StringStream, BinaryStream, NonWritableStreamExtraMethods, NonReadableStreamExtraMethods } from '../src/api/lazy-ref.js';
-import { MemStreamReadableStreamAutoEnd } from '../src/implementation/mem-stream-readable-stream-auto-end.js';
-import { delay, tap, map } from 'rxjs/operators';
-import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
+import { of } from 'rxjs';
+import { AsyncCountdown } from './async-countdown';
+import { AsyncCount } from './async-count';
+import { FieldInfo } from '../src/api/recorder-config';
+import { StringBlobOrStream, BinaryBlobOrStream, BlobOrStream } from '../src/api/lazy-ref';
+import { delay, tap, map, buffer } from 'rxjs/operators';
+import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util';
+import { RecorderForDom } from '../src/implementation/native-for-dom';
+import { RecorderDecorators } from '../src/api/recorder-decorators';
 
+//export function testBlock() {
 {
-    describe('ForNodeTest', () => {
-        const debugTimeFactor = 0.5;
+    describe('FieldProcessorsTest', () => {
+        const speedTimeFactor = 0.5;
 
-        it('ForNodeTest.timeoutDecorateRxOpr', 1 == 1 ? (done) => { done(); } : (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 4000 * debugTimeFactor });
+        it('FieldProcessorsTest.timeoutDecorateRxOpr', 1 == 1 ? (done) => { done(); } : (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 1, timeOut: 4000 * speedTimeFactor });
             let asyncCount = new AsyncCount();
 
             const obs$ = of(null).pipe(
@@ -41,10 +36,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(1);
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2000 * speedTimeFactor);
 
-        it('ForNodeTest.StringSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
+        it('FieldProcessorsTest.StringSyncProcessor', (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -53,12 +48,12 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                     ownerType: Object,
                     ownerValue: {}
                 };
-            let toDirectRaw$ = ForNodeTest.StringProcessor.toDirectRaw(originalValue, fieldInfo)
+            let toDirectRaw$ = RecorderDecorators.StringProcessor.toDirectRaw(originalValue, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
-            let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
+            let fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -67,9 +62,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(originalValue).to.eq(respStreamStr.body);
             });
 
-            let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            myReadableStream.setEncoding('utf8');
-            fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
+            //let myReadableStream = new memStreams.ReadableStream(originalValue);
+            
+            let myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -84,10 +80,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(3);
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2000 * speedTimeFactor);
 
-        it('ForNodeTest.BufferSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
+        it('FieldProcessorsTest.BufferSyncProcessor', (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * speedTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -96,32 +92,33 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                     ownerType: Object,
                     ownerValue: {}
                 };
-            let toDirectRaw$ = ForNodeTest.BufferProcessor.toDirectRaw(Buffer.from(originalValue, 'utf8'), fieldInfo)
+            let toDirectRaw$ = RecorderDecorators.BufferProcessor.toDirectRaw(Buffer.from(originalValue, 'binary') , fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr(),
-                    tap((respStream) => {
-                        respStream.body.setEncoding('utf8'); 
-                    })
+                    // tap((respStream) => {
+                    //     if (typeof Blob === 'undefined') {
+                    //         (respStream.body as NodeJS.ReadableStream).setEncoding('utf8'); 
+                    //     }
+                    // })
                 );
-            let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
+            let fromDirectRaw$ = RecorderDecorators.BufferProcessor.fromDirectRaw(toDirectRaw$, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             fromDirectRaw$.subscribe((respStr) => {
-                chai.expect(originalValue).to.eq(respStr.body);
+                chai.expect(originalValue).to.eq(respStr.body.toString('utf8'));
             });
 
-            let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            fromDirectRaw$ = ForNodeTest.BufferProcessor.fromDirectRaw(
-                of({ body: myReadableStream}),
-                fieldInfo).pipe(
-                asyncCount.registerRxOpr(),
-                asyncCountdown.registerRxOpr(),
-                map((respBuffer) => {
-                    return { body: respBuffer.body.toString('utf-8') };
-                })
+            let myReadableStream = RecorderForDom.bufferToBlobOrStream(Buffer.from(originalValue, 'binary'));
+
+            fromDirectRaw$ = RecorderDecorators.BufferProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo).pipe(
+                    asyncCount.registerRxOpr(),
+                    asyncCountdown.registerRxOpr(),
+                    map((respBuffer) => {
+                        return { body: respBuffer.body };
+                    })
             );
             
             fromDirectRaw$.subscribe((respBufferFromStream) => {
@@ -129,20 +126,20 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
             });
             //myReadableStream\.emit\('end'\);
 
-            let literalValue = ForNodeTest.BufferProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
+            let literalValue = RecorderDecorators.BufferProcessor.toLiteralValue(Buffer.from(originalValue, 'utf8'), fieldInfo)
             chai.expect(literalValue).to.eq('b3JpZ2luYWxWYWx1ZV9GT09fQkFB');
 
-            let fromLiteralValue = ForNodeTest.BufferProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+            let fromLiteralValue = RecorderDecorators.BufferProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
             chai.expect((fromLiteralValue as Buffer).toString('utf8')).to.eq(originalValue);
 
             asyncCountdown.createCountdownEnds().subscribe(() => {
                 chai.expect(asyncCount.count).to.eq(3);
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2000 * speedTimeFactor);
 
-        it('ForNodeTest.BinaryStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * debugTimeFactor });
+        it('FieldProcessorsTest.BinaryStreamSyncProcessor', (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 5, timeOut: 1000 * speedTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -151,16 +148,18 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                     ownerType: Object,
                     ownerValue: {}
                 };
-            let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let binaryWRStream: BinaryStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-            let toDirectRaw$ = ForNodeTest.BinaryStreamProcessor.toDirectRaw(binaryWRStream, fieldInfo)
+            let myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            let binaryStream: BinaryBlobOrStream = myReadableStream;
+            let toDirectRaw$ = RecorderDecorators.BinaryBlobOrStreamProcessor.toDirectRaw(binaryStream, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             toDirectRaw$.subscribe((respStream) => {
-                respStream.body.setEncoding('utf8');
-                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                if (typeof Blob === 'undefined') {
+                    (respStream.body as NodeJS.ReadableStream).setEncoding('utf8');
+                }
+                let fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -170,15 +169,15 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 });
             });
 
-            myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let fromDirectRaw$ = ForNodeTest.BinaryStreamProcessor.fromDirectRaw(of({ body: myReadableStream } ), fieldInfo)
+            myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            let fromDirectRaw$ = RecorderDecorators.BinaryBlobOrStreamProcessor.fromDirectRaw(of({ body: myReadableStream } ), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             
             fromDirectRaw$.subscribe((respStream) => {
-                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -187,13 +186,12 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                     chai.expect(originalValue).to.eq(respStreamStr.body);
                 });
             });
-            //myReadableStream\.emit\('end'\);
 
-            myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            binaryWRStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
+            myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            binaryStream = myReadableStream;
 
-            let fromLiteralValue = ForNodeTest.BinaryStreamProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
-            let fromDirectRawB$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue }), fieldInfo).pipe(
+            let fromLiteralValue = RecorderDecorators.BinaryBlobOrStreamProcessor.fromLiteralValue('b3JpZ2luYWxWYWx1ZV9GT09fQkFB', fieldInfo)
+            let fromDirectRawB$ = RecorderDecorators.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue }), fieldInfo).pipe(
                 asyncCount.registerRxOpr(),
                 asyncCountdown.registerRxOpr()
             );
@@ -206,10 +204,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(6);
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2000 * speedTimeFactor);
 
-        it('ForNodeTest.StringStreamSyncProcessor', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1000 * debugTimeFactor });
+        it('FieldProcessorsTest.StringStreamSyncProcessor', (done) => {
+            let asyncCountdown = new AsyncCountdown({ count: 4, timeOut: 1500 * speedTimeFactor });
             let asyncCount = new AsyncCount();
             let originalValue = 'originalValue_FOO_BAA';
             let fieldInfo: FieldInfo = {
@@ -219,15 +217,15 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                     ownerValue: {}
                 };
 
-            let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let stringStream: StringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-            let toDirectRaw$ = ForNodeTest.StringStreamProcessor.toDirectRaw(stringStream, fieldInfo)
+            let myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            let stringStream: BlobOrStream = myReadableStream;
+            let toDirectRaw$ = RecorderDecorators.StringBlobStreamProcessor.toDirectRaw(stringStream, fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
                 );
             toDirectRaw$.subscribe((respStream) => {
-                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                let fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -237,10 +235,8 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 });
             });
 
-            myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let myWriStream: NodeJS.WritableStream = new memStreams.WritableStream();
-            stringStream = Object.assign(myWriStream, NonReadableStreamExtraMethods);
-            let fromDirectRaw$ = ForNodeTest.StringStreamProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
+            myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+            let fromDirectRaw$ = RecorderDecorators.StringBlobStreamProcessor.fromDirectRaw(of({ body: myReadableStream }), fieldInfo)
                 .pipe(
                     asyncCount.registerRxOpr(),
                     asyncCountdown.registerRxOpr()
@@ -248,8 +244,10 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
 
             fromDirectRaw$.subscribe((respStream) => {
                 asyncCount.doNonPipedIncrement();
-                respStream.body.setEncoding('utf8');
-                let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
+                if (typeof Blob === 'undefined') {
+                    (respStream.body as NodeJS.ReadableStream).setEncoding('utf8');
+                }
+                let fromDirectRaw$ = RecorderDecorators.StringProcessor.fromDirectRaw(of(respStream), fieldInfo)
                     .pipe(
                         asyncCount.registerRxOpr(),
                         asyncCountdown.registerRxOpr()
@@ -261,8 +259,8 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
             //myReadableStream\.emit\('end'\);
             //myReadableStream\.emit\('end'\);
 
-            let fromLiteralValue = ForNodeTest.StringStreamProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo);
-            let fromDirectRawB$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue}), fieldInfo);
+            let fromLiteralValue = RecorderDecorators.StringBlobStreamProcessor.fromLiteralValue('originalValue_FOO_BAA', fieldInfo);
+            let fromDirectRawB$ = RecorderDecorators.StringProcessor.fromDirectRaw(of({ body: fromLiteralValue}), fieldInfo);
             fromDirectRawB$.subscribe((respStreamStr) => {
                 chai.expect(originalValue).to.eq(respStreamStr.body);
             })
@@ -271,48 +269,50 @@ import { timeoutDecorateRxOpr } from '../src/implementation/rxjs-util.js';
                 chai.expect(asyncCount.count).to.eq(5);
                 done();
             });
-        }).timeout(2000 * debugTimeFactor);
+        }).timeout(2000 * speedTimeFactor);
 
-        it('ForNodeTest.CacheHandlerSync', (done) => {
-            let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
-            let asyncCount = new AsyncCount();
-            let originalValue = 'originalValue_FOO_BAA';
-            // let fieldInfo: FieldInfo = {
-            //         fieldName: 'fieldName',
-            //         fieldType: String,
-            //         ownerType: Object,
-            //         ownerValue: {}
-            //     };
+        // it('FieldProcessorsTest.CacheHandlerSync', (done) => {
+        //     let asyncCountdown = new AsyncCountdown({ count: 3, timeOut: 1000 * debugTimeFactor });
+        //     let asyncCount = new AsyncCount();
+        //     let originalValue = 'originalValue_FOO_BAA';
+        //     // let fieldInfo: FieldInfo = {
+        //     //         fieldName: 'fieldName',
+        //     //         fieldType: String,
+        //     //         ownerType: Object,
+        //     //         ownerValue: {}
+        //     //     };
 
-            let myReadableStream = new MemStreamReadableStreamAutoEnd(originalValue);
-            let stringStream: StringStream = Object.assign(myReadableStream, NonWritableStreamExtraMethods);
-            let putOnCache$ = ForNodeTest.CacheHandlerSync.putOnCache('foo_key', stringStream)
-                .pipe(
-                    asyncCount.registerRxOpr(),
-                    asyncCountdown.registerRxOpr()
-                );
-            putOnCache$.subscribe(() => {
-                let getFromCache$ = ForNodeTest.CacheHandlerSync.getFromCache('foo_key')
-                    .pipe(
-                        asyncCount.registerRxOpr(),
-                        asyncCountdown.registerRxOpr()
-                    );
-                getFromCache$.subscribe((stream) => {
-                    let fromDirectRaw$ = ForNodeTest.StringProcessor.fromDirectRaw(of({ body: stream }), null)
-                        .pipe(
-                            asyncCount.registerRxOpr(),
-                            asyncCountdown.registerRxOpr()
-                        );
-                    fromDirectRaw$.subscribe((respStreamStr) => {
-                        chai.expect(originalValue).to.eq(respStreamStr.body);
-                    });
-                });
-            });
+        //     let myReadableStream = RecorderForDom.stringToBlobOrStream(originalValue);
+        //     let stringStream: StringBlobOrStream = myReadableStream;
+        //     let putOnCache$ = RecorderDecorators.CacheHandlerSync.putOnCache('foo_key', stringStream)
+        //         .pipe(
+        //             asyncCount.registerRxOpr(),
+        //             asyncCountdown.registerRxOpr()
+        //         );
+        //     putOnCache$.subscribe(() => {
+        //         let getFromCache$ = FieldProcessorsTest.CacheHandlerSync.getFromCache('foo_key')
+        //             .pipe(
+        //                 asyncCount.registerRxOpr(),
+        //                 asyncCountdown.registerRxOpr()
+        //             );
+        //         getFromCache$.subscribe((stream) => {
+        //             let fromDirectRaw$ = FieldProcessorsTest.StringProcessor.fromDirectRaw(of({ body: stream }), null)
+        //                 .pipe(
+        //                     asyncCount.registerRxOpr(),
+        //                     asyncCountdown.registerRxOpr()
+        //                 );
+        //             fromDirectRaw$.subscribe((respStreamStr) => {
+        //                 chai.expect(originalValue).to.eq(respStreamStr.body);
+        //             });
+        //         });
+        //     });
 
-            asyncCountdown.createCountdownEnds().subscribe(() => {
-                chai.expect(asyncCount.count).to.eq(3);
-                done();
-            });
-        }).timeout(2000 * debugTimeFactor);
+        //     asyncCountdown.createCountdownEnds().subscribe(() => {
+        //         chai.expect(asyncCount.count).to.eq(3);
+        //         done();
+        //     });
+        // }).timeout(2000 * debugTimeFactor);
     });
 }
+
+//testBlock();

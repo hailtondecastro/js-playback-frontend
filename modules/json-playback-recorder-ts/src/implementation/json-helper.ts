@@ -6,41 +6,6 @@ import { LodashLike } from '../implementation/lodash-like';
  * TODO:
  */
 export class JSONHelper {
-    /**
-     * TODO:
-     * @param k 
-     * @param v 
-     */
-    // public static resolveRefs(jsonObj: any, removeJsId: boolean): any {
-    //     let resolveRefMap: Map<number, any> = new Map<number, any>();
-    //     JSONHelper.resolveRefsRecursivo(resolveRefMap, jsonObj, removeJsId);
-
-    //     return jsonObj;
-    // }
-
-    // private static resolveRefsRecursivo(resolveRefMap: Map<number, any>, jsonObj: any, removeJsId: boolean) {
-    //     let currParent: any = jsonObj;
-    //     let array = Object.getOwnPropertyNames(jsonObj);
-    //     array.forEach(fieldName => {
-    //         let fieldValue: any = currParent[fieldName];
-    //         if (typeof fieldValue !== 'object') {
-    //             if (fieldName === 'jsId') {
-    //                 (resolveRefMap as any)[fieldValue] = currParent;
-    //                 if (removeJsId) {
-    //                     delete currParent['jsId'];
-    //                 }
-    //             } else {
-    //                 //nada
-    //             }
-    //         } else if (LodashLike.has(fieldValue, 'rJsId')) {
-    //             let refJsId: any = fieldValue['rJsId'];
-    //             currParent[fieldName] = (resolveRefMap as any)[refJsId];
-    //         } else {
-    //             JSONHelper.resolveRefsRecursivo(resolveRefMap, fieldValue, removeJsId);
-    //         } 
-    //     });
-    // }
-
     private static MergeWithCustomizerClass = class {
         constructor(){
         }
@@ -99,7 +64,7 @@ export class JSONHelper {
         }
     }
 
-    private static convertToLiteralObjectPriv(sourceObject: any, removeDashFields: boolean, customizerObj: any ): any {
+    private static convertToStringifiableObjectPriv(sourceObject: any, removeDashFields: boolean, customizerObj: any ): any {
 
         let result: any = null;
 
@@ -107,7 +72,7 @@ export class JSONHelper {
             let valueColl: any = JSONHelper.createCollection(sourceObject.constructor);
             for (const item of sourceObject) {
                 if (LodashLike.isObject(item, new Set([Date, Buffer]))) {
-                    JSONHelper.addOnCollection(valueColl, JSONHelper.convertToLiteralObjectPriv(item, removeDashFields, customizerObj));
+                    JSONHelper.addOnCollection(valueColl, JSONHelper.convertToStringifiableObjectPriv(item, removeDashFields, customizerObj));
                 } else {
                     JSONHelper.addOnCollection(valueColl, item);
                 }
@@ -125,8 +90,8 @@ export class JSONHelper {
         return result;
     }
 
-    public static convertToLiteralObject(sourceObject: any, removeDashFields: boolean): any {
+    public static convertToStringifiableObject(sourceObject: any, removeDashFields: boolean): any {
         let customizerObj = new JSONHelper.MergeWithCustomizerClass();
-        return JSONHelper.convertToLiteralObjectPriv(sourceObject, removeDashFields, customizerObj);
+        return JSONHelper.convertToStringifiableObjectPriv(sourceObject, removeDashFields, customizerObj);
     }
 }

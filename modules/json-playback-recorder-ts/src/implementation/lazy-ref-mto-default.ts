@@ -1,11 +1,11 @@
-import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver, isObservable } from 'rxjs';
+import { Observable, Subscription, Subscriber, of, OperatorFunction, PartialObserver, isObservable, timer } from 'rxjs';
 import { RecorderLogLevel } from '../api/recorder-config';
-import { map, tap, share, take } from 'rxjs/operators';
+import { map, tap, share, take, flatMap } from 'rxjs/operators';
 import { RecorderManagerDefault } from './recorder-manager-default';
 import { flatMapJustOnceRxOpr } from './rxjs-util';
 import { ResponseLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
-import { LazyRefPrpMarker, LazyRefMTOMarker, LazyRefMTOImplementor } from '../api/lazy-ref';
+import { LazyRefPrpMarker, LazyRefMTOMarker, LazyRefMTOImplementor, BlobOrStream } from '../api/lazy-ref';
 import { RecorderSessionImplementor, PlayerSnapshot } from '../api/recorder-session';
 import { TapeActionType, TapeAction } from '../api/tape';
 import { TapeActionDefault } from './tape-default';
@@ -45,7 +45,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
         this.respObs = null;
         const isValueByFieldProcessor: {value: boolean} = { value: false };
 
-        if (!this.session.isOnRestoreEntireStateFromLiteral() && !this.isOnLazyLoading) {
+        if (!this.session.isOnRestoreEntireState() && !this.isOnLazyLoading) {
             if (!this.session.isRecording()) {
                 throw new Error('Invalid operation. It is not recording. Is this Error correct?! Me:\n' + this);
             }
@@ -59,8 +59,8 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                     thisLocal.consoleLike.groupEnd();
                 }
 
-                let mdRefererObj = this.bMdRefererObj;
-                let mdLazyLoadedObj = this.bMdLazyLoadedObj;
+                let mdRefererObj = this.mdRefererObj;
+                let mdLazyLoadedObj = this.mdLazyLoadedObj;
 
                 //recording tape
                 const action: TapeAction = new TapeActionDefault();
@@ -114,14 +114,14 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
         if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
             return super.asObservable();
         } else {
-            //providing new readable (flipped) NodeJS.ReadableStream from cache
+            //providing new readable (flipped) BlobOrStream from cache
             //this.respObs is never null
             if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
                 throw new Error('LazyRefMTODefault.subscribe: thisLocal.attachRefId is not null but this is not lazyDirectRawWrite. Me:\n' +
                     this);
             }
             let localObs$ = thisLocal.respObs;
-            const localObsL$ = (localObs$ as Observable<ResponseLike<NodeJS.ReadableStream>>).pipe(
+            const localObsL$ = (localObs$ as Observable<ResponseLike<BlobOrStream>>).pipe(
                 thisLocal.flatMapKeepAllFlagsRxOpr((respLikeStream) => {
                     const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(respLikeStream);
                     if (isObservable(processResponseOnLazyLoading)) {
@@ -130,7 +130,7 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                     } else {
                         return this.thrownError(new Error('This should not happen soud not happen.This LazyRef is lazyDirectRawWrite'));
                     }
-                }) as OperatorFunction<ResponseLike<NodeJS.ReadableStream>, L>,
+                }) as OperatorFunction<ResponseLike<BlobOrStream>, L>,
                 //thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
                 thisLocal.session.registerProvidedObservablesRxOpr(),
                 tap(
@@ -174,20 +174,23 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
 
         const thisLocalNextOnAsync = {value: false};
 
-        if (thisLocal.lazyLoadedObj == null) {
+        //if (thisLocal.lazyLoadedObj == null) {
+        if (!thisLocal.lazyLoadedObjResoved) {
             if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLikeSubs.debug(
                     '(thisLocal.lazyLoadedObj == null)\n'
                     +'It may mean that we have not subscribed yet in the Observable of Response');
             }
-            if (this.respObs == null) {
-                if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
-                    thisLocal.consoleLikeSubs.debug(
-                        '(this.respObs == null)\n'
-                        +'Means that we already subscribed to an earlier moment in the Observable of Reponse.\n'
-                        +'We will simply call the super.subscribe and call  next()');
-                }
-            } else if (this.session.getCachedBySignature(this.signatureStr)) {
+            //2020-12-07T08:45:30.236Z: This not not true now, we can have (!this.isLazyLoaded()) and (!this.respOb).
+            // if (this.respObs == null) {
+            //     if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
+            //         thisLocal.consoleLikeSubs.debug(
+            //             '(this.respObs == null)\n'
+            //             +'Means that we already subscribed to an earlier moment in the Observable of Reponse.\n'
+            //             +'We will simply call the super.subscribe and call  next()');
+            //     }
+            // } else
+            if (this.session.getCachedBySignature(this.signatureStr)) {
                 if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeSubs.debug(
                         '(this.lazyLoadedObj == null && this.respObs != null && this.session.getCachedBySignature(this.signatureStr)\n'
@@ -226,14 +229,36 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                         'will not make two trips to the server');
                 }
                 //return thisLocal.processResponseOnLazyLoading(response);
-                let localObs$: Observable<L> = 
-                    thisLocal.respObs.pipe(
-                        thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'),
-                        thisLocal.mapJustOnceKeepAllFlagsRxOpr((responseLike) => {
-                            const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(responseLike);
-                            return processResponseOnLazyLoading as L;
-                        })
-                    );
+
+                let localObs$: Observable<L> = of(null).pipe(
+                    this.flatMapJustOnceKeepAllFlagsRxOpr(() => {
+                        if(thisLocal.respObs) {
+                            const thisRespObs = thisLocal.respObs;
+                            thisLocal.respObs = null;
+                            thisLocal.waitFromResponseToProcess.beginWait(thisLocal);
+                            return thisRespObs.pipe(
+                                //2020-12-08T06:12:03.862Z: There is no reason for it to exist, that I remember
+                                //thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
+                                thisLocal.session.registerProvidedObservablesRxOpr(),
+                                thisLocal.session.logRxOpr('LazyRef_subscribe_respObs'),
+                                thisLocal.mapJustOnceKeepAllFlagsRxOpr((responseLike) => {
+                                    const processResponseOnLazyLoading = thisLocal.processResponseOnLazyLoading(responseLike);
+                                    return processResponseOnLazyLoading as L;
+                                })
+                            );
+                        } else {
+                            if(thisLocal.isLazyLoaded()) {
+                                return of(thisLocal.lazyLoadedObj);
+                            } else {
+                                return thisLocal.waitFromResponseToProcess.getWait().pipe(
+                                    thisLocal.mapJustOnceKeepAllFlagsRxOpr(() => {
+                                        return thisLocal.lazyLoadedObj;
+                                    })
+                                );
+                            }
+                        }
+                    })
+                );
 
                 thisLocalNextOnAsync.value = true;
                 observerNew.next = (value: L) => {
@@ -244,6 +269,10 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                     }
 
                     thisLocal.setLazyObjOnLazyLoadingNoNext(value);
+                    //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
+                    timer(0).subscribe(() => {
+                        thisLocal.waitFromResponseToProcess.emitEndWait(thisLocal);
+                    });
 
                     if (!observerNew.closed) {
                         if (thisLocal.consoleLikeSubs.enabledFor(RecorderLogLevel.Trace)) {
@@ -261,26 +290,34 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                             thisLocal.consoleLikeSubs.groupEnd();
                         }
                     }
-                }
+                };
+                observerNew.error = (err: any) => {
+                    //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
+                    timer(0).subscribe(() => {
+                        thisLocal.waitFromResponseToProcess.emitEndWait(thisLocal, err);
+                    });
+                    observerOriginal.error(err);
+                };
 
                 thisLocalNextOnAsync.value = true;
-                localObs$ = localObs$.pipe(
-                    thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
-                    thisLocal.session.registerProvidedObservablesRxOpr(),
-                    tap(() => {
-                        //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
-                        //lazyDirectRawWrite is always readed from cache.
-                        if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
-                            thisLocal.respObs = null;
-                        }
-                    }),
-                    share()
-                );
+                //2020-12-07T08:45:30.236Z
+                // localObsL$ = localObsL$.pipe(
+                //     thisLocal.session.registerLazyRefSubscriptionRxOpr(thisLocal.signatureStr),
+                //     thisLocal.session.registerProvidedObservablesRxOpr(),
+                //     tap(() => {
+                //         //so we will mark that you already hear an entry in the Response Observable, and we will not make two trips to the server.
+                //         //lazyDirectRawWrite is always readed from cache.
+                //         if (!fieldEtc.propertyOptions.lazyDirectRawWrite) {
+                //             thisLocal.respObs = null;
+                //         }
+                //     }),
+                //     share()
+                // );
                 localObs$.subscribe(observerNew);
             }
         } else {
             if (fieldEtc.prpGenType.gType === LazyRefPrpMarker && fieldEtc.propertyOptions.lazyDirectRawRead) {
-                //providing new readable (flipped) NodeJS.ReadableStream from cache
+                //providing new readable (flipped) BlobOrStream from cache
                 if (thisLocal.attachRefId) {
                     throw new Error('LazyRefBase.subscribe: thisLocal.attachRefId must be null when this.lazyLoadedObj is not null. Me:\n' +
                         this);
@@ -356,14 +393,14 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
         return resultSubs;
     }
 
-    public processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>): L | Observable<L> {
+    public processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadableStream>): L | Observable<L> {
         const thisLocal = this;
         let mdRefererObj: PlayerMetadatas = { $iAmPlayerMetadatas$: true };
         let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<L, any>(this.session.fielEtcCacheMap, this.refererObj, this.refererKey, this.session.manager.config);
         if (this.genericNode.gType !== LazyRefMTOMarker) {
             throw new Error('Wrong type: ' + this.genericNode.gType.name + '. Me:\n' + this);
         }
-        let playerSnapshot: PlayerSnapshot | NodeJS.ReadStream;
+        let playerSnapshot: PlayerSnapshot | NodeJS.ReadableStream;
         playerSnapshot = responselike.body;
         if (LodashLike.has(this.refererObj, this.session.manager.config.playerMetadatasName)) {
             mdRefererObj = LodashLike.get(this.refererObj, this.session.manager.config.playerMetadatasName);
@@ -384,16 +421,16 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
             //  not piped with new Observable.
         }
         if (this.signatureStr) {
-            if (!this.session.isOnRestoreEntireStateFromLiteral()) {
+            if (!this.session.isOnRestoreEntireState()) {
                 if (!mdRefererObj.$signature$ && !mdRefererObj.$isComponentPlayerObjectId$) {
-                    throw new Error('The referer object has no mdRefererObj.$signature$. This should not happen. Me:\n' + this);
+                    throw new Error('The referer object has no mdRefererObj.$signature$. It its alowed only when mdRefererObj.$isComponentPlayerObjectId$. This should not happen. Me:\n' + this);
                 }
                 if (!mdRefererObj.$signature$) {
                     if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {
-                        thisLocal.consoleLikeProcResp.debug('LazyRefBase.processResponse: (!mdRefererObj.$signature$): owner entity not found for LazyRef, the owner must be a player side component. Me:\n' + this);
+                        thisLocal.consoleLikeProcResp.debug('processResponse: (!mdRefererObj.$signature$): owner entity not found for LazyRef, the owner must be a player side component. Me:\n' + this);
                     }
                 }
-                this.session.storeOriginalLiteralEntry(
+                this.session.storeOriginalStringifiableEntry(
                     {
                         method: 'lazyRef',
                         ownerSignatureStr: mdRefererObj.$signature$,
@@ -403,7 +440,8 @@ export class LazyRefMTODefault<L extends object, I> extends LazyRefBase<L, I> im
                             iAmAnEntityRef: true,
                             signatureStr: thisLocal.signatureStr
                         }
-                    }
+                    },
+                    thisLocal.signatureStr
                 );
             }
             if (thisLocal.consoleLikeProcResp.enabledFor(RecorderLogLevel.Trace)) {

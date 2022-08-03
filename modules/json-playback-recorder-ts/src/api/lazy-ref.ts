@@ -1,209 +1,35 @@
 import { PlayerMetadatas } from "./player-metadatas";
 import { PartialObserver, Observable, Subscription, OperatorFunction } from "rxjs";
 import { ConsoleLike } from "./recorder-config";
-import { Readable } from "stream";
 import { ResponseLike } from "../typeslike";
 import { GenericNode } from "./generic-tokenizer";
 import { RecorderSessionImplementor, PlayerSnapshot } from "./recorder-session";
 import { IFieldProcessorEvents } from "./field-processor";
+import { WaitHolder } from '../implementation/rxjs-util';
+import { RecorderDecorators } from "./recorder-decorators";
 
-
-
-export class StringStreamMarker {
+export class BlobOrStreamMarker {
+    public iAmBlobOrStreamMarker = true;
 }
 
-export class BinaryStreamMarker {
+export class StringBlobOrStreamMarker extends BlobOrStreamMarker {
 }
 
-export const NonWritableStreamExtraMethods = {
-  get writable(): boolean {
-      return false;
-  },
-  set writable(value) {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  write: (): boolean => {
-      throw new Error('NonWritableStreamExtraMethods');
-  }, 
-  // write: (str: string, encoding?: string, cb?: Function): boolean => {
-  //     throw new Error('WritableStream');
-  // },
-  end: (): void => {
-      throw new Error('NonWritableStreamExtraMethods');
-  }
-  // end(cb?: Function): void;
-  // end(buffer: Buffer, cb?: Function): void;
-  // end(str: string, cb?: Function): void;
-  // end(str: string, encoding?: string, cb?: Function): void;
+export class BinaryBlobOrStreamMarker extends BlobOrStreamMarker {
 }
 
-export const NonReadableStreamExtraMethods = {
-  get readable(): boolean{
-      return false;
-  },
-  set readable(value) {
-      throw new Error('NonReadableStreamExtraMethods');
-  },
-  read: (): string | Buffer => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  setEncoding: () => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  pause: () => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  resume: () => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  isPaused: () => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  pipe: <T extends NodeJS.WritableStream>(): T => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  unpipe: <T extends NodeJS.WritableStream>() => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  unshift: (): void => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  wrap: (): any => {
-      throw new Error('NonWritableStreamExtraMethods');
-  },
-  [Symbol.asyncIterator]: (): AsyncIterableIterator<string | Buffer> => {
-      throw new Error('NonWritableStreamExtraMethods');
-  }
-}
-
-export interface WRStream extends NodeJS.ReadWriteStream {
-  /**
-   * Event emitter
-   * The defined events on documents including (For readable):
-   * 1. close
-   * 2. data
-   * 3. end
-   * 4. readable
-   * 5. error
-   * 
-   * (For Writable):
-   * 1. close
-   * 2. drain
-   * 3. error
-   * 4. finish
-   * 5. pipe
-   * 6. unpipe
-   */
-  addListener(event: "close", listener: () => void): this;
-  addListener(event: "data", listener: (chunk: any) => void): this;
-  addListener(event: "end", listener: () => void): this;
-  addListener(event: "readable", listener: () => void): this;
-  addListener(event: "error", listener: (err: Error) => void): this;
-
-  addListener(event: "drain", listener: () => void): this;
-  addListener(event: "finish", listener: () => void): this;
-  addListener(event: "pipe", listener: (src: Readable) => void): this;
-  addListener(event: "unpipe", listener: (src: Readable) => void): this;
-
-  addListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-  emit(event: "close"): boolean;
-  emit(event: "data", chunk: any): boolean;
-  emit(event: "end"): boolean;
-  emit(event: "readable"): boolean;
-  emit(event: "error", err: Error): boolean;
-
-  emit(event: "drain"): boolean;
-  emit(event: "finish"): boolean;
-  emit(event: "pipe", src: Readable): boolean;
-  emit(event: "unpipe", src: Readable): boolean;
-
-  emit(event: string | symbol, ...args: any[]): boolean;
-
-  on(event: "close", listener: () => void): this;
-  on(event: "data", listener: (chunk: any) => void): this;
-  on(event: "end", listener: () => void): this;
-  on(event: "readable", listener: () => void): this;
-  on(event: "error", listener: (err: Error) => void): this;
-
-  on(event: "drain", listener: () => void): this;
-  on(event: "finish", listener: () => void): this;
-  on(event: "pipe", listener: (src: Readable) => void): this;
-  on(event: "unpipe", listener: (src: Readable) => void): this;
-
-  on(event: string | symbol, listener: (...args: any[]) => void): this;
-
-  once(event: "close", listener: () => void): this;
-  once(event: "data", listener: (chunk: any) => void): this;
-  once(event: "end", listener: () => void): this;
-  once(event: "readable", listener: () => void): this;
-  once(event: "error", listener: (err: Error) => void): this;
-
-  once(event: "drain", listener: () => void): this;
-  once(event: "finish", listener: () => void): this;
-  once(event: "pipe", listener: (src: Readable) => void): this;
-  once(event: "unpipe", listener: (src: Readable) => void): this;
-
-  once(event: string | symbol, listener: (...args: any[]) => void): this;
-
-  prependListener(event: "close", listener: () => void): this;
-  prependListener(event: "data", listener: (chunk: any) => void): this;
-  prependListener(event: "end", listener: () => void): this;
-  prependListener(event: "readable", listener: () => void): this;
-
-  prependListener(event: "drain", listener: () => void): this;
-  prependListener(event: "finish", listener: () => void): this;
-  prependListener(event: "pipe", listener: (src: Readable) => void): this;
-  prependListener(event: "unpipe", listener: (src: Readable) => void): this;
-  
-  prependListener(event: "error", listener: (err: Error) => void): this;
-
-  once(event: "close", listener: () => void): this;
-  once(event: "drain", listener: () => void): this;
-  once(event: "finish", listener: () => void): this;
-  once(event: "pipe", listener: (src: Readable) => void): this;
-  once(event: "unpipe", listener: (src: Readable) => void): this;
-
-  prependListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-  prependOnceListener(event: "close", listener: () => void): this;
-  prependOnceListener(event: "data", listener: (chunk: any) => void): this;
-  prependOnceListener(event: "end", listener: () => void): this;
-  prependOnceListener(event: "readable", listener: () => void): this;
-  prependOnceListener(event: "error", listener: (err: Error) => void): this;
-
-  prependOnceListener(event: "drain", listener: () => void): this;
-  prependOnceListener(event: "finish", listener: () => void): this;
-  prependOnceListener(event: "pipe", listener: (src: Readable) => void): this;
-  prependOnceListener(event: "unpipe", listener: (src: Readable) => void): this;
-
-  prependOnceListener(event: string | symbol, listener: (...args: any[]) => void): this;
-
-  removeListener(event: "close", listener: () => void): this;
-  removeListener(event: "data", listener: (chunk: any) => void): this;
-  removeListener(event: "end", listener: () => void): this;
-  removeListener(event: "readable", listener: () => void): this;
-  removeListener(event: "error", listener: (err: Error) => void): this;
-
-  removeListener(event: "drain", listener: () => void): this;
-  removeListener(event: "finish", listener: () => void): this;
-  removeListener(event: "pipe", listener: (src: Readable) => void): this;
-  removeListener(event: "unpipe", listener: (src: Readable) => void): this;
-
-  removeListener(event: string | symbol, listener: (...args: any[]) => void): this;
-}
+export declare type BlobOrStream = NodeJS.ReadableStream | Blob;
 
 /**
- * Identical to WRStream. Helps to define IFieldProcessor.
+ * Helps to define IFieldProcessor.
  */
-export interface BinaryStream extends WRStream {
-}
+export declare type BinaryBlobOrStream = BlobOrStream;
 
 /**
- * Identical to WRStream. Helps to define IFieldProcessor.
+ * Helps to define IFieldProcessor.
  */
-export interface StringStream extends BinaryStream {
-}
+export declare type StringBlobOrStream  = BlobOrStream;
+
 export class LazyRefPrpMarker {
 }
 export class LazyRefOTMMarker {
@@ -217,7 +43,7 @@ export class LazyRefMTOMarker {
  * 
  * Do not use this as the field type, use {@link LazyRefMTO} or {@link LazyRefOTM}.
  * Use this as 'interface like' to do your own implementation if you need! 
- * See {@link RecorderSession#createApropriatedLazyRef}
+ * See {@link RecorderSession#createApropriateLazyRef}
  * 
  * Code sample:
  * ```ts
@@ -274,9 +100,9 @@ export interface LazyRef<L extends object, I> {
      * Signature identifier generated by backend server.
      */
     signatureStr: string;
-    bMdRefererObj: PlayerMetadatas;
-    bMdLazyLoadedObj: PlayerMetadatas;
-    pbMdRefererPlayerObjectId: PlayerMetadatas;
+    mdRefererObj: PlayerMetadatas;
+    mdLazyLoadedObj: PlayerMetadatas;
+    mdRefererPlayerObjectId: PlayerMetadatas;
 
     consoleLike: ConsoleLike;
 	consoleLikeSubs: ConsoleLike;
@@ -305,6 +131,11 @@ export interface LazyRef<L extends object, I> {
      * @returns true if it is lazy loaded.
      */
     isLazyLoaded(): boolean;
+
+    /**
+     * Use this to reconfigure to uninitialized. This can be used after some erro pn lazy initialization.
+     */
+    backToUnitialized(): void;
 }
 
 /**
@@ -356,9 +187,11 @@ export interface LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
      * TODO:  
      * Framework internal use.
      */
-    processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadStream>):  L | Observable<L>;
+    processResponse(responselike: ResponseLike<PlayerSnapshot | NodeJS.ReadableStream>):  L | Observable<L>;
     /** Framework internal use. */
     genericNode: GenericNode;
+    /** Framework internal use. */
+    propertyOptions: RecorderDecorators.PropertyOptions<L>;
     /** Framework internal use. */
 	refererObj: any;
     /** Framework internal use. */
@@ -371,8 +204,31 @@ export interface LazyRefImplementor<L extends object, I> extends LazyRef<L, I> {
     respObs: Observable<ResponseLike<Object>>;
     /** Framework internal use. */
     fieldProcessorEvents: IFieldProcessorEvents<L>;
-}
 
+    // /**
+    //  * Framework internal use.  
+    //  * Used to wait when someone try lazy load between
+    //  * the first request and the end of processResponse().
+    //  */
+    // createTemporaryWait(): void;
+    // /**
+    //  * Framework internal use.  
+    //  * @see createTemporaryWait()
+    //  */
+    // temporaryWait(): Observable<void>;
+    // /**
+    //  * Framework internal use.  
+    //  * @see createTemporaryWait()
+    //  */
+    // emitEndForTemporaryWait(): void;
+
+    /**
+     * Framework internal use.  
+     * Used to wait when someone try lazy load between
+     * the first request and the end of processResponse().
+     */
+    waitFromResponseToProcess: WaitHolder;
+}
 
 export interface LazyRefPrpImplementor<L extends object> extends LazyRefImplementor<L, undefined>, LazyRefPrp<L> {
     /**

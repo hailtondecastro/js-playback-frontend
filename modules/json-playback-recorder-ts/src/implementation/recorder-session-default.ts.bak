@@ -1,13 +1,13 @@
 import { LazyRef, LazyRefPrpMarker, LazyRefPrp, LazyRefPrpImplementor, LazyRefOTMMarker, LazyRefMTOMarker, LazyRefMTO, LazyRefMTOImplementor, BlobOrStream} from '../api/lazy-ref';
 import { RecorderManagerDefault } from './recorder-manager-default';
-import { map, flatMap, tap, share, timeout, catchError } from 'rxjs/operators';
-import { Observable, of, OperatorFunction, ObservableInput, isObservable, timer, throwError, Subscription } from 'rxjs';
+import { map, flatMap, tap, share, timeout } from 'rxjs/operators';
+import { Observable, of, OperatorFunction, ObservableInput, isObservable } from 'rxjs';
 import { RecorderConstants } from './recorder-constants';
 import { SetCreator } from './set-creator';
 import { JSONHelper } from './json-helper';
 import { v1 as uuidv1} from 'uuid';
 import { FieldEtc } from '../api/field-etc';
-import { mapJustOnceRxOpr, combineFirstSerial, WaitHolder } from './rxjs-util';
+import { mapJustOnceRxOpr, combineFirstSerial } from './rxjs-util';
 import { StringifiableOriginalValueEntry, RecorderSession as RecorderSession, EntityRef, SessionState, PlayerSnapshot, RecorderSessionImplementor } from '../api/recorder-session';
 import { TypeLike } from '../typeslike';
 import { PlayerMetadatas } from '../api/player-metadatas';
@@ -28,7 +28,7 @@ import { LazyRefPrpDefault } from './lazy-ref-prp-default';
 import { RecorderForDom } from './native-for-dom';
 
 
-interface ResolvedMetadataEtc {
+interface ResolveMetadataReturn {
     refererObjMd: PlayerMetadatas,
     objectMd: PlayerMetadatas,
     playerObjectIdMd: PlayerMetadatas,
@@ -47,7 +47,6 @@ const DummyUndefinedForMergeAsync = new UndefinedForMergeAsync();
 
 export class RecorderSessionDefault implements RecorderSessionImplementor {
     private _objectsBySignature: Map<string, any> = null;
-    private _playerObjectsBySignature: Map<string, any> = null;
     private _objectsByCreationId: Map<number, any> = null;
     private _lazyrefsByEntityMap: Map<object, Set<LazyRefImplementor<any, any>>> = null;
     private _fielEtcCacheMap: Map<Object, Map<String, FieldEtc<any, any>>> = null;
@@ -72,8 +71,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     private _isOnRestoreEntireState = false;
     private _sessionId: string;
     //private _asyncTasksWaitingArr: Set<Observable<any>> = new Set();
-    //private _asyncTasksWaitingArrNew: Set<Observable<any>> = new Set();
-    //private _asyncTasksWaitingSourcesArrNew: Set<Observable<any>> = new Set();
+    private _asyncTasksWaitingArrNew: Set<Observable<any>> = new Set();
+    private _asyncTasksWaitingSourcesArrNew: Set<Observable<any>> = new Set();
     
 
     deepFunctionsSource(obj: any, visitedSet: Set<any>): string {
@@ -134,8 +133,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return resultOpr;
     }
 
-    private _waitForPendingTasks: WaitHolder;
-
     registerProvidedObservablesRxOpr<T>(): OperatorFunction<T, T> {
         let thisLocal = this;
 
@@ -149,68 +146,20 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         //END: Used to find losted obs.subscribed()
         const resultOpr: OperatorFunction<T, T> = (source: Observable<T>) => {
             const sourceRef = { value: source };
-
-            const beginWaitDone = { ref: undefined as boolean};
-            const sourceSubRef: { ref: Subscription } = { ref: undefined};
-            // const result2$ = new Observable<T>(
-            //     (subscriber) => {
-            //         if(!beginWaitDone.ref) {
-            //             beginWaitDone.ref = true;
-            //             thisLocal._waitForPendingTasks.beginWait(sourceRef.value);
-            //         }
-            //         sourceSubRef.ref = source.subscribe(
-            //             {
-            //                 next: (value: T) => {
-            //                     //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
-            //                     timer(0).subscribe(() => {
-            //                         thisLocal._waitForPendingTasks.emitEndWait(sourceRef.value);
-            //                     });
-            //                     subscriber.next(value);
-            //                 },
-            //                 error: (err) => {
-            //                     //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
-            //                     const reThwErr = new Error('unespected!');
-            //                     reThwErr.stack += '\nCaused by:\n'+err.stack + '\nSubscribed on:\n' + stackSubscriberRef.value;
-            //                     (reThwErr as any).cause = err;
-            //                     timer(0).subscribe(() => {
-            //                         thisLocal._waitForPendingTasks.emitEndWait(sourceRef.value, reThwErr);
-            //                     });
-            //                     subscriber.error(reThwErr);
-            //                 },
-            //                 complete: () => {
-            //                     subscriber.complete();
-            //                 }
-            //             }
-            //         );
-            //         return (
-            //             {
-            //                 unsubscribe: () => {
-            //                     thisLocal._waitForPendingTasks.emitEndWait(sourceRef.value);
-            //                     sourceSubRef.ref.unsubscribe();
-            //                 }
-            //             }
-            //         );
-            //     }
-            // );
-
             //thisLocal.testObservableHasCircle(source);
             const result$ = of(null).pipe(
                 tap(
                     {
                         next: () => {
-                            if(!beginWaitDone.ref) {
-                                beginWaitDone.ref = true;
-                                thisLocal._waitForPendingTasks.beginWait(sourceRef.value);
-                            }
+                            thisLocal._asyncTasksWaitingArrNew.add(result$);
+                            thisLocal._asyncTasksWaitingSourcesArrNew.add(sourceRef.value);
                         },
+                        error: () => {
+                            thisLocal._asyncTasksWaitingArrNew.add(result$);
+                            thisLocal._asyncTasksWaitingSourcesArrNew.add(sourceRef.value);
+                        }
                     }
                 ),
-                catchError((err, caught) => {
-                    const reThwErr = new Error('unespected!');
-                    reThwErr.stack += '\nCaused by:\n'+err.stack + '\nSubscribed on:\n' + stackSubscriberRef.value;
-                    (reThwErr as any).cause = err;
-                    return throwError(reThwErr);
-                }),
                 flatMap(() => {
                     sourceRef.value = source;
                     return source;
@@ -221,16 +170,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 tap(
                     {
                         next: () => {
-                            //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
-                            timer(0).subscribe(() => {
-                                thisLocal._waitForPendingTasks.emitEndWait(sourceRef.value);
-                            });
-                        },
-                        error: (err) => {
-                            //this is to ensure that all the processes of asynchronous results can be done in this js turn before releasing all waiting callbacks.
-                            timer(0).subscribe(() => {
-                                thisLocal._waitForPendingTasks.emitEndWait(sourceRef.value, err);
-                            })
+                            thisLocal._asyncTasksWaitingArrNew.delete(result$);
+                            thisLocal._asyncTasksWaitingSourcesArrNew.delete(sourceRef.value);
                         }
                     }
                 )
@@ -240,78 +181,24 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return resultOpr;
     }
 
-    // registerProvidedObservablesRxOpr<T>(): OperatorFunction<T, T> {
-    //     let thisLocal = this;
-
-    //     //BEGIN: Used to find losted obs.subscribed()
-    //     const stackSubscriberRef = {value: ''};
-    //     try {
-    //         throw new Error('TRACKING');
-    //     } catch (error) {
-    //         stackSubscriberRef.value = error.stack;
-    //     }
-    //     //END: Used to find losted obs.subscribed()
-    //     const resultOpr: OperatorFunction<T, T> = (source: Observable<T>) => {
-    //         const sourceRef = { value: source };
-    //         //thisLocal.testObservableHasCircle(source);
-    //         const result$ = of(null).pipe(
-    //             tap(
-    //                 {
-    //                     next: () => {
-    //                         thisLocal._asyncTasksWaitingArrNew.add(result$);
-    //                         thisLocal._asyncTasksWaitingSourcesArrNew.add(sourceRef.value);
-    //                     },
-    //                     //this is never going to happen!
-    //                     // error: () => {
-    //                     //     thisLocal._asyncTasksWaitingArrNew.add(result$);
-    //                     //     thisLocal._asyncTasksWaitingSourcesArrNew.add(sourceRef.value);
-    //                     // }
-    //                 }
-    //             ),
-    //             flatMap(() => {
-    //                 sourceRef.value = source;
-    //                 return source;
-    //             }),
-    //             map((value) => {
-    //                 return value as T;
-    //             }),
-    //             tap(
-    //                 {
-    //                     next: () => {
-    //                         thisLocal._asyncTasksWaitingArrNew.delete(result$);
-    //                         thisLocal._asyncTasksWaitingSourcesArrNew.delete(sourceRef.value);
-    //                     }
-    //                 }
-    //             )
-    //         );
-    //         return result$;
-    //     }
-    //     return resultOpr;
-    // }
-
-    createPendingTasksWaiting(): Observable<void> {
+    createSerialPendingTasksWaiting(): Observable<void> {
         const thisLocal = this;
-        return this._waitForPendingTasks.getWait();
+        let result$: Observable<void>;
+
+        if (thisLocal._asyncTasksWaitingArrNew.size > 0) {
+            //result$ = thisLocal.combineFirstSerialPreserveAllFlags(Array.from(thisLocal._asyncTasksWaitingArrNew))
+            result$ = combineFirstSerial(Array.from(thisLocal._asyncTasksWaitingArrNew))
+                .pipe(
+                    thisLocal.logRxOpr('createSerialAsyncTasksWaitingNew'),
+                    map(() => { return undefined; }),
+                    timeout(3000)
+                );
+        } else {
+            result$ = of(null);
+        }
+
+        return result$;
     }
-
-    // createSerialPendingTasksWaiting(): Observable<void> {
-    //     const thisLocal = this;
-    //     let result$: Observable<void>;
-
-    //     if (thisLocal._asyncTasksWaitingArrNew.size > 0) {
-    //         //result$ = thisLocal.combineFirstSerialPreserveAllFlags(Array.from(thisLocal._asyncTasksWaitingArrNew))
-    //         result$ = combineFirstSerial(Array.from(thisLocal._asyncTasksWaitingArrNew))
-    //             .pipe(
-    //                 thisLocal.logRxOpr('createSerialAsyncTasksWaitingNew'),
-    //                 map(() => { return undefined; }),
-    //                 timeout(3000)
-    //             );
-    //     } else {
-    //         result$ = of(null);
-    //     }
-
-    //     return result$;
-    // }
 
     constructor(private _manager: RecorderManager) {
         const thisLocal = this;
@@ -330,7 +217,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             thisLocal.consoleLike.groupEnd();
 		}
         this._objectsBySignature = new Map();
-        this._playerObjectsBySignature = new Map();
         this._objectsByCreationId = new Map();
         this._lazyrefsByEntityMap = new Map();
         this._fielEtcCacheMap = new Map();
@@ -340,13 +226,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         this._stringifiableOriginalValueEntriesBySign = new Map();
         this._latestTape = [];
         this._sessionId = uuidv1();
-
-        this._waitForPendingTasks = new WaitHolder(this.consoleLike);
     }
 
     public generateEntireStringifiableState(): Observable<SessionState> {
         const thisLocal = this;
-        let createSerialAsyncTasksWaitingNew$: Observable<SessionState> = this.createPendingTasksWaiting()
+        let createSerialAsyncTasksWaitingNew$: Observable<SessionState> = this.createSerialPendingTasksWaiting()
             .pipe(
                 map(() => {
                     let sessionState: SessionState = {
@@ -820,7 +704,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     refererObject?: Object,
                     refererLiteralObject?: any,
                     refMap?: Map<Number, any>,
-                }) : ResolvedMetadataEtc {
+                }) : ResolveMetadataReturn {
         const thisLocal = this;
         let valueOrliteral = options.object || options.literalObject || {};
         let refererObjectOrLiteral = options.refererObject || options.refererLiteralObject || {};
@@ -851,11 +735,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
 
         if (options.refMap) {
-            if (!LodashLike.isNil(refererObjMd.$id$) && refererObjMd.$isLazyUninitialized$ && !options.refMap.has(refererObjMd.$id$)) {
+            if (refererObjMd.$id$ && refererObjMd.$isLazyUninitialized$ && !options.refMap.has(refererObjMd.$id$)) {
                 const dummySignatureInstance = {};
                 (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = refererObjMd;
                 options.refMap.set(refererObjMd.$id$, dummySignatureInstance);
-            } else if (!LodashLike.isNil(refererObjMd.$idRef$)) {
+            } else if (refererObjMd.$idRef$) {
                 const trackedInstance = options.refMap.get(refererObjMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
@@ -867,11 +751,11 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 }
             }
 
-            if (!LodashLike.isNil(objectMd.$id$) && objectMd.$isLazyUninitialized$ && !options.refMap.has(objectMd.$id$)) {
+            if (objectMd.$id$ && objectMd.$isLazyUninitialized$ && !options.refMap.has(objectMd.$id$)) {
                 const dummySignatureInstance = {};
                 (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = objectMd;
                 options.refMap.set(objectMd.$id$, dummySignatureInstance);
-            } else if (!LodashLike.isNil(objectMd.$idRef$)) {
+            } else if (objectMd.$idRef$) {
                 const trackedInstance = options.refMap.get(objectMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
@@ -888,7 +772,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 const dummySignatureInstance = {};
                 (dummySignatureInstance as any)[thisLocal.manager.config.playerMetadatasName] = playerObjectIdMd;
                 options.refMap.set(playerObjectIdMd.$id$, dummySignatureInstance);
-            } else if (!LodashLike.isNil(playerObjectIdMd.$idRef$)) {
+            } else if (playerObjectIdMd.$idRef$) {
                 const trackedInstance = options.refMap.get(playerObjectIdMd.$idRef$);
                 let trackedInstanceMd = LodashLike.get(trackedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
                 if (!trackedInstanceMd.$iAmPlayerMetadatas$) {
@@ -1299,7 +1183,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         this._latestTape = null;
         this._nextMultiPurposeInstanceId = 1;
         this._objectsBySignature = new Map();
-        this._playerObjectsBySignature = new Map();
         this._objectsByCreationId = new Map();
         this._lazyrefsByEntityMap = new Map();
         this._fielEtcCacheMap = new Map();
@@ -1307,8 +1190,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         this._switchedOffNotificationEntitiesSet = new Set();
         this._stringifiableOriginalValueEntries = [];
         this._latestTape = [];
-
-        this._waitForPendingTasks = new WaitHolder(this.consoleLike);
         
         let clearCache$: Observable<void> = this.manager.config.cacheHandler.clearCache();
         // clearCache$ = clearCache$.pipe(this.addSubscribedObsRxOpr());
@@ -1516,22 +1397,13 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         let bMd = allMD.objectMd;
         let entityValue: L = this._objectsBySignature.get(bMd.$signature$);
 
-        if(!allMD.objectMdFound) {
-            throw new Error('wrappedSnapshotField has no metadata. wrappedSnapshotField:\n' +
-                JSON.stringify(
-                    wrappedSnapshotField,
-                    null,
-                    2).substring(0, 400)
-            );
-        }
-
         //resultEntityAlreadyProcessed.allMD = allMD;
 
         if (!LodashLike.isNil(entityValue)) {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity is already processed on this session. Found by signature: ' + bMd.$signature$);
             }
-            if(LodashLike.isNil(bMd.$id$)) {
+            if(!bMd.$id$) {
                 throw new Error('entity is already processed on this session. But thre is no metadatas.$id$. signature: ' + bMd.$signature$);
             }
             refMap.set(bMd.$id$, entityValue);
@@ -1541,7 +1413,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
                 thisLocal.consoleLike.debug('entity was not processed yet on this session. Not found by signature: ' + bMd.$signature$);
             }
-            if (!LodashLike.isNil(bMd.$idRef$)) {
+            if (bMd.$idRef$) {
                 entityValue = refMap.get(bMd.$idRef$);
                 if (LodashLike.isNil(entityValue)) {
                     throw new Error('entity not foun for idRef: ' + bMd.$idRef$);
@@ -1566,16 +1438,16 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         LodashLike.set(entityValue as any, RecorderConstants.ENTITY_SESION_PROPERTY_NAME, this);
         this.removeNonUsedKeysFromLiteral(entityValue as any, wrappedSnapshotField);
 
-        if (!LodashLike.isNil(bMd.$id$)) {
+        if (bMd.$id$) {
             refMap.set(bMd.$id$, entityValue);
         } else {
-            if (LodashLike.isNil(bMd.$idRef$)) {
+            if (!bMd.$idRef$) {
                 throw new Error('This should not happen 1');
             }
         }
         
-        if (LodashLike.isNil(bMd.$idRef$)) {
-            //literal source values with no $idRef$ no need deep processing!
+        if (!bMd.$idRef$) {
+            //literal source values with $idRef$ no need deep processing!
             entityValue = this.lazyLoadTemplateCallback(entityValue, () => {
                 this.tryCacheInstanceBySignature(
                     {
@@ -1601,73 +1473,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         return entityValue;
     }
 
-    private processSingleInstanceForPlayerObjectId<E, I>(entType: TypeLike<E>, parenteRMEtc: ResolvedMetadataEtc, refMap: Map<Number, any>, literalPlayerObjectId?: I): I {
-        if (this._playerObjectsBySignature.has(parenteRMEtc.objectMd.$signature$)) {
-            return this._playerObjectsBySignature.get(parenteRMEtc.objectMd.$signature$);
-        } else {
-            let literalPlayerObjectIdLocal: any = parenteRMEtc.objectMd.$playerObjectId$;
-            if(!LodashLike.isNil(parenteRMEtc.objectMd.$playerObjectId$)) {
-                //Are we processing the value from $metadatas$
-                literalPlayerObjectIdLocal = parenteRMEtc.objectMd.$playerObjectId$;
-            } else if (!LodashLike.isNil(literalPlayerObjectId)) {
-                //Are we processing the value from entity
-                literalPlayerObjectIdLocal = literalPlayerObjectId;
-            } else {
-                throw new Error("This should not happen");
-            }
-            let allMD = this.resolveMetadatas(
-                {
-                    literalObject: literalPlayerObjectIdLocal,
-                    refMap: refMap
-                });
-
-            const entDummyInstance = new entType();
-            let objectIdPrpInfo:  RecorderDecoratorsInternal.PlayerObjectIdInfo = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_INFO, entDummyInstance);
-            const fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<I, any>(this.fielEtcCacheMap, entDummyInstance, objectIdPrpInfo.fieldName, this.manager.config);
-            
-            const playerObjectIdRef = { value: undefined as I };
-    
-            if (!LodashLike.isNil(parenteRMEtc.playerObjectIdMd.$idRef$)) {
-                if (this.consoleLikeRestoreState.enabledFor(RecorderLogLevel.Warn)) {
-                    this.consoleLikeRestoreState.warn('RecorderSessionDefault.processPlayerObjectIdForSingleInstance: playerObjectIdMd.$idRef$ found. It is not usual!. literalPlayerObjectId:\n' + this.jsonStringfyWithMax(literalPlayerObjectIdLocal));
-                }
-                let referedInstance = refMap.get(parenteRMEtc.playerObjectIdMd.$idRef$);
-                let referedInstanceMd = LodashLike.get(referedInstance, this.manager.config.playerMetadatasName) as PlayerMetadatas;
-                if (!referedInstanceMd.$iAmPlayerMetadatas$) {
-                    throw new Error('Where is the metadatas fot $idRef$:\n' + parenteRMEtc.playerObjectIdMd.$idRef$);
-                }
-                playerObjectIdRef.value = referedInstanceMd.$playerObjectId$;
-            } else {
-                playerObjectIdRef.value = parenteRMEtc.objectMd.$playerObjectId$;            
-            }
-
-            if(fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-                if(allMD.objectMdFound && allMD.objectMd.$isComponentPlayerObjectId$) {
-                    throw new Error('playerObjectId.$isComponentPlayerObjectId$, it can not use fromLiteralValue on FieldProcessor');
-                }
-                playerObjectIdRef.value = 
-                    fieldEtc.fieldProcessorCaller.callFromLiteralValue(
-                        playerObjectIdRef.value,
-                        fieldEtc.fieldInfo);
-            } else if(allMD.objectMdFound && allMD.objectMd.$isComponentPlayerObjectId$) {
-                if (fieldEtc.objectIdPrpInfo.idType) {
-                    this.validatingMetaFieldsExistence(fieldEtc.objectIdPrpInfo.idType);
-                    playerObjectIdRef.value = this.processResultEntityPriv(fieldEtc.objectIdPrpInfo.idType, playerObjectIdRef.value, refMap);
-                } else {
-                    throw new Error('There is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + fieldEtc.prpType + ', genericNode:'+ fieldEtc.prpGenType);
-                }
-            } else if (!LodashLike.isNil(playerObjectIdRef.value)) {
-                if (this.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-                    this.consoleLike.debug('The player object Id is a simple type value: ' + playerObjectIdRef.value);
-                }
-            } else {
-                throw new Error('This should not happen. ');
-            }
-            this._playerObjectsBySignature.set(parenteRMEtc.objectMd.$signature$, playerObjectIdRef.value);
-        }
-        return this._playerObjectsBySignature.get(parenteRMEtc.objectMd.$signature$);
-    }
-
     private createLoadedLazyRef<L extends object, I>(
             fieldEtc: FieldEtc<L, any>,
             literalLazyObj: any,
@@ -1684,7 +1489,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         const isValueByFieldProcessor: {value: boolean} = { value: false };
 
         if (allMD.objectMd.$iAmPlayerMetadatas$) {
-            if (!LodashLike.isNil(allMD.objectMd.$idRef$)) {
+            if (allMD.objectMd.$idRef$) {
                 let referedInstance = refMap.get(allMD.objectMd.$idRef$);
                 if (!literalLazyObj) {
                     throw new Error('literalLazyObj.$iAmPlayerMetadatas$ and $idRef$ not found: \'' + refererKey + '\' on ' + refererObj.constructor);
@@ -1893,7 +1698,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
         }
     }
 
-    createApropriateLazyRef<L extends object, I>(genericNode: GenericNode, literalLazyObj: any, refererObj: any, refererKey: string, refMap?: Map<Number, any>): LazyRefImplementor<L, I> {
+    createApropriateLazyRef<L extends object, I>(genericNode: GenericNode, propertyOptions: RecorderDecorators.PropertyOptions<L>, literalLazyObj: any, refererObj: any, refererKey: string, refMap?: Map<Number, any>): LazyRefImplementor<L, I> {
         let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refererObject: refererObj, key: refererKey, refMap: refMap});
         let bMd = allMD.objectMd;
 
@@ -1930,7 +1735,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     private isStringifiableObjMetadataKey(keyName: string): boolean {
         if (this.metadaKeys == null) {
             this.metadaKeys = new Set<string>()
-                .add(this.manager.config.playerMetadatasName); 
+                .add(this.manager.config.playerMetadatasName);
+                
         }
         return this.metadaKeys.has(keyName);
     }
@@ -1947,92 +1753,54 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
     }
 
     private trySetPlayerObjectIdentifier<L extends object, I>(
-            lr: LazyRefImplementor<L, I>,
+            lr: LazyRef<L, I>,
             genericNode: GenericNode,
             literalLazyObj: any,
             refMap: Map<Number, any>): void {
         const thisLocal = this;
-        let allMD = this.resolveMetadatas(
-            {
-                literalObject: literalLazyObj,
-                refererObject: lr.refererObj,
-                key: lr.refererKey,
-                refMap: refMap
-            });
-        let objectMd = allMD.objectMd;
+        let allMD = this.resolveMetadatas({literalObject: literalLazyObj, refMap: refMap});
+        let bMd = allMD.objectMd;
 
         const stringifiablePlayerObjectIdLiteralRef = { value: undefined as any };
 
-        if (!LodashLike.isNil(objectMd.$idRef$)) {
-            let referedInstance = refMap.get(objectMd.$idRef$);
+        if (bMd.$idRef$) {
+            let referedInstance = refMap.get(bMd.$idRef$);
             let referedInstanceMd = LodashLike.get(referedInstance, thisLocal.manager.config.playerMetadatasName) as PlayerMetadatas;
             if (!referedInstanceMd.$iAmPlayerMetadatas$) {
-                throw new Error('Where is the metadatas fot $idRef$:\n' + objectMd.$idRef$);
+                throw new Error('Where is the metadatas fot $idRef$:\n' + bMd.$idRef$);
             }
             stringifiablePlayerObjectIdLiteralRef.value = referedInstanceMd.$playerObjectId$;
         } else {
-            stringifiablePlayerObjectIdLiteralRef.value = objectMd.$playerObjectId$;            
+            stringifiablePlayerObjectIdLiteralRef.value = bMd.$playerObjectId$;            
         }
 
-        if (genericNode.gType === LazyRefMTOMarker) {
-            let playerObjectidOwnerType: TypeLike<any> = null;
-            if (genericNode.gParams[0] instanceof GenericNode) {
-                playerObjectidOwnerType = (<GenericNode>genericNode.gParams[0]).gType;
+        if (LodashLike.isObject(stringifiablePlayerObjectIdLiteralRef.value, new Set([Date, Buffer]))) {
+            let playerObjectIdType: TypeLike<any> = null;
+            if (genericNode.gParams[1] instanceof GenericNode) {
+                playerObjectIdType = (<GenericNode>genericNode.gParams[1]).gType;
             } else {
-                playerObjectidOwnerType = <TypeLike<any>>genericNode.gParams[0];
+                playerObjectIdType = <TypeLike<any>>genericNode.gParams[1];
             }
-
-            (lr as LazyRefMTOImplementor<L, I>).playerObjectId =
-                thisLocal.processSingleInstanceForPlayerObjectId(
-                    playerObjectidOwnerType,
-                    allMD,
-                    refMap
-                );
-            // let playerObjectIdType: TypeLike<any> = null;
-            // if (genericNode.gParams[1] instanceof GenericNode) {
-            //     playerObjectIdType = (<GenericNode>genericNode.gParams[1]).gType;
-            // } else {
-            //     playerObjectIdType = <TypeLike<any>>genericNode.gParams[1];
-            // }
-            // let playerObjectidOwnerType: TypeLike<any> = null;
-            // if (genericNode.gParams[0] instanceof GenericNode) {
-            //     playerObjectidOwnerType = (<GenericNode>genericNode.gParams[0]).gType;
-            // } else {
-            //     playerObjectidOwnerType = <TypeLike<any>>genericNode.gParams[0];
-            // }
-    
-            // let objectIdPrpInfo: RecorderDecoratorsInternal.PlayerObjectIdInfo = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_INFO, new playerObjectidOwnerType());
-            // if(!objectIdPrpInfo) {
-            //     throw new Error('We are receiving $playerObjectId$ and ' + playerObjectidOwnerType.name + ' does not define a property with @RecorderDecorators.playerObjectId()');
-            // }
-
-            // let fieldEtc = RecorderManagerDefault.resolveFieldProcessorPropOptsEtc<I, any>(this.fielEtcCacheMap, new playerObjectidOwnerType(), objectIdPrpInfo.fieldName, this.manager.config);
-            
-            // if(fieldEtc.fieldProcessorCaller && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
-            //     (lr as LazyRefMTOImplementor<L, I>).playerObjectId = 
-            //         fieldEtc.fieldProcessorCaller.callFromLiteralValue(
-            //             stringifiablePlayerObjectIdLiteralRef.value,
-            //             fieldEtc.fieldInfo);
-            // } else if (LodashLike.isObject(stringifiablePlayerObjectIdLiteralRef.value, new Set([Date, Buffer]))) {
-            //     if (playerObjectIdType) {
-            //         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-            //             thisLocal.consoleLike.debug('There is a playerObjectIdType on LazyRef. Is it many-to-one LazyRef?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
-            //         }
-            //         this.validatingMetaFieldsExistence(playerObjectIdType);
-            //         (lr as LazyRefMTOImplementor<L, I>).playerObjectId = this.processResultEntityPriv(playerObjectIdType, stringifiablePlayerObjectIdLiteralRef.value, refMap);
-            //     } else {
-            //         if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-            //             thisLocal.consoleLike.debug('Thre is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
-            //         }
-            //     }
-            // } else if (!LodashLike.isNil(stringifiablePlayerObjectIdLiteralRef.value)) {
-            //     if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
-            //         thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + stringifiablePlayerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
-            //     }
-            //     (lr as LazyRefMTOImplementor<L, I>).playerObjectId = stringifiablePlayerObjectIdLiteralRef.value;
-            // } else {
-            //     throw new Error('This should not happen. ');
-            // }
+            if (playerObjectIdType) {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('There is a playerObjectIdType on LazyRef. Is it many-to-one LazyRef?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
+                }
+                this.validatingMetaFieldsExistence(playerObjectIdType);
+                (lr as LazyRefMTOImplementor<L, I>).playerObjectId = this.processResultEntityPriv(playerObjectIdType, stringifiablePlayerObjectIdLiteralRef.value, refMap);
+            } else {
+                if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                    thisLocal.consoleLike.debug('Thre is no playerObjectIdType on LazyRef. Is it a collection?!. playerObjectIdType: ' + playerObjectIdType.name + ', genericNode:'+genericNode);
+                }
+            }
+        } else if (stringifiablePlayerObjectIdLiteralRef.value) {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('The player object Id is a simple type value: ' + stringifiablePlayerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
+            }
+            (lr as LazyRefMTOImplementor<L, I>).playerObjectId = stringifiablePlayerObjectIdLiteralRef.value;
+        } else {
+            if (thisLocal.consoleLike.enabledFor(RecorderLogLevel.Trace)) {
+                thisLocal.consoleLike.debug('The player object Id is null! Is it a collection?!: ' + stringifiablePlayerObjectIdLiteralRef.value + '. genericNode:'+ genericNode);
+            }
         }
     }
 
@@ -2116,8 +1884,8 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     thisLocal.consoleLikeMerge.groupEnd();
                 }
                 //fieldEtc.prpType = Reflect.getMetadata(RecorderConstants.REFLECT_METADATA_PLAYER_OBJECT_ID_TYPE, object);
-                if (!fieldEtc.objectIdPrpInfo) {
-                    throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @RecorderDecorators.playerObjectId()');
+                if (!fieldEtc.objectIdPrpType) {
+                    throw new Error('We are receiving mdSrcValue.$playerObjectId$ as Object and mdPlayerObjectId.$isComponent$, ' + object.constructor.name + ' does not define a property with @JsonPlayback.playerObjectId()');
                 }
             }
             if (mdSrcValue.$isAssociative$ && fieldEtc.prpGenType 
@@ -2160,11 +1928,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if (mdPlayerObjectId.$isComponent$) {
                     customizerResult.value = DummyUndefinedForMergeAsync;
                     //let processResultEntityPrivPlayerObjectId$ = combineFirstSerial(asyncCombineObsArr).pipe(
-                    let playerObjectIdValue = thisLocal.processSingleInstanceForPlayerObjectId(
-                        object.constructor as TypeLike<any>,
-                        allMD,
-                        refMap);
-                    //let playerObjectIdValue = thisLocal.processResultEntityPriv(fieldEtc.objectIdPrpInfo.idType, mdSource.$playerObjectId$, refMap);
+                    let playerObjectIdValue = thisLocal.processResultEntityPriv(fieldEtc.objectIdPrpType, mdSource.$playerObjectId$, refMap);
                     correctSrcValueAsMetadata.$playerObjectId$ = playerObjectIdValue;
                     customizerResult.value = correctSrcValueAsMetadata;
                     //isDoneRef.result = mdPlayerObjectId;
@@ -2174,7 +1938,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                         LodashLike.set(object, key, customizerResult.value);
                     }
                 } 
-            } else if (!LodashLike.isNil(mdSrcValue.$idRef$) && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
+            } else if (!mdSrcValue.$idRef$ && !isLazyRefField && fieldEtc.fieldProcessorCaller.callFromLiteralValue) {
                 customizerResult.value = DummyUndefinedForMergeAsync;
                 let callFromLiteralValue = fieldEtc.fieldProcessorCaller.callFromLiteralValue(srcValue, fieldEtc.fieldInfo);
                 customizerResult.value = callFromLiteralValue;
@@ -2188,7 +1952,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if(!existsBySignFromPreviousProcessing) {
                     LodashLike.set(object, key, customizerResult.value);
                 }
-            } else if (!LodashLike.isNil(mdSrcValue.$idRef$) && !isLazyRefField) {
+            } else if (mdSrcValue.$idRef$ && !isLazyRefField) {
                 customizerResult.value = DummyUndefinedForMergeAsync;
                 customizerResult.value = refMap.get(mdSrcValue.$idRef$);
                 customizerResult.needSet = false;
@@ -2205,20 +1969,6 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                 if(!existsBySignFromPreviousProcessing) {
                     LodashLike.set(object, key, customizerResult.value);
                 }
-            } else if (fieldEtc.objectIdPrpInfo.fieldName === key.toString()) {
-                customizerResult.value = srcValue;
-                customizerResult.needSet = false;
-                let correctSrcValue = customizerResult.value;
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Debug)) {
-                    thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function. fieldEtc.objectIdPrpInfo.fieldName === key.toString(). calling .processSingleInstanceForPlayerObjectId(). Here playerObjectId is probably a simple non $isComponentPlayerObjectId$ value, because when it is $isComponentPlayerObjectId$ is processed before on $metadatas$.$playerObjectId$. \''+key+'\'. srcValue: ' + this.jsonStringfyWithMax(srcValue) );
-                }
-                customizerResult.value = thisLocal.processSingleInstanceForPlayerObjectId(
-                    object.constructor as TypeLike<any>,
-                    allMD,
-                    refMap);
-                if(!existsBySignFromPreviousProcessing) {
-                    LodashLike.set(object, key, correctSrcValue);
-                }
             } else if (fieldEtc.prpType) {
                 const isFromLiteralValue = {value: false};
                 if (fieldEtc.prpGenType) {
@@ -2227,7 +1977,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                             || fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
                             || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker)) {
                         if (1 === 1) {
-                            throw new Error('This pesrsistent collection is not supported yet!');
+                            throw new Error('Not pesrsistent collection is not supported yet!');
                         }
                         if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                             thisLocal.consoleLikeMerge.debug('mergeWithCustomizerPropertyReplection => function.'+
@@ -2251,10 +2001,10 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
                     } else if (fieldEtc.lazyRefMarkerType === LazyRefOTMMarker
                         || fieldEtc.lazyRefMarkerType === LazyRefMTOMarker
                         || fieldEtc.lazyRefMarkerType === LazyRefPrpMarker) {
-                        if (LodashLike.isNil(mdSource.$id$)) {
+                        if (!mdSource.$id$) {
                             throw new Error('There is no mdSource.$id$ on ' + this.jsonStringfyWithMax(srcValue));
                         }
-                        if (mdSrcValueFound && LodashLike.isNil(mdSrcValue.$idRef$) && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
+                        if (mdSrcValueFound && !mdSrcValue.$idRef$ && !mdSrcValue.$isAssociative$ && !mdSrcValue.$isLazyProperty$) {
                             throw new Error('Receiving object that is non associative, no lazy property and has no $idRef$, but field is a LazyRef type. field: ' + object.constructor.name + '.' + key + '. Value' + this.jsonStringfyWithMax(srcValue));
                         }
                         if (mdSrcValue.$isLazyUninitialized$) {
@@ -2385,7 +2135,7 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             } else if (LodashLike.has(object, key)) {
                 throw new Error('No type decorator for '+ object.constructor.name + '.' + key);
             } else if (!LodashLike.has(object, key) && !thisLocal.isStringifiableObjMetadataKey(key)) {
-                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Warn)) {
+                if (thisLocal.consoleLikeMerge.enabledFor(RecorderLogLevel.Trace)) {
                     thisLocal.consoleLikeMerge.warn('mergeWithCustomizerPropertyReplection => function. This property \''+key+'\' does not exists on this type.');
                 }
                 customizerResult.value = undefined;
@@ -2601,62 +2351,61 @@ export class RecorderSessionDefault implements RecorderSessionImplementor {
             }
         }
     }
+    
+    private pendingLazyRefSubscriptionBySign: Map<string, Observable<any>> = new Map();
+    registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L> {
+        let thisLocal = this;
 
-    //2020-12-08T06:12:03.862Z: There is no reason for it to exist, that I remember
-    // private pendingLazyRefSubscriptionBySign: Map<string, Observable<any>> = new Map();
-    // registerLazyRefSubscriptionRxOpr<L>(signature: string):  OperatorFunction<L, L> {
-    //     let thisLocal = this;
-
-    //     //BEGIN: Used to find losted obs.subscribed()
-    //     const stackSubscriberRef = {value: ''};
-    //     try {
-    //         throw new Error('TRACKING');
-    //     } catch (error) {
-    //         stackSubscriberRef.value = error.stack;
-    //     }
-    //     ;
-    //     //END: Used to find losted obs.subscribed()
-    //     const resultOpr: OperatorFunction<L, L> = (source: Observable<L>) => {
-    //         const sourceRef = { value: source };
-    //         //thisLocal.testObservableHasCircle(source);
-    //         let result$ = source;
-    //         const pendingLazyRefSubscription = thisLocal.pendingLazyRefSubscriptionBySign.get(signature);
-    //         if (pendingLazyRefSubscription) {
-    //             result$ = pendingLazyRefSubscription;
-    //         } else {
-    //             result$ = of(null).pipe(
-    //                 tap(
-    //                     {
-    //                         next: () => {
-    //                             thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
-    //                         },
-    //                         error: () => {
-    //                             thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
-    //                         }
-    //                     }
-    //                 ),
-    //                 flatMap(() => {
-    //                     sourceRef.value = source;
-    //                     return source;
-    //                 }),
-    //                 tap(
-    //                     {
-    //                         next: () => {
-    //                             thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
-    //                         },
-    //                         error: () => {
-    //                             thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
-    //                         }
-    //                     }
-    //                 )
-    //                 // ,
-    //                 // timeoutDecorateRxOpr()
-    //             );
-    //         }
-    //         return result$;
-    //     }
-    //     return resultOpr;
-    // }
+        //BEGIN: Used to find losted obs.subscribed()
+        const stackSubscriberRef = {value: ''};
+        try {
+            throw new Error('TRACKING');
+        } catch (error) {
+            stackSubscriberRef.value = error.stack;
+        }
+        ;
+        //END: Used to find losted obs.subscribed()
+        const resultOpr: OperatorFunction<L, L> = (source: Observable<L>) => {
+            const sourceRef = { value: source };
+            //thisLocal.testObservableHasCircle(source);
+            let result$ = source;
+            const pendingLazyRefSubscription = thisLocal.pendingLazyRefSubscriptionBySign.get(signature);
+            if (pendingLazyRefSubscription) {
+                result$ = pendingLazyRefSubscription;
+            } else {
+                result$ = of(null).pipe(
+                    tap(
+                        {
+                            next: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
+                            },
+                            error: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.set(signature, source);
+                            }
+                        }
+                    ),
+                    flatMap(() => {
+                        sourceRef.value = source;
+                        return source;
+                    }),
+                    tap(
+                        {
+                            next: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
+                            },
+                            error: () => {
+                                thisLocal.pendingLazyRefSubscriptionBySign.delete(signature);
+                            }
+                        }
+                    )
+                    // ,
+                    // timeoutDecorateRxOpr()
+                );
+            }
+            return result$;
+        }
+        return resultOpr;
+    }
 
     jsonStringfyWithMax(literalObj: any): string {
         let result = '';

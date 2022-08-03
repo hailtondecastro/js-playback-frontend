@@ -19,10 +19,10 @@
     "tasks": [
         {
             "group": "build",
-            "label": "build",
+            "label": "build dist-dev",
             "args": [
                 //"build.out.txt"
-                "npm run build-vscode-incr"
+                "npm run build-vscode-build-dist-dev"
             ],
             "problemMatcher": [
                 "$tsc",
@@ -48,10 +48,10 @@
         },
         {
             "group": "build",
-            "label": "rebuild",
+            "label": "rebuild dist-dev",
             "args": [
                 //"build.out.txt"
-                "npm run build-vscode-rebuild"
+                "npm run build-vscode-rebuild-dist-dev"
             ],
             "problemMatcher": [
                 "$tsc",
@@ -77,10 +77,39 @@
         },
         {
             "group": "build",
-            "label": "rebuild dist",
+            "label": "build dist-test",
             "args": [
                 //"build.out.txt"
-                "npm run build-vscode-rebuild-dist"
+                "npm run build-vscode-build-dist-test"
+            ],
+            "problemMatcher": [
+                "$tsc",
+                "$tsc-watch",
+                {
+                    "owner": "build",
+                    "fileLocation": [
+                        "relative",
+                        "${workspaceRoot}"
+                    ],
+                    "severity": "error",
+                    "pattern": [
+                        {
+                            "regexp": "^(.*)\\((\\d*),(\\d*)\\):.*error (TS\\d+:.*)$",
+                            "file": 1,
+                            "line": 2,
+                            "column": 3,
+                            "message": 4
+                        }
+                    ]
+                }
+            ],
+        },
+        {
+            "group": "build",
+            "label": "rebuild dist-test",
+            "args": [
+                //"build.out.txt"
+                "npm run build-vscode-rebuild-dist-test"
             ],
             "problemMatcher": [
                 "$tsc",

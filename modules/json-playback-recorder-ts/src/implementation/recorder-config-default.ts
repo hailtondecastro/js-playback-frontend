@@ -1,7 +1,7 @@
 import { TypeLike } from '../typeslike';
 import { IFieldProcessor } from "../api/field-processor";
 import { RecorderDecorators } from "../api/recorder-decorators";
-import { RecorderLogger, ConsoleLike, RecorderLogLevel, CacheHandler, TypeProcessorEntry, RecorderConfig } from "../api/recorder-config";
+import { RecorderLogger, ConsoleLike, RecorderLogLevel, CacheHandler, TypeProcessorEntry, RecorderConfig, CacheHandlerWithInterceptor } from "../api/recorder-config";
 import { LazyObservableProvider } from '../api/lazy-observable-provider';
 
 export class ConsoleLikeBase implements ConsoleLike {
@@ -18,19 +18,34 @@ export class ConsoleLikeBase implements ConsoleLike {
         console.groupEnd();
     }
     error(message?: any, ...optionalParams: any[]): void {
-        console.error('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        if(this.enabledFor(RecorderLogLevel.Error)) {
+            console.error('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
     }
     warn(message?: any, ...optionalParams: any[]): void {
-        console.warn('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        if(this.enabledFor(RecorderLogLevel.Warn)) {
+            console.warn('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
     }
     log(message?: any, ...optionalParams: any[]): void {
-        console.log('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        if(this.enabledFor(RecorderLogLevel.Trace)) {
+            console.log('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
     }
     debug(message?: any, ...optionalParams: any[]): void {
-        console.debug('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        if(this.enabledFor(RecorderLogLevel.Debug)) {
+            console.debug('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
+    }
+    trace(message?: any, ...optionalParams: any[]): void {
+        if(this.enabledFor(RecorderLogLevel.Trace)) {
+            console.trace('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
     }
     info(message?: any, ...optionalParams: any[]): void {
-        console.info('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        if(this.enabledFor(RecorderLogLevel.Info)) {
+            console.info('[' + this.logger + '] '+(message && message.toString ? message.toString() : ''), ...optionalParams);
+        }
     }
     enabledFor(level: RecorderLogLevel): boolean {
         return level >= this.level;
@@ -205,4 +220,30 @@ export class RecorderConfigDefault implements RecorderConfig {
         return this;
     }
 
+}
+
+export function createCacheHandlerWithInterceptor(cacheHandler: CacheHandler): CacheHandlerWithInterceptor {
+    let newCacheHandler: CacheHandlerWithInterceptor =
+    {
+        ...cacheHandler,
+        callback: () => {}
+    }
+    newCacheHandler.putOnCache = (cacheKey, stream) => {
+        newCacheHandler.callback('putOnCache', cacheKey, stream);
+        return cacheHandler.putOnCache(cacheKey, stream);
+    }
+    newCacheHandler.clearCache = () => {
+        newCacheHandler.callback('clearCache');
+        return cacheHandler.clearCache();
+    }
+    newCacheHandler.getFromCache = (cacheKey) => {
+        newCacheHandler.callback('getFromCache', cacheKey);
+        return cacheHandler.getFromCache(cacheKey);
+    }
+    newCacheHandler.removeFromCache = (cacheKey) => {
+        newCacheHandler.callback('removeFromCache', cacheKey);
+        return cacheHandler.removeFromCache(cacheKey);
+    }   
+
+    return newCacheHandler;
 }

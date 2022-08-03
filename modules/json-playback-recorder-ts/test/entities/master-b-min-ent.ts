@@ -54,6 +54,7 @@ export class MasterBMinEnt {
     // private _detailAEntCol: LazyRefOTM<Set<DetailAEnt>>;
     //private _masterBComp: MasterBComp;
 
+	@RecorderDecorators.playerObjectId()
 	@RecorderDecorators.property()
 	public get compId(): MasterBMinCompId {
 		return this._compId;

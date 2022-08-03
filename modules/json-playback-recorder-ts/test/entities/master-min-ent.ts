@@ -1,4 +1,4 @@
-import { LazyRef, LazyRefOTM, StringStream, StringStreamMarker, LazyRefPrp, LazyRefPrpMarker, BinaryStream, BinaryStreamMarker, LazyRefOTMMarker } from '../../src/api/lazy-ref';
+import { LazyRefOTM, LazyRefPrp, LazyRefPrpMarker, LazyRefOTMMarker, BinaryBlobOrStream, StringBlobOrStream, BinaryBlobOrStreamMarker, StringBlobOrStreamMarker } from '../../src/api/lazy-ref';
 import { RecorderDecorators } from '../../src/api/recorder-decorators';
 import { GenericNodeNotNow, GenericTokenizer } from '../../src/api/generic-tokenizer';
 import { DetailMinEnt } from './detail-min-ent';
@@ -14,10 +14,10 @@ export class MasterMinEnt {
     private _blobB: Buffer;
     private _hbVersion: number;
     private _detailAEntCol: LazyRefOTM<Set<DetailMinEnt>>;
-	private _blobLazyA: LazyRefPrp<BinaryStream>;
-    private _blobLazyB: LazyRefPrp<BinaryStream>;
-    private _clobLazyA: LazyRefPrp<StringStream>;
-	private _clobLazyB: LazyRefPrp<StringStream>;
+	private _blobLazyA: LazyRefPrp<BinaryBlobOrStream>;
+    private _blobLazyB: LazyRefPrp<BinaryBlobOrStream>;
+    private _clobLazyA: LazyRefPrp<StringBlobOrStream>;
+	private _clobLazyB: LazyRefPrp<StringBlobOrStream>;
 	
 	@RecorderDecorators.property()
 	public get id(): number {
@@ -66,26 +66,26 @@ export class MasterMinEnt {
 	}
 
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryStreamMarker).gt().tree))
-	public get blobLazyA(): LazyRefPrp<BinaryStream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryBlobOrStreamMarker).gt().tree))
+	public get blobLazyA(): LazyRefPrp<BinaryBlobOrStream> {
 		return this._blobLazyA;
 	}
 
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true })
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryStreamMarker).gt().tree))
-	public get blobLazyB(): LazyRefPrp<BinaryStream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(BinaryBlobOrStreamMarker).gt().tree))
+	public get blobLazyB(): LazyRefPrp<BinaryBlobOrStream> {
 		return this._blobLazyB;
 	}
 
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
-	public get clobLazyA(): LazyRefPrp<StringStream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringBlobOrStreamMarker).gt().tree))
+	public get clobLazyA(): LazyRefPrp<StringBlobOrStream> {
 		return this._clobLazyA;
     }
     
 	@RecorderDecorators.property({lazyDirectRawWrite: true, lazyDirectRawRead: true, persistent: true})
-	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringStreamMarker).gt().tree))
-	public get clobLazyB(): LazyRefPrp<StringStream> {
+	@Reflect.metadata('design:generics', new GenericNodeNotNow(() => GenericTokenizer.create().tp(LazyRefPrpMarker).lt().tp(StringBlobOrStreamMarker).gt().tree))
+	public get clobLazyB(): LazyRefPrp<StringBlobOrStream> {
 		return this._clobLazyB;
 	}
 
@@ -125,19 +125,19 @@ export class MasterMinEnt {
 		this._detailAEntCol = value;
 	}
 
-	public set blobLazyA(value: LazyRefPrp<BinaryStream>) {
+	public set blobLazyA(value: LazyRefPrp<BinaryBlobOrStream>) {
 		this._blobLazyA = value;
 	}
 
-	public set blobLazyB(value: LazyRefPrp<BinaryStream>) {
+	public set blobLazyB(value: LazyRefPrp<BinaryBlobOrStream>) {
 		this._blobLazyB = value;
 	}
 
-	public set clobLazyA(value: LazyRefPrp<StringStream>) {
+	public set clobLazyA(value: LazyRefPrp<StringBlobOrStream>) {
 		this._clobLazyA = value;
 	}
 
-	public set clobLazyB(value: LazyRefPrp<StringStream>) {
+	public set clobLazyB(value: LazyRefPrp<StringBlobOrStream>) {
 		this._clobLazyB = value;
 	}
 
